@@ -5,6 +5,7 @@ import {
   type Currency,
   type PetView,
 } from "@zoption/shared";
+import { useEffect } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { EggPicker } from "@/features/pet/EggPicker";
@@ -58,11 +59,16 @@ export function PersonalizeStep({
   const theme = useZoptionTheme();
   const pet = usePetStore((state) => state.pet);
   const actions = usePetActions();
+  const { refresh } = actions;
   const eggNext = wantsPet && canPickEgg(pet);
 
+  useEffect(() => {
+    if (pet === null) void refresh();
+  }, [pet, refresh]);
+
   const saveChoice = async () => {
-    if (!eggNext && pet && pet.enabled !== wantsPet && !(await actions.setEnabled(wantsPet))) {
-      return;
+    if (!eggNext && pet?.enabled !== wantsPet && (pet !== null || !wantsPet)) {
+      if (!(await actions.setEnabled(wantsPet))) return;
     }
     usePetStore.getState().markIntroduced();
     void telemetry.capture("onboarding_step_completed", { step: "personalize" });

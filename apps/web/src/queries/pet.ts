@@ -1,5 +1,11 @@
 import type { PetColor, PetEggChoice, PetView } from "@zoption/shared";
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 
 import { checkInPet, choosePetEgg, hatchPet, setPetColor, setPetEnabled } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
@@ -53,4 +59,28 @@ export function useHatchPet(workspace: AuthenticatedWorkspace) {
     await beforeShow();
     return pet;
   });
+}
+
+const pendingPetRefreshes = new Map<string, ReturnType<typeof setTimeout>>();
+
+/**
+ * Refreshes the personal pet after activity that can earn points or heal it. Because the Worker
+ * credits rows only through the last finished whole second (`datetime('now')`), a loaded cache also
+ * schedules one follow-up invalidation just past that 1-second boundary.
+ */
+export function invalidatePet(queryClient: QueryClient, workspace: AuthenticatedWorkspace) {
+  if (workspace.familyId) return Promise.resolve();
+  const key = queryKeys.pet(workspace);
+  if (queryClient.getQueryData(key) !== undefined) {
+    const existing = pendingPetRefreshes.get(workspace.key);
+    if (existing) clearTimeout(existing);
+    pendingPetRefreshes.set(
+      workspace.key,
+      setTimeout(() => {
+        pendingPetRefreshes.delete(workspace.key);
+        void queryClient.invalidateQueries({ queryKey: key });
+      }, 1_100),
+    );
+  }
+  return queryClient.invalidateQueries({ queryKey: key });
 }

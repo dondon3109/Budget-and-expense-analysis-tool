@@ -22,6 +22,7 @@ import {
   snapshotMobileSync,
   type WorkspaceAccessCode,
 } from "@/api/mobile-sync";
+import { refreshPetAfterActivity } from "@/auth/pet-sync";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
@@ -193,7 +194,8 @@ function isWorkspaceRefusal(error: unknown): error is MobileSyncTransportError &
 
 /**
  * Uploads a workspace's outbox in batches into the workspace `workspaceId` names (personal when
- * null). Returns false once `stale` says a newer run took over.
+ * null). `completed` is false once `stale` says a newer run took over; `pushed` says whether any
+ * batch was sent.
  */
 async function pushOutbox(
   workspace: LocalWorkspace,
@@ -202,10 +204,11 @@ async function pushOutbox(
   signal: AbortSignal,
   stale: () => boolean,
   ignoreBackoff = false,
-): Promise<boolean> {
+): Promise<{ completed: boolean; pushed: boolean }> {
+  let pushed = false;
   for (let batchNumber = 0; batchNumber < 100; batchNumber += 1) {
     const request = await workspace.transactionMutations.getPushBatch(50, { ignoreBackoff });
-    if (!request) return true;
+    if (!request) return { completed: true, pushed };
     let response;
     try {
       response = await withSessionRetry(auth, (accessToken) =>
@@ -236,8 +239,9 @@ async function pushOutbox(
       }
       throw error;
     }
-    if (stale()) return false;
+    if (stale()) return { completed: false, pushed };
     await workspace.transactionMutations.applyPushResponse(request, response);
+    pushed = true;
     const limit = response.results.find(
       (result) => result.status === "rejected" && result.code === "plan_limit",
     );
@@ -425,17 +429,17 @@ export function SyncProvider({
               markWorkspaceSyncDirty(target.subject, false);
               return;
             }
-            if (
-              !(await pushOutbox(
-                other,
-                target.workspaceId,
-                auth,
-                controller.signal,
-                stale,
-                ignoreBackoff,
-              ))
-            ) {
-              return;
+            const drained = await pushOutbox(
+              other,
+              target.workspaceId,
+              auth,
+              controller.signal,
+              stale,
+              ignoreBackoff,
+            );
+            if (!drained.completed) return;
+            if (!target.workspaceId && drained.pushed) {
+              refreshPetAfterActivity(getAccessToken);
             }
             if (target.workspaceId && !controller.signal.aborted && !stale()) {
               await uploadQueuedReceipts(other, {
@@ -476,11 +480,16 @@ export function SyncProvider({
           getAccessToken,
         };
         if (stale()) return;
-        if (
-          !(await pushOutbox(workspace, familyId, auth, controller.signal, stale, ignoreBackoff))
-        ) {
-          return;
-        }
+        const pushedResult = await pushOutbox(
+          workspace,
+          familyId,
+          auth,
+          controller.signal,
+          stale,
+          ignoreBackoff,
+        );
+        if (!pushedResult.completed) return;
+        const pushedPersonal = !familyId && pushedResult.pushed;
 
         const runWithAuth = <T,>(
           call: (accessToken: string, signal: AbortSignal) => Promise<T>,
@@ -528,6 +537,7 @@ export function SyncProvider({
           } else {
             // Subscription ROI taps wait for a personal sync, after any new bill has synced.
             await uploadSubscriptionUsage(workspace, auth.token).catch(() => undefined);
+            if (pushedPersonal) refreshPetAfterActivity(getAccessToken);
           }
           if (requestRef.current === requestId) {
             const schedule = await scheduleOutstandingRetry();

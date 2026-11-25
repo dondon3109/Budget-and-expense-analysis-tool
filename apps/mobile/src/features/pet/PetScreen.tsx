@@ -2,18 +2,28 @@ import {
   PET_DAILY_POINT_CEILING,
   PET_STAGE_THRESHOLDS,
   eggArt,
+  petEggProgressLine,
   petGrowthLockedLine,
+  petHealthHint,
   petSpeciesLabels,
   petStageLabels,
   type PetView,
 } from "@zoption/shared";
-import { router, useFocusEffect } from "expo-router";
+import { router, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
 
 import { usePlan } from "@/auth/plan-state";
 import { usePetStore } from "@/stores/pet-store";
-import { Button } from "@/ui/components";
+import { Button, Card } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -21,7 +31,9 @@ import { radii, spacing, typography } from "@/ui/tokens";
 import { EggPicker } from "./EggPicker";
 import { HatchEgg, HatchPop } from "./HatchEgg";
 import { PetColorCatchUp } from "./PetColorCatchUp";
+import { PetColorPicker } from "./PetColorPicker";
 import { EggSprite } from "./EggSprite";
+import { petImage } from "./pet-images";
 import { PetPicture } from "./PetPicture";
 import {
   EarnTiles,
@@ -74,6 +86,8 @@ function HatchedPet({ pet }: { pet: PetView & { species: NonNullable<PetView["sp
   // Only once the plan is known, so a paid user never sees the lock while it loads.
   const lockedLine =
     planState.status === "ready" && planState.plan === "free" ? petGrowthLockedLine(pet) : null;
+  const healthHint = petHealthHint(pet);
+  const unwell = pet.healthState === "sick" || pet.healthState === "fading";
   return (
     <>
       {pet.nextStagePoints === null ? (
@@ -104,6 +118,17 @@ function HatchedPet({ pet }: { pet: PetView & { species: NonNullable<PetView["sp
         max={100}
         color={tones[healthTone(pet.healthState)].fill}
       />
+      {healthHint ? (
+        <Text
+          accessibilityRole={unwell ? "alert" : undefined}
+          style={[
+            typography.callout,
+            { color: unwell ? theme.colors.danger : theme.colors.textMuted },
+          ]}
+        >
+          {healthHint}
+        </Text>
+      ) : null}
       <Meter
         label={`Today ${pet.pointsToday} of ${PET_DAILY_POINT_CEILING} points`}
         icon="☀️"
@@ -111,16 +136,6 @@ function HatchedPet({ pet }: { pet: PetView & { species: NonNullable<PetView["sp
         max={PET_DAILY_POINT_CEILING}
         color={tones.sun.fill}
       />
-      {pet.healthState === "sick" || pet.healthState === "fading" ? (
-        <Text
-          accessibilityRole="alert"
-          style={[typography.callout, { color: theme.colors.danger }]}
-        >
-          {pet.healthState === "sick"
-            ? "Your pet is sick. Log something today and it will eat points to heal."
-            : "Your pet is fading. If nothing is logged within 72 hours of the last activity, it passes away."}
-        </Text>
-      ) : null}
     </>
   );
 }
@@ -142,55 +157,38 @@ export function PetScreen() {
 
   if (!pet) {
     return (
-      <Screen title="Your pet">
+      <Screen hasHeader title="Your pet">
+        <Stack.Screen options={{ title: "Your pet" }} />
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          {actions.busy ? "Finding your pet…" : "Connect to the internet to see your pet."}
+          {actions.refreshing || actions.busy
+            ? "Finding your pet…"
+            : "Connect to the internet to see your pet."}
         </Text>
-        {actions.error ? <Button onPress={() => void refresh()}>Try again</Button> : null}
+        {actions.error ? (
+          <>
+            <Text
+              accessibilityRole="alert"
+              style={[typography.caption, { color: theme.colors.danger }]}
+            >
+              {actions.error}
+            </Text>
+            <Button onPress={() => void refresh()}>Try again</Button>
+          </>
+        ) : null}
       </Screen>
     );
   }
 
   if (!pet.enabled) {
     return (
-      <Screen title="Your pet">
+      <Screen hasHeader title="Your pet">
+        <Stack.Screen options={{ title: "Your pet" }} />
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
           Your pet companion is turned off. Turn it on to raise a pet as you log money every day.
         </Text>
         <Button loading={actions.busy} onPress={() => void actions.setEnabled(true)}>
           Turn on my pet
         </Button>
-      </Screen>
-    );
-  }
-
-  if (pet.species === null) {
-    return (
-      <Screen
-        title={pet.diedAt ? "Pick a new egg" : "Meet your pet"}
-        description={
-          pet.diedAt
-            ? "Your last pet passed away after three days with nothing logged. Every egg starts fresh."
-            : "Pick an egg. Open Zoption seven days in a row and it is ready to hatch, then it grows as you log money."
-        }
-      >
-        <EggPicker
-          busy={actions.busy}
-          onChoose={(species, name, color) => void actions.chooseEgg(species, name, color)}
-        />
-        {pet.diedAt ? null : (
-          <Button
-            variant="secondary"
-            disabled={actions.busy}
-            onPress={() =>
-              void actions.setEnabled(false).then((saved) => {
-                if (saved) router.back();
-              })
-            }
-          >
-            Not now
-          </Button>
-        )}
         {actions.error ? (
           <Text
             accessibilityRole="alert"
@@ -200,6 +198,75 @@ export function PetScreen() {
           </Text>
         ) : null}
       </Screen>
+    );
+  }
+
+  if (pet.species === null) {
+    const title = pet.diedAt ? "Pick a new egg" : "Meet your pet";
+    return (
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+      >
+        <Screen
+          hasHeader
+          title={title}
+          description={
+            pet.diedAt
+              ? "Every egg starts fresh. Open Zoption seven days in a row to hatch your next companion."
+              : "Pick an egg. Open Zoption seven days in a row and it is ready to hatch, then it grows as you log money."
+          }
+        >
+          <Stack.Screen options={{ title }} />
+          {pet.diedAt ? (
+            <Card style={styles.memorial}>
+              <Image
+                accessibilityIgnoresInvertColors
+                source={petImage(null, "egg")}
+                style={styles.memorialPicture}
+              />
+              <View style={styles.memorialCopy}>
+                <Text style={[typography.headline, { color: theme.colors.text }]}>
+                  {pet.name ?? "Your last pet"} passed away
+                </Text>
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  {new Date(pet.diedAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}{" "}
+                  · Three days went by with nothing logged.
+                </Text>
+              </View>
+            </Card>
+          ) : null}
+          <EggPicker
+            busy={actions.busy}
+            onChoose={(species, name, color) => void actions.chooseEgg(species, name, color)}
+          />
+          {pet.diedAt ? null : (
+            <Button
+              variant="secondary"
+              disabled={actions.busy}
+              onPress={() =>
+                void actions.setEnabled(false).then((saved) => {
+                  if (saved) router.back();
+                })
+              }
+            >
+              Not now
+            </Button>
+          )}
+          {actions.error ? (
+            <Text
+              accessibilityRole="alert"
+              style={[typography.caption, { color: theme.colors.danger }]}
+            >
+              {actions.error}
+            </Text>
+          ) : null}
+        </Screen>
+      </KeyboardAvoidingView>
     );
   }
 
@@ -224,12 +291,19 @@ export function PetScreen() {
     );
 
   return (
-    <Screen title="Your pet" onRefresh={() => refresh().then(() => undefined)}>
+    <Screen
+      hasHeader
+      title="Your pet"
+      refreshing={actions.refreshing}
+      onRefresh={() => refresh().then(() => undefined)}
+    >
+      <Stack.Screen options={{ title: "Your pet" }} />
       {pet.color === null ? (
         <PetColorCatchUp
           pet={{ ...pet, species: pet.species }}
           name={name}
           busy={actions.busy}
+          error={actions.error}
           onPick={(color) => void actions.setColor(color)}
         />
       ) : null}
@@ -243,9 +317,9 @@ export function PetScreen() {
               days={pet.eggStreakDays}
               size={size}
               hatch={(beforeShow) =>
-                actions.hatch(beforeShow).then((hatched) => {
-                  if (hatched) setJustHatched(true);
-                  return hatched;
+                actions.hatch(async () => {
+                  await beforeShow();
+                  setJustHatched(true);
                 })
               }
             />
@@ -258,6 +332,11 @@ export function PetScreen() {
         <View style={{ alignItems: "center" }}>
           <Text style={[typography.display, { color: theme.colors.text }]}>{name}</Text>
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>{kind}</Text>
+          {pet.stage !== "egg" ? (
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Tap to pet · 5 quick taps to dance
+            </Text>
+          ) : null}
         </View>
         <PetChips pet={pet} />
         <View style={{ alignSelf: "stretch", gap: spacing.sm }}>
@@ -271,8 +350,7 @@ export function PetScreen() {
                 color={String(theme.colors.warning)}
               />
               <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                Open Zoption every day until it is ready to hatch. Missing a day starts the count
-                over.
+                {petEggProgressLine(pet)}
               </Text>
             </>
           ) : (
@@ -280,8 +358,31 @@ export function PetScreen() {
           )}
         </View>
         <GrowthPath stage={pet.stage} />
+        {pet.color === null ? null : (
+          <PetColorPicker
+            label="Color"
+            value={pet.color}
+            disabled={actions.busy}
+            onChange={(color) => void actions.setColor(color)}
+          />
+        )}
       </View>
+      {actions.error && pet.color !== null ? (
+        <Text
+          accessibilityRole="alert"
+          style={[typography.caption, { color: theme.colors.danger }]}
+        >
+          {actions.error}
+        </Text>
+      ) : null}
       <EarnTiles />
+      <Button
+        variant="secondary"
+        disabled={actions.busy}
+        onPress={() => void actions.setEnabled(false)}
+      >
+        Turn off my pet
+      </Button>
     </Screen>
   );
 }
@@ -289,4 +390,7 @@ export function PetScreen() {
 const styles = StyleSheet.create({
   track: { height: 14, borderRadius: radii.round, overflow: "hidden" },
   fill: { height: 14, minWidth: 14, borderRadius: radii.round },
+  memorial: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  memorialPicture: { width: 64, height: 64 },
+  memorialCopy: { flex: 1, minWidth: 0, gap: 2 },
 });

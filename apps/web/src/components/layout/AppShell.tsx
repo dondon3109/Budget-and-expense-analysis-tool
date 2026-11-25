@@ -81,6 +81,7 @@ const FAMILY_ROUTES = [
   "/app/transactions",
   "/app/budgets",
   "/app/family",
+  "/app/pet",
   "/app/settings",
   "/app/tutorials",
   "/app/support",
@@ -529,7 +530,9 @@ export function AppShell({ children }: AppShellProps) {
       {showSupportChat && (
         <SupportChat surface="app" workspace={user ? userWorkspace(user) : undefined} />
       )}
-      {user && <PetMomentDialog workspace={userWorkspace(user)} />}
+      {user && !isSamePath("/app/pet", location.pathname) && (
+        <PetMomentDialog workspace={userWorkspace(user)} />
+      )}
       {user &&
         location.pathname !== "/app/admin" &&
         !location.pathname.startsWith("/app/admin/") && (

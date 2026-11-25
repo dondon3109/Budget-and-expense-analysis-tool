@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import {
   eggArt,
@@ -8,6 +8,7 @@ import {
   type PetSpecies,
 } from "@zoption/shared";
 
+import { playPetHatch, warmUpPetVoices } from "../../lib/petSounds";
 import { PetSvg } from "./PetSvg";
 import "./HatchEgg.css";
 
@@ -46,6 +47,8 @@ export function HatchEgg({
   const [failed, setFailed] = useState(false);
   const left = PET_HATCH_TAPS - taps;
 
+  useEffect(() => warmUpPetVoices(species), [species]);
+
   const tap = () => {
     // The last click is in flight.
     if (left === 0) return;
@@ -54,6 +57,7 @@ export function HatchEgg({
     setFailed(false);
     if (next < PET_HATCH_TAPS) return;
     hatch(async () => {
+      playPetHatch(species);
       setBursting(true);
       await new Promise((resolve) => setTimeout(resolve, BURST_MS));
     }).catch(() => {

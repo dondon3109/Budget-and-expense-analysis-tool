@@ -106,30 +106,78 @@ function creditedThrough(now: Date): string {
   return new Date(Math.floor(now.getTime() / 1000) * 1000 - 1000).toISOString();
 }
 
-async function load(env: Bindings, tenantId: string): Promise<StoredPet | null> {
+interface StoredPetRow {
+  enabled: number;
+  stateJson: string;
+  processedThrough: string;
+}
+
+interface LoadedPet {
+  row: StoredPetRow | null;
+  pet: StoredPet;
+}
+
+const MAX_SAVE_ATTEMPTS = 5;
+
+async function load(env: Bindings, tenantId: string, now: Date): Promise<LoadedPet> {
   const row = await env.DB.prepare(
     `SELECT enabled, state_json AS stateJson, processed_through AS processedThrough
      FROM pets WHERE tenant_id = ?`,
   )
     .bind(tenantId)
     .first<PetRow>();
-  if (!row) return null;
+  if (!row) return { row: null, pet: fresh(now) };
   return {
-    enabled: row.enabled === 1,
-    state: petStoredStateSchema.parse(JSON.parse(row.stateJson)),
-    processedThrough: row.processedThrough,
+    row: {
+      enabled: row.enabled,
+      stateJson: row.stateJson,
+      processedThrough: row.processedThrough,
+    },
+    pet: {
+      enabled: row.enabled === 1,
+      state: petStoredStateSchema.parse(JSON.parse(row.stateJson)),
+      processedThrough: row.processedThrough,
+    },
   };
 }
 
-async function save(env: Bindings, tenantId: string, pet: StoredPet): Promise<void> {
-  await env.DB.prepare(
-    `INSERT INTO pets (tenant_id, enabled, state_json, processed_through, updated_at)
-     VALUES (?1, ?2, ?3, ?4, datetime('now'))
-     ON CONFLICT (tenant_id) DO UPDATE SET enabled = ?2, state_json = ?3,
-       processed_through = ?4, updated_at = datetime('now')`,
+/**
+ * Persists `pet` only if no other request modified the row since `previous`. Concurrent check-ins
+ * and mutations retry on a miss instead of overwriting each other.
+ */
+async function trySave(
+  env: Bindings,
+  tenantId: string,
+  previous: StoredPetRow | null,
+  pet: StoredPet,
+): Promise<boolean> {
+  const enabled = pet.enabled ? 1 : 0;
+  const stateJson = JSON.stringify(pet.state);
+  if (previous === null) {
+    const result = await env.DB.prepare(
+      `INSERT OR IGNORE INTO pets (tenant_id, enabled, state_json, processed_through, updated_at)
+       VALUES (?1, ?2, ?3, ?4, datetime('now'))`,
+    )
+      .bind(tenantId, enabled, stateJson, pet.processedThrough)
+      .run();
+    return (result.meta?.changes ?? 0) === 1;
+  }
+  const result = await env.DB.prepare(
+    `UPDATE pets
+       SET enabled = ?2, state_json = ?3, processed_through = ?4, updated_at = datetime('now')
+     WHERE tenant_id = ?1 AND enabled = ?5 AND state_json = ?6 AND processed_through = ?7`,
   )
-    .bind(tenantId, pet.enabled ? 1 : 0, JSON.stringify(pet.state), pet.processedThrough)
+    .bind(
+      tenantId,
+      enabled,
+      stateJson,
+      pet.processedThrough,
+      previous.enabled,
+      previous.stateJson,
+      previous.processedThrough,
+    )
     .run();
+  return (result.meta?.changes ?? 0) === 1;
 }
 
 /** A new workspace starts enabled with no egg, crediting nothing from before it existed. */
@@ -142,7 +190,11 @@ function fresh(now: Date): StoredPet {
  * is paused, so the cursor just moves on. Growth needs a paid plan as of the read, not as of the activity.
  */
 async function catchUp(env: Bindings, tenantId: string, pet: StoredPet, now: Date) {
-  const through = creditedThrough(now);
+  // Never move the cursor back: a retry of an older request would otherwise rewind past activity
+  // a newer one already credited, and the next read would credit it again.
+  const next = creditedThrough(now);
+  const through =
+    parseTimestamp(next) > parseTimestamp(pet.processedThrough) ? next : pet.processedThrough;
   if (!pet.enabled || pet.state.species === null) return { ...pet, processedThrough: through };
   const { results } = await env.DB.prepare(ACTIVITY_SINCE)
     .bind(
@@ -215,22 +267,37 @@ function toView(pet: StoredPet, now: Date): PetView {
   };
 }
 
-async function current(env: Bindings, tenantId: string, now: Date): Promise<StoredPet> {
-  const stored = (await load(env, tenantId)) ?? fresh(now);
-  return catchUp(env, tenantId, stored, now);
+async function mutatePet(
+  env: Bindings,
+  tenantId: string,
+  now: Date,
+  mutate: (pet: StoredPet) => Promise<StoredPet> | StoredPet,
+): Promise<PetView> {
+  for (let attempt = 0; attempt < MAX_SAVE_ATTEMPTS; attempt += 1) {
+    const loaded = await load(env, tenantId, now);
+    const caughtUp = await catchUp(env, tenantId, loaded.pet, now);
+    const next = await mutate(caughtUp);
+    const unchanged =
+      loaded.row !== null &&
+      next.enabled === (loaded.row.enabled === 1) &&
+      next.processedThrough === loaded.row.processedThrough &&
+      JSON.stringify(next.state) === loaded.row.stateJson;
+    if (unchanged || (await trySave(env, tenantId, loaded.row, next))) {
+      return toView(next, now);
+    }
+  }
+  throw new HttpError(409, "pet_conflict", "Your pet updated elsewhere. Try again.");
 }
 
 export const petRepository: PetRepository = {
-  async get(env, tenantId, now) {
-    const pet = await current(env, tenantId, now);
-    await save(env, tenantId, pet);
-    return toView(pet, now);
+  get(env, tenantId, now) {
+    return mutatePet(env, tenantId, now, (pet) => pet);
   },
 
-  async checkIn(env, tenantId, now) {
-    let pet = await current(env, tenantId, now);
-    if (pet.enabled) {
-      pet = {
+  checkIn(env, tenantId, now) {
+    return mutatePet(env, tenantId, now, async (pet) => {
+      if (!pet.enabled) return pet;
+      return {
         ...pet,
         state: applyPetEvent(
           pet.state,
@@ -238,53 +305,43 @@ export const petRepository: PetRepository = {
           await hasPaidPlan(env, tenantId),
         ),
       };
-    }
-    await save(env, tenantId, pet);
-    return toView(pet, now);
+    });
   },
 
-  async chooseEgg(env, tenantId, { species, name, color }, now) {
-    const pet = await current(env, tenantId, now);
-    if (pet.state.species !== null) {
-      throw new HttpError(409, "pet_exists", "You already have a pet.");
-    }
-    const next = {
-      ...pet,
-      enabled: true,
-      state: startPetEgg(species, name, color),
-    };
-    await save(env, tenantId, next);
-    return toView(next, now);
+  chooseEgg(env, tenantId, { species, name, color }, now) {
+    return mutatePet(env, tenantId, now, (pet) => {
+      if (pet.state.species !== null) {
+        throw new HttpError(409, "pet_exists", "You already have a pet.");
+      }
+      return { ...pet, enabled: true, state: startPetEgg(species, name, color) };
+    });
   },
 
-  async hatch(env, tenantId, now) {
-    const pet = await current(env, tenantId, now);
-    const state = pet.enabled ? hatchPetEgg(pet.state, now.getTime()) : null;
-    if (!state) throw new HttpError(409, "egg_not_ready", "Your egg is not ready to hatch.");
-    const next = { ...pet, state };
-    await save(env, tenantId, next);
-    return toView(next, now);
+  hatch(env, tenantId, now) {
+    return mutatePet(env, tenantId, now, (pet) => {
+      const state = pet.enabled ? hatchPetEgg(pet.state, now.getTime()) : null;
+      if (!state) throw new HttpError(409, "egg_not_ready", "Your egg is not ready to hatch.");
+      return { ...pet, state };
+    });
   },
 
-  async setColor(env, tenantId, color, now) {
-    const pet = await current(env, tenantId, now);
-    if (pet.state.species === null) {
-      throw new HttpError(409, "no_pet", "Pick an egg before choosing a color.");
-    }
-    const next = { ...pet, state: { ...pet.state, color } };
-    await save(env, tenantId, next);
-    return toView(next, now);
+  setColor(env, tenantId, color, now) {
+    return mutatePet(env, tenantId, now, (pet) => {
+      if (pet.state.species === null) {
+        throw new HttpError(409, "no_pet", "Pick an egg before choosing a color.");
+      }
+      return { ...pet, state: { ...pet.state, color } };
+    });
   },
 
-  async setEnabled(env, tenantId, enabled, now) {
-    const pet = await current(env, tenantId, now);
-    let state = pet.state;
-    // Turning the pet back on restarts its 24 hour clock instead of counting the paused time.
-    if (enabled && !pet.enabled && state.lastActivityAt !== null) {
-      state = { ...state, lastActivityAt: now.getTime() };
-    }
-    const next = { ...pet, enabled, state };
-    await save(env, tenantId, next);
-    return toView(next, now);
+  setEnabled(env, tenantId, enabled, now) {
+    return mutatePet(env, tenantId, now, (pet) => {
+      let state = pet.state;
+      // Turning the pet back on restarts its 24 hour clock instead of counting the paused time.
+      if (enabled && !pet.enabled && state.lastActivityAt !== null) {
+        state = { ...state, lastActivityAt: now.getTime() };
+      }
+      return { ...pet, enabled, state };
+    });
   },
 };

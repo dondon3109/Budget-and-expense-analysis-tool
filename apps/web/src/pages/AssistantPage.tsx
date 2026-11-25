@@ -46,6 +46,7 @@ import { assistantPreferencesQueryOptions } from "../queries/assistant";
 import { invalidateBillingSummary } from "../queries/billing";
 import { useGoalProfile, useMoneyPreferences } from "../queries/goalProfile";
 import { invalidateAfterAccountWrite } from "../queries/accounts";
+import { invalidatePet } from "../queries/pet";
 import { invalidateAfterTransactionWrite } from "../queries/transactions";
 import "./AssistantPage.css";
 
@@ -210,6 +211,7 @@ export function AssistantPage() {
       setDraft("");
       setPendingMessage(undefined);
       setSendError(undefined);
+      void invalidatePet(queryClient, workspace);
     },
     onError: (error, variables) => {
       setPendingMessage(undefined);
@@ -255,6 +257,7 @@ export function AssistantPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.debts(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
       void invalidateAfterAccountWrite(queryClient, workspace);
+      void invalidatePet(queryClient, workspace);
     },
   });
 
@@ -402,6 +405,7 @@ export function AssistantPage() {
           onTurnComplete={(result) => {
             cacheTurn(result);
             setActiveThreadId(result.thread.id);
+            void invalidatePet(queryClient, workspace);
           }}
         />
         {(identityRequired || editingIdentity) && (

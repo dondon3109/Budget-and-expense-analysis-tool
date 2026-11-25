@@ -14,6 +14,7 @@ import {
 } from "@/api/assistant";
 import { getAssistantVoicePreferences, grantAssistantVoiceConsent } from "@/api/assistant-voice";
 import { ApiTransportError } from "@/api/authenticated";
+import { refreshPetAfterActivity } from "@/auth/pet-sync";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -313,6 +314,7 @@ export function AssistantVoiceConversation({
         if (!mountedRef.current) return;
         threadIdRef.current = turn.thread.id;
         onTurnComplete(turn.thread);
+        refreshPetAfterActivity(getAccessToken);
 
         if (!speechAvailable) {
           setCaptions((current) => [
@@ -348,7 +350,7 @@ export function AssistantVoiceConversation({
         setVoiceStatus("idle");
       }
     },
-    [onTurnComplete, setVoiceStatus, speechAvailable, withToken],
+    [getAccessToken, onTurnComplete, setVoiceStatus, speechAvailable, withToken],
   );
   const transcriptRef = useRef(handleFinalTranscript);
   transcriptRef.current = handleFinalTranscript;

@@ -4,6 +4,7 @@ import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import { getTransactionCalendar, getTransactions } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
+import { invalidatePet } from "./pet";
 
 /** One page of the ledger. The Transactions page's infinite feed keeps its own options. */
 export function transactionsQueryOptions(
@@ -37,6 +38,8 @@ export function invalidateAfterTransactionWrite(
     queryClient.invalidateQueries({ queryKey: queryKeys.debts(workspace) }),
     // A balance that now covers a held-back subscription charges it during the same write.
     queryClient.invalidateQueries({ queryKey: queryKeys.allSubscriptions(workspace) }),
+    // Personal transactions and debt payments can earn pet points and heal a sick pet.
+    ...(!workspace.familyId ? [invalidatePet(queryClient, workspace)] : []),
     // In a family it also moves the entry history, the deleted list, and the remittance card.
     ...(workspace.familyId
       ? [queryClient.invalidateQueries({ queryKey: queryKeys.family(workspace) })]

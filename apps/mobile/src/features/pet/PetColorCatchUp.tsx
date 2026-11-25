@@ -19,6 +19,7 @@ interface PetColorCatchUpProps {
   pet: PetView & { species: PetSpecies };
   name: string;
   busy: boolean;
+  error?: string | null;
   onPick: (color: PetColor) => void;
 }
 
@@ -26,7 +27,7 @@ interface PetColorCatchUpProps {
  * Asks the owner of a pet from before colors existed to pick one, once: each option previews their
  * own pet. "Keep original" saves the original, so the question never comes back.
  */
-export function PetColorCatchUp({ pet, name, busy, onPick }: PetColorCatchUpProps) {
+export function PetColorCatchUp({ pet, name, busy, error, onPick }: PetColorCatchUpProps) {
   const theme = useZoptionTheme();
   return (
     <Card style={{ gap: spacing.sm }}>
@@ -63,6 +64,14 @@ export function PetColorCatchUp({ pet, name, busy, onPick }: PetColorCatchUpProp
       <Button variant="secondary" disabled={busy} onPress={() => onPick("original")}>
         Keep original
       </Button>
+      {error ? (
+        <Text
+          accessibilityRole="alert"
+          style={[typography.caption, { color: theme.colors.danger }]}
+        >
+          {error}
+        </Text>
+      ) : null}
     </Card>
   );
 }
