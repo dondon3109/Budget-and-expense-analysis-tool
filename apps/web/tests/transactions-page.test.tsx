@@ -380,4 +380,28 @@ describe("TransactionsPage editing", () => {
     );
     expect(apiMocks.createTransaction).not.toHaveBeenCalled();
   });
+
+  it("fetches and returns matching transactions when invoked via WebMCP", async () => {
+    renderPage();
+    await waitFor(() => expect(apiMocks.getTransactions).toHaveBeenCalledTimes(1));
+
+    const form = document.querySelector<HTMLFormElement>('form[toolname="filter-transactions"]')!;
+    form.querySelector<HTMLInputElement>('input[name="search"]')!.value = "Groceries";
+
+    let responsePromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          responsePromise = promise;
+        },
+      }),
+    );
+
+    await expect(responsePromise).resolves.toMatchObject({
+      total: 1,
+      filters: expect.objectContaining({ search: "Groceries" }),
+      transactions: [expect.objectContaining({ id: "transaction-1", description: "Groceries" })],
+    });
+  });
 });

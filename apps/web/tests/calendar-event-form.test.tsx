@@ -161,4 +161,42 @@ describe("CalendarEventForm", () => {
     expect(root.inert ?? false).toBe(true);
     expect(root.contains(screen.getByRole("dialog", { name: "Add event" }))).toBe(false);
   });
+
+  it("exposes declarative WebMCP without toolautosubmit and responds to agent submission", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <CalendarEventForm
+        initialDate="2026-08-05"
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const form = document.querySelector<HTMLFormElement>('form[toolname="save-calendar-event"]')!;
+    expect(form).not.toHaveAttribute("toolautosubmit");
+
+    form.querySelector<HTMLInputElement>('input[name="title"]')!.value = "Tax filing";
+    let responsePromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          responsePromise = promise;
+        },
+      }),
+    );
+
+    await expect(responsePromise).resolves.toEqual({
+      saved: true,
+      event: {
+        title: "Tax filing",
+        date: "2026-08-05",
+        startTime: null,
+        endTime: null,
+        notes: null,
+      },
+    });
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
 });

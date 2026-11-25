@@ -123,4 +123,59 @@ describe("TransactionFilters", () => {
       todayIso.endsWith("-01") ? "true" : "false",
     );
   });
+
+  it("exposes declarative WebMCP filter controls and responds to agent submissions", async () => {
+    const onAgentFilter = vi.fn(async (filters) => ({ total: 4, filters }));
+    renderFilters({ onAgentFilter });
+
+    const form = document.querySelector<HTMLFormElement>('form[toolname="filter-transactions"]')!;
+    expect(form).toHaveAttribute("toolautosubmit", "");
+
+    const searchInput = form.querySelector<HTMLInputElement>('input[name="search"]')!;
+    const kindSelect = form.querySelector<HTMLSelectElement>('select[name="kind"]')!;
+    const fromInput = form.querySelector<HTMLInputElement>('input[name="from"]')!;
+    const toInput = form.querySelector<HTMLInputElement>('input[name="to"]')!;
+    const categorySelect = form.querySelector<HTMLSelectElement>('select[name="categoryId"]')!;
+
+    searchInput.value = "coffee";
+    kindSelect.value = "expense";
+    fromInput.value = "2026-11-01";
+    toInput.value = "2026-11-25";
+    categorySelect.value = "uncategorized-expense";
+
+    let responsePromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          responsePromise = promise;
+        },
+      }),
+    );
+
+    expect(onAgentFilter).toHaveBeenCalledWith({
+      search: "coffee",
+      kind: "expense",
+      accountId: undefined,
+      categoryId: "uncategorized-expense",
+      from: "2026-11-01",
+      to: "2026-11-25",
+    });
+    await expect(responsePromise).resolves.toMatchObject({ total: 4 });
+
+    fromInput.value = "2026-11-30";
+    let errorPromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          errorPromise = promise;
+        },
+      }),
+    );
+
+    await expect(errorPromise).resolves.toEqual({
+      error: "Start date must be on or before end date.",
+    });
+  });
 });

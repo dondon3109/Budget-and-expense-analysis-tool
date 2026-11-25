@@ -6,6 +6,8 @@ All notable product changes are documented here.
 
 ### Added
 
+- Browser AI agents that support WebMCP can use the zoption.site 50/30/20 calculator and, in the web app, filter transactions and fill in new bills, debts, calendar events, and budget occasions. The agent only fills those forms in; you still press Save.
+- The Guides and Tutorials pages on zoption.site and in the web app are easier to browse.
 - Android: Zoption checks Google Play for newer releases and pops up an update modal with Update (opening the Play listing) or Not now.
 - Android: create a Zoption account with your email and a password from the sign-in screen, with a confirmation email when one is needed.
 - On Android, tapping Not now during setup leaves a Resume setup card on Home until your currency and starting cash are saved.

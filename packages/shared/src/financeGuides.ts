@@ -127,7 +127,7 @@ export const FINANCE_GUIDES: FinanceGuide[] = [
     category: "subscriptions",
     readTimeMinutes: 8,
     publishedDate: "2026-02-01",
-    updatedDate: "2026-11-19",
+    updatedDate: "2026-11-25",
     author: "Zoption Personal Finance Team",
     keywords: [
       "cancel gcash autopay",

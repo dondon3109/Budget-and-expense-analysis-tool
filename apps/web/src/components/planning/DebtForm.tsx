@@ -13,6 +13,13 @@ import {
 import { X } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import {
+  isAgentSubmit,
+  readFormText,
+  respondToAgent,
+  webMcpFormProps,
+  webMcpParamProps,
+} from "@zoption/web-common/webmcp";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
@@ -50,40 +57,76 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
     },
   });
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function runSubmit(formData?: FormData) {
     setClientError(undefined);
+
+    const nextName = formData ? readFormText(formData, "name") : name;
+    const nextType = formData ? (readFormText(formData, "type", type) as DebtType) : type;
+    const nextBalance = formData ? readFormText(formData, "balance") : balance;
+    const nextMinimumPayment = formData ? readFormText(formData, "minimumPayment") : minimumPayment;
+    const nextAprPercent = formData ? readFormText(formData, "aprPercent") : aprPercent;
+    const nextBalanceAsOf = formData ? readFormText(formData, "balanceAsOf") : balanceAsOf;
+    const nextStatus = formData ? (readFormText(formData, "status", status) as DebtStatus) : status;
+
+    if (formData) {
+      setName(nextName);
+      setType(nextType);
+      setBalance(nextBalance);
+      setMinimumPayment(nextMinimumPayment);
+      setAprPercent(nextAprPercent);
+      setBalanceAsOf(nextBalanceAsOf);
+      setStatus(nextStatus);
+    }
 
     let balanceMinor: number;
     let minimumPaymentMinor: number;
     try {
-      balanceMinor = parseAmountToMinor(balance);
-      minimumPaymentMinor = parseAmountToMinor(minimumPayment);
+      balanceMinor = parseAmountToMinor(nextBalance);
+      minimumPaymentMinor = parseAmountToMinor(nextMinimumPayment);
     } catch (error) {
-      setClientError(error instanceof Error ? error.message : "Enter valid amounts.");
-      return;
+      const message = error instanceof Error ? error.message : "Enter valid amounts.";
+      setClientError(message);
+      return { error: message };
     }
 
-    const parsedApr = Number(aprPercent);
+    const parsedApr = Number(nextAprPercent);
     if (!Number.isFinite(parsedApr)) {
-      setClientError("Enter a valid annual percentage rate.");
-      return;
+      const message = "Enter a valid annual percentage rate.";
+      setClientError(message);
+      return { error: message };
     }
     const input = {
-      name,
-      type,
+      name: nextName,
+      type: nextType,
       balanceMinor,
       aprBasisPoints: Math.round(parsedApr * 100),
       minimumPaymentMinor,
-      balanceAsOf,
-      status,
+      balanceAsOf: nextBalanceAsOf,
+      status: nextStatus,
     };
     const parsed = (debt ? debtUpdateSchema : debtInputSchema).safeParse(input);
     if (!parsed.success) {
-      setClientError(parsed.error.issues[0]?.message ?? "Check the debt details.");
+      const message = parsed.error.issues[0]?.message ?? "Check the debt details.";
+      setClientError(message);
+      return { error: message };
+    }
+
+    try {
+      await onSubmit(parsed.data);
+      return { saved: true, debt: parsed.data };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Could not save debt." };
+    }
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isAgentSubmit(event)) {
+      const formData = new FormData(event.currentTarget);
+      respondToAgent(event, runSubmit(formData));
       return;
     }
-    await onSubmit(parsed.data);
+    void runSubmit();
   }
 
   // Portalled so the inert application root from useRootLock does not disable the dialog.
@@ -119,12 +162,21 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
           </button>
         </header>
 
-        <form className="transaction-form planning-record-form" onSubmit={handleSubmit}>
+        <form
+          className="transaction-form planning-record-form"
+          onSubmit={handleSubmit}
+          {...webMcpFormProps({
+            name: "save-debt",
+            description:
+              "Prepare or update a debt record for payoff tracking and user confirmation.",
+          })}
+        >
           <div className="form-row split">
             <label>
               <span>Debt name</span>
               <input
                 ref={nameRef}
+                name="name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="e.g. Main credit card"
@@ -134,7 +186,11 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
             </label>
             <label>
               <span>Debt type</span>
-              <select value={type} onChange={(event) => setType(event.target.value as DebtType)}>
+              <select
+                name="type"
+                value={type}
+                onChange={(event) => setType(event.target.value as DebtType)}
+              >
                 <option value="credit_card">Credit card</option>
                 <option value="personal_loan">Personal loan</option>
                 <option value="auto_loan">Auto loan</option>
@@ -150,6 +206,7 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
               <div className="money-input">
                 <b>{currencySymbol}</b>
                 <input
+                  name="balance"
                   aria-label="Current balance"
                   inputMode="decimal"
                   value={balance}
@@ -164,6 +221,7 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
               <div className="money-input">
                 <b>{currencySymbol}</b>
                 <input
+                  name="minimumPayment"
                   aria-label="Minimum monthly payment"
                   inputMode="decimal"
                   value={minimumPayment}
@@ -180,6 +238,7 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
               <span>Interest rate (APR)</span>
               <div className="percentage-input">
                 <input
+                  name="aprPercent"
                   aria-describedby="debt-apr-hint"
                   aria-label="Annual percentage rate"
                   inputMode="decimal"
@@ -197,15 +256,18 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
             <label>
               <span>Balance as of</span>
               <input
+                name="balanceAsOf"
                 type="date"
                 value={balanceAsOf}
                 onChange={(event) => setBalanceAsOf(event.target.value)}
                 required
+                {...webMcpParamProps("Balance snapshot date in YYYY-MM-DD format.")}
               />
             </label>
             <label>
               <span>Status</span>
               <select
+                name="status"
                 value={status}
                 onChange={(event) => setStatus(event.target.value as DebtStatus)}
               >

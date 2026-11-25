@@ -467,3 +467,12 @@ textarea:focus-visible {
   outline-width: 2px;
   outline-offset: -1px;
 }
+/* Visual feedback when a browser AI agent interacts with a declarative WebMCP form. */
+form:tool-form-active {
+  outline: 2px dashed var(--action);
+  outline-offset: 4px;
+}
+button:tool-submit-active {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}

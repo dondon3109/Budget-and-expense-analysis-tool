@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { setupConsent, setupFilters, setupPricingToggles } from "../src/client/site";
 import { CookieConsent } from "../src/components/consent/CookieConsent";
+import { GuidesIndexPage } from "../src/views/guides/GuidesIndexPage";
 import { PricingPage } from "../src/views/pricing/PricingPage";
 import { TutorialsPage } from "../src/views/tutorials/TutorialsPage";
 
@@ -95,6 +96,69 @@ describe("tutorial search", () => {
     await user.click(screen.getByRole("button", { name: "Reset filters" }));
     expect(visibleCards()).toHaveLength(total);
     expect(screen.getByRole("searchbox", { name: "Search tutorials" })).toHaveValue("");
+  });
+
+  it("handles declarative WebMCP submissions for tutorials and guides", async () => {
+    render(
+      <>
+        <TutorialsPage />
+        <GuidesIndexPage />
+      </>,
+    );
+    setupFilters();
+
+    const tutorialsForm = document.querySelector<HTMLFormElement>(
+      'form[toolname="filter-tutorials"]',
+    )!;
+    expect(tutorialsForm).toHaveAttribute("toolautosubmit", "");
+
+    const queryInput = tutorialsForm.querySelector<HTMLInputElement>('input[name="query"]')!;
+    queryInput.value = "MariBank";
+    let tutorialResponse: Promise<unknown> | undefined;
+    const tutorialEvent = Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+      agentInvoked: true,
+      respondWith: (promise: Promise<unknown>) => {
+        tutorialResponse = promise;
+      },
+    });
+    tutorialsForm.dispatchEvent(tutorialEvent);
+
+    await expect(tutorialResponse).resolves.toMatchObject({
+      query: "MariBank",
+      category: "all",
+      matchCount: 1,
+      matches: [
+        expect.objectContaining({
+          id: "bank-csv-imports",
+          title: "Importing Bank Statements (PDF, CSV & Excel)",
+        }),
+      ],
+    });
+
+    const guidesForm = document.querySelector<HTMLFormElement>('form[toolname="filter-guides"]')!;
+    expect(guidesForm).toHaveAttribute("toolautosubmit", "");
+    const guideCategory = guidesForm.querySelector<HTMLInputElement>(
+      'input[name="category"][value="subscriptions"]',
+    )!;
+    guideCategory.checked = true;
+    let guideResponse: Promise<unknown> | undefined;
+    const guideEvent = Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+      agentInvoked: true,
+      respondWith: (promise: Promise<unknown>) => {
+        guideResponse = promise;
+      },
+    });
+    guidesForm.dispatchEvent(guideEvent);
+
+    await expect(guideResponse).resolves.toMatchObject({
+      category: "subscriptions",
+      matchCount: 1,
+      matches: [
+        expect.objectContaining({
+          href: "/guides/cancel-subscriptions-auto-debits-philippines",
+        }),
+      ],
+    });
   });
 });
 

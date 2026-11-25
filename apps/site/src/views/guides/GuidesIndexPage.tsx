@@ -1,9 +1,10 @@
-import { ArrowRight, Clock } from "lucide-react";
+import { ArrowRight, Clock, HelpCircle, Search } from "lucide-react";
 import { FINANCE_GUIDES, type FinanceGuide } from "@zoption/shared";
+import { webMcpFormProps, webMcpParamProps } from "@zoption/web-common/webmcp";
 
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
-import "./GuidesIndexPage.css";
 import { appUrl, NEW_TAB } from "../../lib/appUrl";
+import "./GuidesIndexPage.css";
 
 const CATEGORY_LABELS: Record<FinanceGuide["category"] | "all", string> = {
   all: "All Guides",
@@ -13,44 +14,116 @@ const CATEGORY_LABELS: Record<FinanceGuide["category"] | "all", string> = {
   tools: "Tools & Spreadsheets",
 };
 
-/** Every guide is in the HTML; the category pills filter it through `src/client/site.ts`. */
+function guideSearchText(guide: FinanceGuide): string {
+  return [
+    guide.title,
+    guide.description,
+    guide.category,
+    CATEGORY_LABELS[guide.category],
+    ...guide.keywords,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
+/**
+ * Every guide is in the HTML; the search box and category pills filter it
+ * through `src/client/site.ts`.
+ */
 export function GuidesIndexPage() {
   return (
     <LegalPageLayout
       title="Personal Finance & Budgeting Guides"
       summary="Practical guides for private budgeting, e-wallet tracking, subscription cleanup, and digital banking in the Philippines."
-      lastUpdated="November 21, 2026"
+      lastUpdated="November 25, 2026"
     >
       <div className="guides-index-page">
-        <nav
-          className="guides-category-nav"
-          aria-label="Filter guides by category"
-          data-filter-controls="guides"
+        <form
+          className="guides-filter-form"
+          data-filter-form="guides"
+          {...webMcpFormProps({
+            name: "filter-guides",
+            description:
+              "Search and filter Zoption personal finance guides by keyword and category. Use when a visitor wants practical budgeting, banking, or subscription guides.",
+            autoSubmit: true,
+          })}
         >
-          {(Object.keys(CATEGORY_LABELS) as (FinanceGuide["category"] | "all")[]).map(
-            (category) => (
-              <button
-                key={category}
-                type="button"
-                className={`guides-category-pill ${category === "all" ? "active" : ""}`}
-                aria-pressed={category === "all"}
-                data-filter-value={category}
-              >
-                {CATEGORY_LABELS[category]}
-              </button>
-            ),
-          )}
-        </nav>
+          <div className="guides-search-bar">
+            <Search size={18} className="guides-search-icon" aria-hidden="true" />
+            <input
+              type="search"
+              name="query"
+              placeholder="Search guides (e.g. GCash, 50/30/20, 13th month, snowball)..."
+              aria-label="Search guides"
+              data-filter-search="guides"
+              {...webMcpParamProps(
+                "Keywords to match across guide titles, summaries, categories, and topics.",
+              )}
+            />
+            <button
+              type="button"
+              className="guides-clear-search"
+              data-filter-clear="guides"
+              hidden
+              aria-label="Clear guide search"
+            >
+              Clear
+            </button>
+          </div>
+
+          <fieldset
+            className="guides-category-nav"
+            data-filter-controls="guides"
+            {...webMcpParamProps("Guide category to filter by.")}
+          >
+            <legend className="sr-only">Filter guides by category</legend>
+            {(Object.keys(CATEGORY_LABELS) as (FinanceGuide["category"] | "all")[]).map(
+              (category) => (
+                <label
+                  key={category}
+                  className={`guides-category-pill ${category === "all" ? "active" : ""}`}
+                >
+                  <input
+                    type="radio"
+                    className="sr-only"
+                    name="category"
+                    value={category}
+                    defaultChecked={category === "all"}
+                    data-filter-value={category}
+                  />
+                  <span>{CATEGORY_LABELS[category]}</span>
+                </label>
+              ),
+            )}
+          </fieldset>
+
+          <p
+            className="guides-filter-status"
+            data-filter-status="guides"
+            role="status"
+            aria-live="polite"
+            hidden
+          />
+        </form>
 
         <section
           className="guides-grid"
           aria-label="Available financial guides"
           data-filter-items="guides"
         >
+          <div className="guides-empty" data-filter-empty hidden>
+            <HelpCircle size={28} aria-hidden="true" />
+            <h2>No guides found</h2>
+            <p>Try a different keyword or switch back to "All Guides".</p>
+            <button type="button" className="button secondary" data-filter-reset>
+              Reset filters
+            </button>
+          </div>
           {FINANCE_GUIDES.map((guide) => (
             <a
               key={guide.slug}
               data-filter-value={guide.category}
+              data-filter-text={guideSearchText(guide)}
               href={`/guides/${guide.slug}`}
               className="guide-card"
             >

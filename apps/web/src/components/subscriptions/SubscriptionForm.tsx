@@ -14,6 +14,13 @@ import {
 import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import {
+  isAgentSubmit,
+  readFormText,
+  respondToAgent,
+  webMcpFormProps,
+  webMcpParamProps,
+} from "@zoption/web-common/webmcp";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
@@ -100,32 +107,73 @@ export function SubscriptionForm({
     }
   }, [accountId, activeAccounts]);
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function runSubmit(formData?: FormData) {
     setClientError(undefined);
+
+    const nextName = formData ? readFormText(formData, "name") : name;
+    const nextAmount = formData ? readFormText(formData, "amount") : amount;
+    const nextBillingCycle = formData
+      ? (readFormText(formData, "billingCycle", billingCycle) as SubscriptionBillingCycle)
+      : billingCycle;
+    const nextCurrency = formData
+      ? (readFormText(formData, "currency", currency) as Currency)
+      : currency;
+    const nextBillingDateInput = formData
+      ? readFormText(formData, "nextBillingDate", nextBillingDate)
+      : nextBillingDate;
+    const nextAccountId = formData ? readFormText(formData, "accountId", accountId) : accountId;
+    const nextCategoryId = formData ? readFormText(formData, "categoryId", categoryId) : categoryId;
+
+    if (formData) {
+      setName(nextName);
+      setAmount(nextAmount);
+      setBillingCycle(nextBillingCycle);
+      setCurrency(nextCurrency);
+      setNextBillingDate(nextBillingDateInput);
+      setAccountId(nextAccountId);
+      setCategoryId(nextCategoryId);
+    }
 
     let amountMinor: number;
     try {
-      amountMinor = parseAmountToMinor(amount);
+      amountMinor = parseAmountToMinor(nextAmount);
     } catch (error) {
-      setClientError(error instanceof Error ? error.message : "Enter a valid amount.");
-      return;
+      const message = error instanceof Error ? error.message : "Enter a valid amount.";
+      setClientError(message);
+      return { error: message };
     }
 
     const parsed = subscriptionInputSchema.safeParse({
-      name,
+      name: nextName,
       amountMinor,
-      currency,
-      billingCycle,
-      nextBillingDate,
-      categoryId,
-      accountId,
+      currency: nextCurrency,
+      billingCycle: nextBillingCycle,
+      nextBillingDate: nextBillingDateInput,
+      categoryId: nextCategoryId,
+      accountId: nextAccountId,
     });
     if (!parsed.success) {
-      setClientError(parsed.error.issues[0]?.message ?? "Check the bill details.");
+      const message = parsed.error.issues[0]?.message ?? "Check the bill details.";
+      setClientError(message);
+      return { error: message };
+    }
+
+    try {
+      await onSubmit(parsed.data);
+      return { saved: true, subscription: parsed.data };
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Could not save subscription." };
+    }
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isAgentSubmit(event)) {
+      const formData = new FormData(event.currentTarget);
+      respondToAgent(event, runSubmit(formData));
       return;
     }
-    await onSubmit(parsed.data);
+    void runSubmit();
   }
 
   // Portalled so the inert application root from useRootLock does not disable the dialog.
@@ -161,11 +209,20 @@ export function SubscriptionForm({
           </button>
         </header>
 
-        <form className="transaction-form" onSubmit={handleSubmit}>
+        <form
+          className="transaction-form"
+          onSubmit={handleSubmit}
+          {...webMcpFormProps({
+            name: "save-subscription",
+            description:
+              "Prepare or update a recurring bill or subscription for user confirmation.",
+          })}
+        >
           <label>
             <span>Name</span>
             <input
               ref={nameRef}
+              name="name"
               value={name}
               onChange={(event) => setName(event.target.value)}
               placeholder="e.g. Electricity or internet"
@@ -180,6 +237,7 @@ export function SubscriptionForm({
               <div className="money-input">
                 <b>{currencyMetadata[currency].symbol}</b>
                 <input
+                  name="amount"
                   aria-label="Amount"
                   inputMode="decimal"
                   value={amount}
@@ -192,6 +250,7 @@ export function SubscriptionForm({
             <label>
               <span>Billing cycle</span>
               <select
+                name="billingCycle"
                 value={billingCycle}
                 onChange={(event) =>
                   setBillingCycle(event.target.value as SubscriptionBillingCycle)
@@ -206,6 +265,7 @@ export function SubscriptionForm({
           <label>
             <span>Currency</span>
             <select
+              name="currency"
               value={currency}
               onChange={(event) => setCurrency(event.target.value as Currency)}
             >
@@ -221,15 +281,18 @@ export function SubscriptionForm({
             <label>
               <span>Next billing date</span>
               <input
+                name="nextBillingDate"
                 type="date"
                 value={nextBillingDate}
                 onChange={(event) => setNextBillingDate(event.target.value)}
                 required
+                {...webMcpParamProps("Next billing date in YYYY-MM-DD format.")}
               />
             </label>
             <label>
               <span>Account</span>
               <select
+                name="accountId"
                 value={accountId}
                 onChange={(event) => setAccountId(event.target.value)}
                 required
@@ -253,6 +316,7 @@ export function SubscriptionForm({
           <label>
             <span>Category</span>
             <select
+              name="categoryId"
               value={categoryId}
               onChange={(event) => setCategoryId(event.target.value)}
               required
