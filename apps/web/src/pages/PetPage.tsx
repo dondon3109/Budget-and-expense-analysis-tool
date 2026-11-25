@@ -462,12 +462,6 @@ export function PetPage() {
         ) : (
           <div className="pet-panel pet-hero">
             <div className="pet-stage">
-              <span className="pet-stage-sparkles" aria-hidden="true">
-                <span>✦</span>
-                <span>★</span>
-                <span>✧</span>
-                <span>♥</span>
-              </span>
               {pet.data.stage === "egg" && pet.data.eggStreakDays >= pet.data.eggHatchDays ? (
                 <HatchEgg
                   species={pet.data.species}
@@ -503,7 +497,6 @@ export function PetPage() {
                   </span>
                 </span>
               )}
-              <span className="pet-stage-ground" aria-hidden="true" />
             </div>
             <div className="pet-title">
               <h2>{pet.data.name ?? petSpeciesLabels[pet.data.species]}</h2>

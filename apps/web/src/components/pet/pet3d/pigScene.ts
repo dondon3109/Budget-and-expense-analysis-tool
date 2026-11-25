@@ -21,16 +21,20 @@ const mix = (a: string, b: string, t: number) =>
   `#${new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString()}`;
 
 /** The pig's original peach clay, before a pet color tints it. */
-export const PIG_BODY = "#F69A92";
+export const PIG_BODY = "#F4A08E";
 
-/** The pig's palette from its (tinted) body color. */
+/**
+ * The pig's palette from its (tinted) body color. Each part keeps the same relation to the body as
+ * on the reference clay figure: a deeper coral snout and blush, darker nostrils, and brown-maroon
+ * hooves, so a tinted pig stays consistent.
+ */
 export function pigPalette(body: string): Palette {
   return {
     body,
-    snout: mix(body, "#E8606A", 0.32),
-    nostril: mix(body, "#4A1418", 0.62),
-    hoof: mix(body, "#4A1418", 0.72),
-    blush: mix(body, "#F23A55", 0.6),
+    snout: mix(body, "#D4544A", 0.7),
+    nostril: mix(body, "#9A3328", 0.6),
+    hoof: mix(body, "#6A2414", 0.85),
+    blush: mix(body, "#D24A42", 0.6),
   };
 }
 
@@ -73,9 +77,9 @@ function clay(color: string, extra: Partial<THREE.MeshPhysicalMaterialParameters
     bumpMap: clayGrain(),
     bumpScale: 0.03,
     metalness: 0,
-    sheen: 0.45,
+    sheen: 0.25,
     sheenRoughness: 0.6,
-    sheenColor: new THREE.Color(mix(color, "#FFD2C2", 0.35)),
+    sheenColor: new THREE.Color(mix(color, "#FFD2C2", 0.3)),
     ...extra,
   });
 }
@@ -389,8 +393,9 @@ export function mountPigScene(
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.95;
+  // Neutral tone mapping keeps the clay's peach hue; ACES drains its saturation toward grey.
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -405,7 +410,7 @@ export function mountPigScene(
 
   // White studio lighting: a big soft key from the upper left, a neutral fill, and a rim behind.
   const key = new THREE.DirectionalLight("#fff6ee", 1.7);
-  key.position.set(-1.2, 5, 2.4);
+  key.position.set(-0.5, 6, 2.6);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
   key.shadow.radius = 14;
@@ -421,14 +426,14 @@ export function mountPigScene(
   const rim = new THREE.DirectionalLight("#ffffff", 1.1);
   rim.position.set(0, 3, -4);
   scene.add(rim);
-  scene.add(new THREE.HemisphereLight("#ffffff", "#ffd9cc", 0.9));
+  scene.add(new THREE.HemisphereLight("#fff3ee", "#f2b5a5", 0.6));
   const bounce = new THREE.DirectionalLight("#ffe9de", 0.45);
   bounce.position.set(0, -1, 4);
   scene.add(bounce);
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(10, 10),
-    new THREE.ShadowMaterial({ opacity: 0.08 }),
+    new THREE.ShadowMaterial({ opacity: 0.06 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;

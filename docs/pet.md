@@ -65,8 +65,9 @@ pet is alive), `POST /api/app/pet/hatch` (409 `egg_not_ready` unless a ready egg
 ## Pet page
 
 Web `pages/PetPage.tsx` and mobile `features/pet/PetScreen.tsx` (playful parts in
-`PetPlayground.tsx`) show the same pieces: the pet in a spotlight (a flat disc, ground shadow, and
-drifting sparkles) with a tap-to-pet hint, status chips (egg streak, or points, health, and today's
+`PetPlayground.tsx`) show the same pieces: the pet on stage with a tap-to-pet hint (web: the plain
+card, so the figure and its own contact shadow are all that show; mobile: a spotlight of a flat
+disc, ground shadow, and drifting sparkles), status chips (egg streak, or points, health, and today's
 points), chunky meters, health and heal-cost hints (`petHealthHint`), a tombstone memorial card
 after a pet passes away (`diedAt`), the Egg to Legend growth path (`petStageEmoji`), and the
 earning rules as tiles (`petEarningRows`).
@@ -153,8 +154,8 @@ the figure, or the tombstone.
   soft clay toy: a wide round head on a pear-shaped sitting body (a lathe), ears whose tips fold
   forward, little arms resting on the belly with dark hoof tips, stubby legs stretched forward
   showing round hoof pads, wide-set dark eyes with one highlight, a small oval snout, a thin
-  smile, and soft blush, in matte peach clay (`PIG_BODY`, tinted by the pet color) under white
-  studio light with a contact shadow. It is rigged so it reads as alive: arms and legs on joints, ears, snout, and head on damped springs that follow the
+  smile, and soft blush, in matte peach clay (`PIG_BODY`, tinted by the pet color; neutral tone mapping keeps its
+  saturation) under white studio light with a contact shadow. It is rigged so it reads as alive: arms and legs on joints, ears, snout, and head on damped springs that follow the
   body a beat late and wobble as they settle, and a mouth that opens. It stays put when idle
   (breathing, a wandering head, swaying ears with an occasional flick, a nose twitch, a blink). A
   tap's reaction plays inside the scene from the same `PET_REACTION_MOTION` keys: the body hops
