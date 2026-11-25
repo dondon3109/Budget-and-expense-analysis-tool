@@ -55,7 +55,9 @@ describe("pet figures", () => {
   });
 
   it("scales younger stages around the feet", () => {
-    expect(petFigureArt("pig", "baby", "healthy", null).body[0]?.transform).toContain("scale(0.8)");
+    expect(petFigureArt("pig", "baby", "healthy", null).body[0]?.transform).toContain(
+      "scale(0.82)",
+    );
     expect(petFigureArt("pig", "adult", "healthy", null).body[0]?.transform).toBeUndefined();
   });
 

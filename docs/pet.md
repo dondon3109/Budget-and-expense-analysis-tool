@@ -121,17 +121,20 @@ and mobile (`PetPicture.tsx`, `PetFigureView.tsx`) draw the same figure with no 
 tombstone (`tombstoneArt`) is drawn the same way; the pop-up shows the egg (with its streak cracks),
 the figure, or the tombstone.
 
-- Style: every rounded part is a radial gradient lit from the upper left (a bright spot, the base
-  tone, a shaded edge, and a faint bounce light at the rim), with a glossy streak on the head and
-  belly, blush cheeks, glossy eyes with two catchlights, no outlines, and a soft contact shadow on
-  the ground. Shadows shade toward a warm plum rather than black. Eggs use the same lighting over
-  their pattern, with a thin warm outline so the cracks still read.
-- One chibi template: the stage sets the proportions (Baby sits with its feet forward and has the
-  biggest head and eyes and an open smile; Juvenile stands with arms out and an open smile; Adult is
-  rounder and heavier with a closed smile; Legend is the Adult in an outfit), and younger stages
-  are scaled around the feet. The species adds its parts: hedgehog spines and cream face, pig
-  floppy ears and snout, hamster round ears and cream muzzle, penguin white face, beak, flippers,
-  and tuft, panda black ears, eye patches, arms, and feet, hippo wide head, muzzle, and nostrils.
+- Style: a desk-toy figure with a big round head on a tiny body, matte rather than shiny. Every
+  rounded part is a soft radial gradient lit from the upper left (a bright spot, the base tone, a
+  shaded edge, and a faint bounce light at the rim), with a faint sheen on the head and belly, soft
+  shading under the chin, light blush, a small "w" mouth, no outlines, and a soft contact shadow on
+  the ground. Eyes are large and glassy: dark at the top, warm brown low down, with a big window
+  reflection and a small glint. Shadows shade toward a warm plum rather than black. Eggs use the
+  same lighting over their pattern, with a thin warm outline so the cracks still read.
+- One template: the stage sets the proportions (Baby sits, with the biggest head and eyes; Juvenile
+  and Adult stand a little taller with slightly smaller eyes; Legend is the Adult in an outfit), and
+  younger stages are scaled around the feet. Two stubby front legs stand under the body; only a
+  penguin's flippers and a Legend's prize-holding arms stick out at the sides. The species adds its
+  parts: hedgehog spines and cream face, pig floppy ears and snout, hamster round ears and cream
+  muzzle, penguin white face, beak, flippers, and tuft, panda black ears, eye patches, and legs,
+  hippo wide head, muzzle, and nostrils.
 - Legend outfits, all gold with no glow or sparkles: hedgehog in a red cape with a gold shield, pig
   in a top hat and purple sash holding a gold coin, hamster in a crown and purple cape holding a
   golden seed, penguin in a crown and blue cape with a golden fish scepter, panda in a straw hat and
