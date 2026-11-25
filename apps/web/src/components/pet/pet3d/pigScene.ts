@@ -6,12 +6,12 @@ import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 
-// PROTOTYPE: the Baby pig as a real 3D figure, modeled on a soft clay toy: a wide round head on a
-// pear-shaped sitting body, ears that fold forward at the tips, little arms resting on the belly
-// with dark hoof tips, stubby legs stretched forward showing round hoof pads, wide-set dark eyes
-// with one highlight, a small oval snout, a thin smile, and soft blush, all in matte peach clay lit
-// like a white studio product shot. The other species, stages, and health looks still draw the SVG
-// figure (PetFigure.tsx) until this is approved and rolled out.
+// PROTOTYPE: the Baby pig as a real 3D figure, modeled on a soft clay toy: a big round head on a
+// chubby pear-shaped sitting body, ears that fold forward at the tips, little arms resting on the
+// belly with two-toed hoof tips, stubby legs stretched forward showing two-toed hoof soles,
+// wide-set dark eyes with one highlight, a small oval snout, a thin smile, and soft blush, all in
+// matte peach clay lit like a white studio product shot. The other species, stages, and health
+// looks still draw the SVG figure (PetFigure.tsx) until this is approved and rolled out.
 
 interface Palette {
   body: string;
@@ -37,7 +37,7 @@ export function pigPalette(body: string): Palette {
     body,
     snout: mix(body, "#D4544A", 0.7),
     nostril: mix(body, "#9A3328", 0.6),
-    hoof: mix(body, "#6A2414", 0.85),
+    hoof: mix(body, "#9A4034", 0.55),
     blush: mix(body, "#D24A42", 0.6),
   };
 }
@@ -95,12 +95,14 @@ function contactShadow() {
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d")!;
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, "rgba(60,30,45,0.55)");
-  g.addColorStop(0.45, "rgba(60,30,45,0.25)");
-  g.addColorStop(1, "rgba(60,30,45,0)");
+  g.addColorStop(0, "rgba(70,50,48,0.5)");
+  g.addColorStop(0.45, "rgba(70,50,48,0.22)");
+  g.addColorStop(1, "rgba(70,50,48,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   const texture = new THREE.CanvasTexture(canvas);
+  // Read as sRGB; as linear data the dark shadow brightens into a pink haze on the white card.
+  texture.colorSpace = THREE.SRGBColorSpace;
   const mesh = new THREE.Mesh(
     new THREE.PlaneGeometry(3.1, 1.5),
     new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
@@ -194,6 +196,22 @@ class ColorPass extends RenderPass {
   }
 }
 
+/**
+ * A cloven hoof: two rounded toes side by side with a groove between them, each splayed a little
+ * outward. `width` is the whole hoof across, `height` its thickness along the limb.
+ */
+function clovenHoof(material: THREE.Material, width: number, height: number, depth: number) {
+  const hoof = new THREE.Group();
+  for (const side of [-1, 1]) {
+    const toe = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), material));
+    toe.scale.set(width * 0.27, height, depth);
+    toe.position.x = side * width * 0.26;
+    toe.rotation.z = side * -0.12;
+    hoof.add(toe);
+  }
+  return hoof;
+}
+
 // Where the head sits; the idle breath bobs it around this height.
 const HEAD_Y = 1.74;
 
@@ -222,7 +240,7 @@ function buildPig(o: Palette) {
   torso.scale.z = 0.94;
   body.add(torso);
 
-  // Little arms resting on the belly, each ending in a dark hoof tip.
+  // Little arms resting on the belly, each ending in a two-toed hoof.
   const arms: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const arm = limb(
@@ -231,15 +249,14 @@ function buildPig(o: Palette) {
       new THREE.Vector3(side * 0.3, 0.64, 0.8),
       0.15,
     );
-    const hoof = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), hoofMat));
-    hoof.scale.set(0.13, 0.12, 0.115);
-    hoof.position.y = arm.length - 0.02;
+    const hoof = clovenHoof(hoofMat, 0.27, 0.085, 0.12);
+    hoof.position.y = arm.length - 0.05;
     arm.aim.add(hoof);
     body.add(arm.pivot);
     arms.push(arm.pivot);
   }
 
-  // Stubby legs stretched forward, showing round dark hoof pads to the front.
+  // Stubby legs stretched forward, showing two-toed hoof soles to the front.
   const legs: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const leg = limb(
@@ -248,9 +265,8 @@ function buildPig(o: Palette) {
       new THREE.Vector3(side * 0.68, 0.27, 0.9),
       0.26,
     );
-    const pad = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), hoofMat));
-    pad.scale.set(0.245, 0.08, 0.245);
-    pad.position.y = leg.length - 0.02;
+    const pad = clovenHoof(hoofMat, 0.44, 0.06, 0.17);
+    pad.position.y = leg.length - 0.04;
     leg.aim.add(pad);
     body.add(leg.pivot);
     legs.push(leg.pivot);
