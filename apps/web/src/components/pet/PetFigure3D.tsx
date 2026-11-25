@@ -2,7 +2,7 @@ import { tintPetHex, type PetColor, type PetReaction } from "@zoption/shared";
 import { useEffect, useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { mountPigScene, type PigScene } from "./pet3d/pigScene";
+import { mountPigScene, PIG_BODY, type PigScene } from "./pet3d/pigScene";
 
 /**
  * PROTOTYPE: the Baby pig as a live 3D figure (three.js). Loaded lazily by PetModel, so three.js
@@ -30,7 +30,7 @@ export default function PetFigure3D({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const scene = mountPigScene(canvas, {
-      body: tintPetHex("#F08FA6", color ?? "original"),
+      body: tintPetHex(PIG_BODY, color ?? "original"),
       still: frozen,
     });
     sceneRef.current = scene;

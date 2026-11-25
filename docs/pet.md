@@ -149,14 +149,16 @@ the figure, or the tombstone.
   130ms every 3.4s). A sick pet shivers and a fading one barely breathes. A tap's reaction plays on
   top. Reduced motion stills all of it.
 - Prototype, web only: a healthy Baby pig draws as a live 3D figure instead
-  (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is built from
-  rounded primitives with a soft matte clay material (a velvety sheen over a fine grain, no
-  clearcoat), studio lights, glossy bead eyes, and a contact shadow. It is rigged so it reads as
-  alive: legs and haunches on hip joints, ears, snout, and head on damped springs that follow the
+  (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is modeled on a
+  soft clay toy: a wide round head on a pear-shaped sitting body (a lathe), ears whose tips fold
+  forward, little arms resting on the belly with dark hoof tips, stubby legs stretched forward
+  showing round hoof pads, wide-set dark eyes with one highlight, a small oval snout, a thin
+  smile, and soft blush, in matte peach clay (`PIG_BODY`, tinted by the pet color) under white
+  studio light with a contact shadow. It is rigged so it reads as alive: arms and legs on joints, ears, snout, and head on damped springs that follow the
   body a beat late and wobble as they settle, and a mouth that opens. It stays put when idle
   (breathing, a wandering head, swaying ears with an occasional flick, a nose twitch, a blink). A
   tap's reaction plays inside the scene from the same `PET_REACTION_MOTION` keys: the body hops
-  and tilts while the legs swing (and paddle in a dance), the ears trail, the snout squishes on
+  and tilts while the legs lift and the arms flap (and paddle in a dance), the ears trail, the snout squishes on
   landing, and a happy tap opens the mouth and squints the eyes. The canvas itself never moves. `PetModel`
   picks the 3D or SVG figure for both the pet page and the pet pop-up, so the look never switches
   between them; while three.js loads the space stays empty instead of flashing the SVG. three.js

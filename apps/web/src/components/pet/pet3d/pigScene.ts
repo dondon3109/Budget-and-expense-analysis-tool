@@ -2,27 +2,35 @@ import { PET_REACTION_MOTION, type PetReaction } from "@zoption/shared";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
-// PROTOTYPE: the Baby pig as a real 3D figure, built from rounded primitives with a soft clay
-// material and lit like a studio product shot. The other species, stages, and health looks still
-// draw the SVG figure (PetFigure.tsx) until this is approved and rolled out.
+// PROTOTYPE: the Baby pig as a real 3D figure, modeled on a soft clay toy: a wide round head on a
+// pear-shaped sitting body, ears that fold forward at the tips, little arms resting on the belly
+// with dark hoof tips, stubby legs stretched forward showing round hoof pads, wide-set dark eyes
+// with one highlight, a small oval snout, a thin smile, and soft blush, all in matte peach clay lit
+// like a white studio product shot. The other species, stages, and health looks still draw the SVG
+// figure (PetFigure.tsx) until this is approved and rolled out.
 
 interface Palette {
   body: string;
-  belly: string;
   snout: string;
   nostril: string;
+  hoof: string;
+  blush: string;
 }
 
 const mix = (a: string, b: string, t: number) =>
   `#${new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString()}`;
 
+/** The pig's original peach clay, before a pet color tints it. */
+export const PIG_BODY = "#F69A92";
+
 /** The pig's palette from its (tinted) body color. */
 export function pigPalette(body: string): Palette {
   return {
     body,
-    belly: mix(body, "#FFFFFF", 0.45),
-    snout: mix(body, "#FFFFFF", 0.22),
-    nostril: mix(body, "#3A1020", 0.45),
+    snout: mix(body, "#E8606A", 0.32),
+    nostril: mix(body, "#4A1418", 0.62),
+    hoof: mix(body, "#4A1418", 0.72),
+    blush: mix(body, "#F23A55", 0.6),
   };
 }
 
@@ -53,36 +61,23 @@ function clayGrain() {
   return grain;
 }
 
-/** Soft matte clay: no clearcoat shine, a velvety sheen at the edges, and a fine grain. */
+/**
+ * Soft matte clay, like fondant: no shine, a barely-there grain, and a warm sheen at the edges
+ * that stands in for light glowing through the surface.
+ */
 function clay(color: string, extra: Partial<THREE.MeshPhysicalMaterialParameters> = {}) {
   return new THREE.MeshPhysicalMaterial({
     color,
-    roughness: 0.82,
+    roughness: 0.9,
     roughnessMap: clayGrain(),
     bumpMap: clayGrain(),
-    bumpScale: 0.12,
+    bumpScale: 0.03,
     metalness: 0,
-    sheen: 0.7,
-    sheenRoughness: 0.55,
-    sheenColor: new THREE.Color(mix(color, "#FFFFFF", 0.55)),
+    sheen: 0.45,
+    sheenRoughness: 0.6,
+    sheenColor: new THREE.Color(mix(color, "#FFD2C2", 0.35)),
     ...extra,
   });
-}
-
-function blob(
-  material: THREE.Material,
-  scale: [number, number, number],
-  position: [number, number, number],
-  rotation: [number, number, number] = [0, 0, 0],
-  segments = 64,
-) {
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(1, segments, segments / 2), material);
-  mesh.scale.set(...scale);
-  mesh.position.set(...position);
-  mesh.rotation.set(...rotation);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  return mesh;
 }
 
 /** A soft round shadow texture for the floor under the pet. */
@@ -107,137 +102,240 @@ function contactShadow() {
   return mesh;
 }
 
+/** Marks a mesh to cast and receive the soft studio shadow. */
+function shaded<T extends THREE.Mesh>(mesh: T) {
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+/**
+ * A rounded limb from `from` to `to`: a group pivoting at `from` (so it can swing) holding a capsule
+ * along the limb. `end` is the limb's tip in the group's own space, for its hoof.
+ */
+function limb(material: THREE.Material, from: THREE.Vector3, to: THREE.Vector3, radius: number) {
+  const pivot = new THREE.Group();
+  pivot.position.copy(from);
+  const aim = new THREE.Group();
+  const direction = to.clone().sub(from);
+  const length = direction.length();
+  aim.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  pivot.add(aim);
+  const capsule = shaded(
+    new THREE.Mesh(
+      new THREE.CapsuleGeometry(radius, Math.max(length - radius * 2, 0.01), 12, 32),
+      material,
+    ),
+  );
+  capsule.position.y = length / 2;
+  aim.add(capsule);
+  return { pivot, aim, length };
+}
+
+/** A soft blush: a disc whose color fades out to its edge. */
+function blushDisc(color: string) {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, "rgba(255,255,255,0.9)");
+  g.addColorStop(0.55, "rgba(255,255,255,0.45)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  return new THREE.MeshBasicMaterial({
+    color,
+    map: new THREE.CanvasTexture(canvas),
+    transparent: true,
+    depthWrite: false,
+  });
+}
+
+/** A rounded triangle, extruded with a soft bevel, for an ear's two halves. */
+function earPiece(material: THREE.Material, width: number, height: number, taper: number) {
+  const shape = new THREE.Shape();
+  shape.moveTo(-width / 2, 0);
+  shape.quadraticCurveTo(-width * taper, height * 0.75, 0, height);
+  shape.quadraticCurveTo(width * taper, height * 0.75, width / 2, 0);
+  shape.quadraticCurveTo(0, -height * 0.06, -width / 2, 0);
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: 0.03,
+    bevelEnabled: true,
+    bevelThickness: 0.04,
+    bevelSize: 0.04,
+    bevelSegments: 6,
+    curveSegments: 24,
+  });
+  geometry.translate(0, 0, -0.015);
+  return shaded(new THREE.Mesh(geometry, material));
+}
+
+// Where the head sits; the idle breath bobs it around this height.
+const HEAD_Y = 1.74;
+
 function buildPig(o: Palette) {
   const root = new THREE.Group();
   const bodyMat = clay(o.body);
-  const bellyMat = clay(o.belly, { roughness: 0.7 });
-  const snoutMat = clay(o.snout, { roughness: 0.55 });
+  const snoutMat = clay(o.snout, { roughness: 0.85 });
+  const hoofMat = clay(o.hoof, { roughness: 0.8, sheen: 0.3 });
 
-  // Body: a small soft bean sitting on the floor.
+  // Body: one smooth pear, wide at the seat and narrowing up to the neck.
   const body = new THREE.Group();
   root.add(body);
-  body.add(blob(bodyMat, [0.62, 0.5, 0.55], [0, 0.48, 0]));
-  body.add(blob(bellyMat, [0.42, 0.34, 0.3], [0, 0.44, 0.3]));
-  // Stubby front legs and back haunches, each on a joint at its top so it can swing and kick.
-  const legs: THREE.Group[] = [];
-  const haunches: THREE.Group[] = [];
+  const profile = new THREE.SplineCurve(
+    [
+      [0, 0.04],
+      [0.5, 0.06],
+      [0.74, 0.22],
+      [0.8, 0.48],
+      [0.74, 0.78],
+      [0.6, 1.04],
+      [0.42, 1.22],
+      [0, 1.3],
+    ].map(([r, y]) => new THREE.Vector2(r, y)),
+  ).getPoints(40);
+  const torso = shaded(new THREE.Mesh(new THREE.LatheGeometry(profile, 72), bodyMat));
+  torso.scale.z = 0.86;
+  body.add(torso);
+
+  // Little arms resting on the belly, each ending in a dark hoof tip.
+  const arms: THREE.Group[] = [];
   for (const side of [-1, 1]) {
-    const leg = new THREE.Group();
-    leg.position.set(side * 0.26, 0.4, 0.3);
-    leg.add(blob(bodyMat, [0.17, 0.24, 0.18], [0, -0.2, 0]));
-    body.add(leg);
-    legs.push(leg);
-    const haunch = new THREE.Group();
-    haunch.position.set(side * 0.4, 0.34, -0.05);
-    haunch.add(blob(bodyMat, [0.22, 0.2, 0.26], [side * 0.06, -0.14, 0]));
-    body.add(haunch);
-    haunches.push(haunch);
+    const arm = limb(
+      bodyMat,
+      new THREE.Vector3(side * 0.5, 0.98, 0.32),
+      new THREE.Vector3(side * 0.24, 0.6, 0.66),
+      0.12,
+    );
+    const hoof = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), hoofMat));
+    hoof.scale.set(0.105, 0.1, 0.095);
+    hoof.position.y = arm.length - 0.02;
+    arm.aim.add(hoof);
+    body.add(arm.pivot);
+    arms.push(arm.pivot);
   }
 
-  // Head: big and round, most of the figure.
+  // Stubby legs stretched forward, showing round dark hoof pads to the front.
+  const legs: THREE.Group[] = [];
+  for (const side of [-1, 1]) {
+    const leg = limb(
+      bodyMat,
+      new THREE.Vector3(side * 0.4, 0.28, 0.2),
+      new THREE.Vector3(side * 0.6, 0.24, 0.74),
+      0.21,
+    );
+    const pad = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), hoofMat));
+    pad.scale.set(0.2, 0.07, 0.2);
+    pad.position.y = leg.length - 0.02;
+    leg.aim.add(pad);
+    body.add(leg.pivot);
+    legs.push(leg.pivot);
+  }
+
+  // Head: wide and round, a little flatter than tall, sitting on the body.
   const head = new THREE.Group();
-  head.position.set(0, 1.28, 0.05);
+  head.position.set(0, HEAD_Y, 0.04);
   root.add(head);
-  head.add(blob(bodyMat, [1.04, 0.86, 0.9], [0, 0, 0], [0, 0, 0], 96));
+  const skull = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 96, 48), bodyMat));
+  skull.scale.set(1.02, 0.78, 0.86);
+  head.add(skull);
 
-  // Snout: a flattened rounded disc on the front of the face, its nostrils riding along when it
-  // twitches or squishes.
-  const snout = new THREE.Group();
-  snout.position.set(0, -0.2, 0.8);
-  head.add(snout);
-  snout.add(blob(snoutMat, [0.3, 0.22, 0.16], [0, 0, 0]));
-  const nostrilMat = new THREE.MeshStandardMaterial({ color: o.nostril, roughness: 0.6 });
-  for (const side of [-1, 1])
-    snout.add(blob(nostrilMat, [0.05, 0.085, 0.04], [side * 0.1, 0, 0.135]));
-
-  // Floppy ears that tip out and forward.
+  // Ears: an upright base on the top corners whose tip folds forward and down.
   const ears: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const ear = new THREE.Group();
-    ear.position.set(side * 0.66, 0.56, 0.12);
-    ear.rotation.set(0.75, 0, side * -1.05);
-    const flap = blob(bodyMat, [0.26, 0.36, 0.09], [0, 0.22, 0]);
-    ear.add(flap);
+    ear.position.set(side * 0.66, 0.5, 0.06);
+    const base = new THREE.Group();
+    base.rotation.set(0.75, 0, side * -0.55);
+    base.add(earPiece(bodyMat, 0.5, 0.28, 0.42));
+    const fold = new THREE.Group();
+    fold.position.y = 0.24;
+    fold.rotation.x = 1.0;
+    fold.add(earPiece(bodyMat, 0.36, 0.26, 0.2));
+    base.add(fold);
+    ear.add(base);
     head.add(ear);
     ears.push(ear);
   }
 
-  // Eyes: glossy glass beads set wide.
+  // Snout: a small oval a shade deeper than the face, its oval nostrils riding along.
+  const snout = new THREE.Group();
+  snout.position.set(0, -0.24, 0.8);
+  head.add(snout);
+  const disc = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), snoutMat));
+  disc.scale.set(0.31, 0.21, 0.16);
+  snout.add(disc);
+  const nostrilMat = new THREE.MeshStandardMaterial({ color: o.nostril, roughness: 0.8 });
+  for (const side of [-1, 1]) {
+    const nostril = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), nostrilMat);
+    nostril.scale.set(0.045, 0.075, 0.03);
+    nostril.position.set(side * 0.1, 0, 0.145);
+    snout.add(nostril);
+  }
+
+  // Eyes: dark glossy beads, wide-set and low, each with one bright highlight.
   const eyeMat = new THREE.MeshPhysicalMaterial({
-    color: "#24140c",
-    roughness: 0.08,
-    metalness: 0,
+    color: "#1B110F",
+    roughness: 0.15,
     clearcoat: 1,
-    clearcoatRoughness: 0.03,
+    clearcoatRoughness: 0.05,
   });
+  const highlight = new THREE.MeshBasicMaterial({ color: "#ffffff" });
   const eyes: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
-    const eye = blob(eyeMat, [0.17, 0.19, 0.1], [side * 0.4, 0.08, 0.75], [0, side * 0.42, 0]);
-    eye.castShadow = false;
-    // Catchlights: a big soft window reflection and a small glint, like a glass bead.
-    const glint = new THREE.MeshBasicMaterial({ color: "#ffffff" });
-    const big = blob(glint, [0.36, 0.3, 0.4], [-0.3, 0.34, 0.86], [0, 0, -0.5], 24);
-    const small = blob(glint, [0.15, 0.13, 0.3], [0.34, -0.38, 0.84], [0, 0, 0], 16);
-    big.castShadow = small.castShadow = false;
-    eye.add(big, small);
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), eyeMat);
+    eye.scale.set(0.15, 0.16, 0.08);
+    eye.position.set(side * 0.39, -0.06, 0.77);
+    eye.rotation.y = side * 0.45;
+    const spark = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), highlight);
+    spark.scale.set(0.3, 0.3, 0.3);
+    spark.position.set(0.34, 0.36, 0.86);
+    eye.add(spark);
     head.add(eye);
     eyes.push(eye);
   }
 
-  // Blush: soft translucent discs on the cheeks.
-  const blushMat = new THREE.MeshBasicMaterial({
-    color: "#ff7f9b",
-    transparent: true,
-    opacity: 0.55,
-    depthWrite: false,
-  });
+  // Blush: big soft discs on the cheeks.
   for (const side of [-1, 1]) {
-    const cheek = blob(
-      blushMat,
-      [0.15, 0.08, 0.03],
-      [side * 0.66, -0.14, 0.6],
-      [0, side * 0.85, 0],
-    );
-    cheek.castShadow = false;
+    const cheek = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.32), blushDisc(o.blush));
+    cheek.position.set(side * 0.62, -0.36, 0.53);
+    cheek.rotation.y = side * 0.85;
     head.add(cheek);
   }
 
-  // Mouth: a small "w" smile that gives way to an open, happy mouth (with a tongue) on a tap.
+  // Mouth: a thin U smile that gives way to an open, happy mouth (with a tongue) on a tap.
   const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.12, 0.02, -0.02),
-    new THREE.Vector3(-0.06, -0.04, -0.01),
-    new THREE.Vector3(0, 0, 0),
-    new THREE.Vector3(0.06, -0.04, -0.01),
-    new THREE.Vector3(0.12, 0.02, -0.02),
+    new THREE.Vector3(-0.09, 0.02, -0.02),
+    new THREE.Vector3(-0.045, -0.025, 0),
+    new THREE.Vector3(0, -0.035, 0.005),
+    new THREE.Vector3(0.045, -0.025, 0),
+    new THREE.Vector3(0.09, 0.02, -0.02),
   ]);
   const smile = new THREE.Mesh(
-    new THREE.TubeGeometry(curve, 32, 0.012, 8, false),
-    new THREE.MeshStandardMaterial({ color: "#3a1f25", roughness: 0.6 }),
+    new THREE.TubeGeometry(curve, 32, 0.011, 8, false),
+    new THREE.MeshStandardMaterial({ color: "#6B2F2C", roughness: 0.7 }),
   );
-  smile.position.set(0, -0.46, 0.78);
+  smile.position.set(0, -0.5, 0.65);
   head.add(smile);
   const open = new THREE.Group();
-  open.position.set(0, -0.5, 0.74);
-  open.add(
-    blob(
-      new THREE.MeshStandardMaterial({ color: "#5a1f2b", roughness: 0.7 }),
-      [0.1, 0.08, 0.06],
-      [0, 0, 0],
-      [0, 0, 0],
-      32,
-    ),
-    blob(
-      new THREE.MeshStandardMaterial({ color: "#f07c90", roughness: 0.6 }),
-      [0.065, 0.04, 0.04],
-      [0, -0.035, 0.03],
-      [0, 0, 0],
-      24,
-    ),
+  open.position.set(0, -0.52, 0.62);
+  const throat = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 32, 16),
+    new THREE.MeshStandardMaterial({ color: "#5a1f2b", roughness: 0.7 }),
   );
+  throat.scale.set(0.09, 0.07, 0.05);
+  const tongue = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 24, 12),
+    new THREE.MeshStandardMaterial({ color: "#f07c90", roughness: 0.6 }),
+  );
+  tongue.scale.set(0.06, 0.035, 0.035);
+  tongue.position.set(0, -0.03, 0.025);
+  open.add(throat, tongue);
   open.scale.setScalar(0.001);
   head.add(open);
 
-  return { root, body, head, ears, eyes, legs, haunches, snout, smile, open };
+  return { root, body, head, ears, eyes, arms, legs, snout, smile, open };
 }
 
 /** A running pig scene: `react` plays a tap's reaction, `dispose` frees the GPU resources. */
@@ -292,20 +390,20 @@ export function mountPigScene(
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 0.92;
+  renderer.toneMappingExposure = 0.95;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.7;
+  scene.environmentIntensity = 0.55;
 
   const camera = new THREE.PerspectiveCamera(26, canvas.clientWidth / canvas.clientHeight, 0.1, 50);
-  camera.position.set(0, 1.5, 7.2);
-  camera.lookAt(0, 1.08, 0);
+  camera.position.set(0, 1.55, 6.9);
+  camera.lookAt(0, 1.3, 0);
 
-  // Studio lighting: a big soft key from the upper left, a cool fill, and a rim from behind.
+  // White studio lighting: a big soft key from the upper left, a neutral fill, and a rim behind.
   const key = new THREE.DirectionalLight("#fff6ee", 1.7);
   key.position.set(-1.2, 5, 2.4);
   key.castShadow = true;
@@ -317,13 +415,13 @@ export function mountPigScene(
   key.shadow.camera.bottom = -1;
   key.shadow.bias = -0.0005;
   scene.add(key);
-  const fill = new THREE.DirectionalLight("#e8f0ff", 0.6);
+  const fill = new THREE.DirectionalLight("#fff4f0", 0.7);
   fill.position.set(3, 1.5, 2);
   scene.add(fill);
   const rim = new THREE.DirectionalLight("#ffffff", 1.1);
   rim.position.set(0, 3, -4);
   scene.add(rim);
-  scene.add(new THREE.HemisphereLight("#ffffff", "#ffe2d2", 0.85));
+  scene.add(new THREE.HemisphereLight("#ffffff", "#ffd9cc", 0.9));
   const bounce = new THREE.DirectionalLight("#ffe9de", 0.45);
   bounce.position.set(0, -1, 4);
   scene.add(bounce);
@@ -344,7 +442,7 @@ export function mountPigScene(
   // Springs for the parts that follow the body. Ears are loose and wobbly, legs a little firmer.
   const earSprings = [new Spring(140, 6), new Spring(140, 6)];
   const legSpring = new Spring(160, 12);
-  const haunchSpring = new Spring(160, 12);
+  const armSpring = new Spring(160, 12);
   const snoutSpring = new Spring(260, 9);
   const nodSpring = new Spring(90, 9);
 
@@ -390,7 +488,7 @@ export function mountPigScene(
 
     // The head rides a touch behind the breath, wanders slowly, and nods as the body moves.
     const nod = nodSpring.step(-rise * 0.05, dt);
-    pet.head.position.y = 1.28 + Math.sin((t / BREATH) * Math.PI * 2 - 0.5) * 0.012;
+    pet.head.position.y = HEAD_Y + Math.sin((t / BREATH) * Math.PI * 2 - 0.5) * 0.012;
     pet.head.rotation.x = Math.sin(t * 0.5) * 0.03 + nod;
     pet.head.rotation.z = Math.sin(t * 0.7) * 0.05 + Math.sin(t * 0.23) * 0.03;
     pet.head.rotation.y = Math.sin(t * 0.31) * 0.08;
@@ -404,19 +502,22 @@ export function mountPigScene(
     pet.ears.forEach((ear, i) => {
       const side = i === 0 ? -1 : 1;
       const droop = earSprings[i]!.step(rise * 0.09, dt);
-      ear.rotation.z = side * -(1.05 + droop) + Math.sin(t * 1.4 + i * 1.7) * 0.04;
-      ear.rotation.x = 0.75 + droop * 0.4;
+      ear.rotation.z = side * -droop * 0.8 + Math.sin(t * 1.4 + i * 1.7) * 0.04;
+      ear.rotation.x = droop * 0.5;
     });
 
-    // Legs swing forward and the haunches splay while airborne, with a paddle during a dance.
+    // Legs lift while airborne and paddle during a dance.
     const tuck = legSpring.step(lift * 1.4, dt);
-    const splay = haunchSpring.step(lift * 1.1, dt);
+    const flap = armSpring.step(lift * 1.2, dt);
     const paddle = reaction?.kind === "combo" ? Math.sin(t * 22) * 0.25 * Math.min(lift * 4, 1) : 0;
     pet.legs.forEach((leg, i) => {
       leg.rotation.x = -tuck + (i === 0 ? paddle : -paddle) + Math.sin(t * 0.8 + i) * 0.02;
     });
-    pet.haunches.forEach((haunch, i) => {
-      haunch.rotation.z = (i === 0 ? -1 : 1) * splay * 0.6;
+    // Arms lift off the belly while airborne and wave during a dance.
+    pet.arms.forEach((arm, i) => {
+      const side = i === 0 ? -1 : 1;
+      arm.rotation.z = side * flap * 0.7 + side * Math.abs(paddle) * 0.6;
+      arm.rotation.x = Math.sin(t * 0.9 + i * 2) * 0.03;
     });
 
     // The snout squishes on landing and twitches on its own every few seconds.
@@ -424,7 +525,7 @@ export function mountPigScene(
     const twitching = t > twitchAt ? Math.sin(((t - twitchAt) / 0.45) * Math.PI * 4) : 0;
     const squish = snoutSpring.step(-rise * 0.03, dt);
     pet.snout.scale.set(1 - squish * 0.5 + twitching * 0.04, 1 + squish - twitching * 0.05, 1);
-    pet.snout.position.y = -0.2 + twitching * 0.012;
+    pet.snout.position.y = -0.24 + twitching * 0.012;
     pet.snout.rotation.z = twitching * 0.05;
 
     // The mouth opens into a happy smile with the joy curve.
@@ -439,7 +540,7 @@ export function mountPigScene(
 
     // Eyes squint shut with joy; otherwise a quick blink every few seconds.
     const blinking = t % BLINK > BLINK - 0.14;
-    const eyeOpen = blinking ? 0.02 : 0.19 * (1 - joy * 0.75);
+    const eyeOpen = blinking ? 0.02 : 0.16 * (1 - joy * 0.75);
     for (const eye of pet.eyes) eye.scale.y = eyeOpen;
   }
 
