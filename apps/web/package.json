@@ -11,16 +11,16 @@
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^10.6.1",
-    "@supabase/supabase-js": "^2.119.0",
-    "@tanstack/react-query": "^5.107.1",
+    "@supabase/supabase-js": "^2.119.2",
+    "@tanstack/react-query": "^5.108.2",
     "@zoption/shared": "workspace:*",
     "@zoption/web-common": "workspace:*",
-    "lucide-react": "^1.70.0",
-    "posthog-js": "^1.447.3",
+    "lucide-react": "^1.77.0",
+    "posthog-js": "^1.453.2",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.5",
-    "recharts": "^3.10.1",
+    "react-router-dom": "^7.18.6",
+    "recharts": "^3.11.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
