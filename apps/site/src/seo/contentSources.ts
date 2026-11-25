@@ -79,7 +79,10 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/guides/budget-ofw-remittance-philippines": GUIDE_PAGE_SOURCES,
   "/guides/debt-snowball-vs-avalanche-philippines": GUIDE_PAGE_SOURCES,
   "/guides/budget-irregular-income-philippines": GUIDE_PAGE_SOURCES,
-  "/tutorials": ["apps/site/src/views/tutorials/TutorialsPage.tsx"],
+  "/tutorials": [
+    "apps/site/src/views/tutorials/TutorialsPage.tsx",
+    "packages/web-common/src/tutorials/tutorials.ts",
+  ],
   "/import": [
     "apps/site/src/views/import/ImportHubPage.tsx",
     "apps/site/src/views/import/importGuides.ts",

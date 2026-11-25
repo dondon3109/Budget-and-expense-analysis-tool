@@ -296,4 +296,39 @@ describe("FinancialPlanPage", () => {
     cleanup();
     root.remove();
   });
+
+  it("exposes save-debt via WebMCP without toolautosubmit and submits FormData values", async () => {
+    const onSubmit = vi.fn(async () => undefined);
+    render(<DebtForm busy={false} onSubmit={onSubmit} onClose={vi.fn()} />);
+
+    const form = document.querySelector<HTMLFormElement>('form[toolname="save-debt"]')!;
+    expect(form).not.toHaveAttribute("toolautosubmit");
+
+    form.querySelector<HTMLInputElement>('input[name="name"]')!.value = "Visa card";
+    form.querySelector<HTMLInputElement>('input[name="balance"]')!.value = "12500";
+    form.querySelector<HTMLInputElement>('input[name="minimumPayment"]')!.value = "1000";
+    form.querySelector<HTMLInputElement>('input[name="aprPercent"]')!.value = "24";
+    form.querySelector<HTMLInputElement>('input[name="balanceAsOf"]')!.value = "2026-11-25";
+
+    let responsePromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          responsePromise = promise;
+        },
+      }),
+    );
+
+    await expect(responsePromise).resolves.toMatchObject({
+      saved: true,
+      debt: expect.objectContaining({
+        name: "Visa card",
+        balanceMinor: 1_250_000,
+        minimumPaymentMinor: 100_000,
+        aprBasisPoints: 2400,
+      }),
+    });
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
 });

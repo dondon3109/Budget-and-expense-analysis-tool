@@ -10,7 +10,9 @@
     "./consent-storage": "./src/consent/consentStorage.ts",
     "./consent-gate": "./src/consent/consentGate.ts",
     "./analytics-sanitize": "./src/analytics/sanitize.ts",
-    "./releases": "./src/releases/currentRelease.ts"
+    "./releases": "./src/releases/currentRelease.ts",
+    "./tutorials": "./src/tutorials/tutorials.ts",
+    "./webmcp": "./src/webmcp/declarative.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

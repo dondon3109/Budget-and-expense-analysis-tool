@@ -5,16 +5,65 @@
   margin-block: 24px 32px;
 }
 
+.guides-filter-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.guides-search-bar {
+  width: 100%;
+  max-width: 540px;
+  position: relative;
+}
+
+.guides-search-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.guides-search-bar input {
+  width: 100%;
+  padding: 0.7rem 3.25rem 0.7rem 2.75rem;
+  font-size: 0.9375rem;
+  border: 1px solid var(--line);
+  border-radius: 9999px;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+
+.guides-clear-search {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
 .guides-category-nav {
+  border: 0;
+  margin: 0;
+  padding: 0 0 4px;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding-bottom: 8px;
 }
 
 .guides-category-pill {
   appearance: none;
+  display: inline-flex;
+  align-items: center;
   border: 1px solid var(--line);
   background: var(--surface);
   color: var(--muted);
@@ -30,22 +79,63 @@
     background 0.15s ease;
 }
 
+.guides-category-pill:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .guides-category-pill:hover {
   border-color: var(--line-strong);
   color: var(--ink);
 }
 
-.guides-category-pill.active {
+.guides-category-pill.active,
+.guides-category-pill:has(input:checked) {
   background: var(--brand);
   border-color: var(--brand);
   color: var(--solid-text);
   font-weight: 600;
 }
 
+.guides-filter-status {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .guides-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
+}
+
+.guides-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 36px 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.guides-empty[hidden] {
+  display: none;
+}
+
+.guides-empty h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--ink);
+}
+
+.guides-empty p {
+  margin: 0 0 6px;
+  font-size: 14px;
 }
 
 .guide-card {

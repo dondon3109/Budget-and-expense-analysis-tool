@@ -270,4 +270,42 @@ describe("SubscriptionForm", () => {
     cleanup();
     root.remove();
   });
+
+  it("exposes declarative WebMCP without toolautosubmit and returns validation errors", async () => {
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <SubscriptionForm
+        categories={categories}
+        accounts={accounts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const form = document.querySelector<HTMLFormElement>('form[toolname="save-subscription"]')!;
+    expect(form).not.toHaveAttribute("toolautosubmit");
+
+    form.querySelector<HTMLInputElement>('input[name="name"]')!.value = "Fiber internet";
+    form.querySelector<HTMLInputElement>('input[name="amount"]')!.value = "1699";
+
+    let responsePromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          responsePromise = promise;
+        },
+      }),
+    );
+
+    await expect(responsePromise).resolves.toMatchObject({
+      saved: true,
+      subscription: expect.objectContaining({
+        name: "Fiber internet",
+        amountMinor: 169_900,
+      }),
+    });
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
 });
