@@ -57,7 +57,7 @@ describe("fixed mobile synchronization transport", () => {
     expect(request[0].pathname).toBe("/api/app/sync/pull");
     expect(request[1].method).toBe("POST");
     expect(new Headers(request[1].headers).get("Authorization")).toBe("Bearer token");
-    expect(request[1].body).toBe(JSON.stringify({ protocolVersion: 1, cursor: null, limit: 100 }));
+    expect(request[1].body).toBe(JSON.stringify({ protocolVersion: 1, cursor: null, limit: 200 }));
     expect(request[1].body).not.toContain("tenant");
   });
 

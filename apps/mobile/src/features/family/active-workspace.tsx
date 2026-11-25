@@ -60,9 +60,10 @@ const ActiveWorkspaceContext = createContext<ActiveWorkspaceValue | null>(null);
  */
 export function ActiveWorkspaceProvider({
   subject,
+  enabled = true,
   children,
-}: PropsWithChildren<{ subject: string }>) {
-  const session = useSessionSnapshot();
+}: PropsWithChildren<{ subject: string; enabled?: boolean }>) {
+  const { status: sessionStatus, getAccessToken } = useSessionSnapshot();
   const netInfo = useNetInfo();
   // Key on offline rather than nullable reachability so NetInfo's null -> true startup
   // transition does not abort and double-fire the workspace requests.
@@ -111,9 +112,15 @@ export function ActiveWorkspaceProvider({
   }, [subject]);
 
   const loaded = record !== null;
-  const { status: sessionStatus, getAccessToken } = session;
   useEffect(() => {
-    if (!loaded || sessionStatus !== "signed-in" || isDummyDevelopmentSubject(subject)) return;
+    if (
+      !enabled ||
+      !loaded ||
+      sessionStatus !== "signed-in" ||
+      isDummyDevelopmentSubject(subject)
+    ) {
+      return;
+    }
     if (offline) return;
     const controller = new AbortController();
     void (async () => {
@@ -133,13 +140,21 @@ export function ActiveWorkspaceProvider({
       }
     })();
     return () => controller.abort();
-  }, [commit, getAccessToken, listAttempt, loaded, offline, sessionStatus, subject]);
+  }, [commit, enabled, getAccessToken, listAttempt, loaded, offline, sessionStatus, subject]);
 
   // The family shown is re-read online on every list refresh, which a closing or lapsed refusal
   // from sync also asks for, so the phone learns it is closing or unpaid and stops offering changes.
   const activeId = record?.active ?? null;
   useEffect(() => {
-    if (!activeId || sessionStatus !== "signed-in" || offline) return;
+    if (
+      !enabled ||
+      !activeId ||
+      sessionStatus !== "signed-in" ||
+      isDummyDevelopmentSubject(subject) ||
+      offline
+    ) {
+      return;
+    }
     const controller = new AbortController();
     void (async () => {
       try {
@@ -168,7 +183,7 @@ export function ActiveWorkspaceProvider({
       }
     })();
     return () => controller.abort();
-  }, [activeId, commit, getAccessToken, listAttempt, offline, sessionStatus, subject]);
+  }, [activeId, commit, enabled, getAccessToken, listAttempt, offline, sessionStatus, subject]);
 
   const switchTo = useCallback(
     (familyId: string | null) => commit((current) => ({ ...current, active: familyId })),

@@ -1,10 +1,13 @@
+import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
 import { act, render, waitFor } from "@testing-library/react-native";
-import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { AppState, type AppStateStatus } from "react-native";
 
+import { ApiTransportError } from "@/api/authenticated";
 import { getGoalsProfile, getMoneyPreferences } from "@/api/goal-profile";
 import { dismissQuickStart, getOnboardingState, getQuickStartState } from "@/api/onboarding";
+import { useGoalProfileSync } from "@/auth/goal-profile-sync";
 import { quickStartDismissStorageKey } from "@/features/dashboard/QuickStartGuideCard";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
@@ -12,7 +15,11 @@ import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 
 import { useOnboardingPrompt } from "./use-onboarding-prompt";
 
+const mockGetAccessToken = jest.fn(async (_refresh: boolean) => "token");
 const mockRetrySync = jest.fn();
+jest.mock("@react-native-community/netinfo", () => ({
+  addEventListener: jest.fn(() => () => undefined),
+}));
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(async () => null),
@@ -25,7 +32,7 @@ jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({
     status: "signed-in",
     subject: "user-1",
-    getAccessToken: async () => "token",
+    getAccessToken: mockGetAccessToken,
   }),
 }));
 jest.mock("@/api/onboarding", () => ({
@@ -43,9 +50,26 @@ function Probe() {
   return null;
 }
 
+function CombinedProbe() {
+  useGoalProfileSync();
+  useOnboardingPrompt();
+  return null;
+}
+
 describe("useOnboardingPrompt", () => {
+  let onNetInfo: ((state: NetInfoState) => void) | undefined;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetAccessToken.mockReset().mockResolvedValue("token");
+    onNetInfo = undefined;
+    jest
+      .mocked(NetInfo.addEventListener)
+      .mockReset()
+      .mockImplementation((listener) => {
+        onNetInfo = listener;
+        return () => undefined;
+      });
     jest.spyOn(AppState, "addEventListener").mockImplementation(() => ({ remove: jest.fn() }));
     useOnboardingStore.getState().reset();
     useGoalProfileStore.getState().reset();
@@ -86,6 +110,38 @@ describe("useOnboardingPrompt", () => {
     await render(<Probe />);
     await waitFor(() => expect(getOnboardingState).toHaveBeenCalledTimes(2));
     expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("deduplicates goal profile and money preference fetches with useGoalProfileSync", async () => {
+    jest.mocked(getOnboardingState).mockResolvedValue({ step: "currency", currency: "PHP" });
+    await render(<CombinedProbe />);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/(app)/onboarding"));
+    expect(getGoalsProfile).toHaveBeenCalledTimes(1);
+    expect(getMoneyPreferences).toHaveBeenCalledTimes(1);
+  });
+
+  it("retries 401 with a refreshed token and recovers on NetInfo reconnect after offline failure", async () => {
+    mockGetAccessToken
+      .mockResolvedValueOnce("stale")
+      .mockResolvedValueOnce("fresh")
+      .mockResolvedValue("fresh");
+    jest
+      .mocked(getOnboardingState)
+      .mockRejectedValueOnce(new ApiTransportError("expired", "session_expired", 401))
+      .mockRejectedValueOnce(new ApiTransportError("offline", "network", 0))
+      .mockResolvedValueOnce({ step: "currency", currency: "PHP" });
+
+    await render(<Probe />);
+    await waitFor(() => expect(getOnboardingState).toHaveBeenCalledTimes(2));
+    expect(mockGetAccessToken).toHaveBeenNthCalledWith(1, false);
+    expect(mockGetAccessToken).toHaveBeenNthCalledWith(2, true);
+    expect(router.push).not.toHaveBeenCalled();
+
+    await act(async () => {
+      onNetInfo?.({ isConnected: true, isInternetReachable: true } as NetInfoState);
+    });
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/(app)/onboarding"));
+    expect(getOnboardingState).toHaveBeenCalledTimes(3);
   });
 
   it("refreshes incomplete onboarding state when returning from the background", async () => {

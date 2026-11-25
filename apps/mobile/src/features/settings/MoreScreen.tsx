@@ -1,21 +1,25 @@
 import { router } from "expo-router";
 
 import { openBills } from "@/features/budgets/open-bills";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Text } from "react-native";
 
 import { useNetInfo } from "@react-native-community/netinfo";
 import type { Plan } from "@/api/plan";
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { UnsyncedChangesError } from "@/auth/sign-out-policy";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { appVersionInfo } from "@/config/app-version";
 import { seedDummyWorkspaceData } from "@/db/demo-seed";
+import { GUEST_SUBJECT } from "@/db/guest-workspace";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
+import type { LocalWorkspaceSignOutRisk } from "@/db/workspace";
 import { useSyncState } from "@/sync/sync-state";
 import { GuestAccountCard } from "@/features/account-prompt/GuestAccountCard";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { familySubject } from "@/features/family/workspace-record";
 import { PreferenceCards } from "@/features/settings/PreferenceCards";
 import { ConfirmationDialog, MenuGroup, MenuRow } from "@/ui/components";
 import { Screen } from "@/ui/screen";
@@ -39,8 +43,22 @@ export function MoreScreen() {
   const { openFeature } = useAccountGate();
   const guest = session.status === "guest";
   // The assistant, imports, goals, debts, subscriptions, and calendar act on personal money only.
-  const inFamily = useActiveWorkspace().family !== null;
+  const activeWorkspace = useActiveWorkspace();
+  const inFamily = activeWorkspace.family !== null;
+  const workspaceSubjects = useMemo(() => {
+    if (!session.subject || session.subject === GUEST_SUBJECT) return undefined;
+    const familyIds = new Set<string>([
+      ...(activeWorkspace.synced ?? []),
+      ...(activeWorkspace.families ?? []).map((family) => family.id),
+      ...(activeWorkspace.family ? [activeWorkspace.family.id] : []),
+    ]);
+    return [
+      session.subject,
+      ...Array.from(familyIds, (familyId) => familySubject(session.subject!, familyId)),
+    ];
+  }, [activeWorkspace.families, activeWorkspace.family, activeWorkspace.synced, session.subject]);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [discardRisk, setDiscardRisk] = useState<LocalWorkspaceSignOutRisk | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
@@ -58,17 +76,31 @@ export function MoreScreen() {
     }
   };
 
-  const unsyncedCount =
+  const localUnsyncedCount =
     (localStats.stats?.unsyncedOperationCount ?? 0) +
     (localStats.stats?.unresolvedConflictCount ?? 0);
+  const riskUnsyncedCount = discardRisk
+    ? discardRisk.unsyncedOperationCount + discardRisk.unresolvedConflictCount
+    : 0;
+  const unsyncedCount = Math.max(localUnsyncedCount, riskUnsyncedCount);
+  const requiresDiscardConfirmation = unsyncedCount > 0 || discardRisk !== null;
 
   const confirmSignOut = async (): Promise<void> => {
     setSigningOut(true);
     setSignOutError(null);
     try {
-      await session.signOut({ discardUnsyncedChanges: unsyncedCount > 0 });
+      await session.signOut({
+        discardUnsyncedChanges: requiresDiscardConfirmation,
+        ...(workspaceSubjects ? { workspaceSubjects } : {}),
+      });
     } catch (error) {
+      if (error instanceof UnsyncedChangesError) {
+        setDiscardRisk(error.risk);
+        setConfirmingSignOut(true);
+        return;
+      }
       setConfirmingSignOut(false);
+      setDiscardRisk(null);
       setSignOutError(error instanceof Error ? error.message : "Zoption could not sign you out.");
     } finally {
       setSigningOut(false);
@@ -208,7 +240,11 @@ export function MoreScreen() {
             title="Sign out"
             tone="danger"
             disabled={!localStats.stats || signingOut}
-            onPress={() => setConfirmingSignOut(true)}
+            onPress={() => {
+              setDiscardRisk(null);
+              setSignOutError(null);
+              setConfirmingSignOut(true);
+            }}
           />
         )}
       </MenuGroup>
@@ -222,16 +258,21 @@ export function MoreScreen() {
       </Text>
 
       <ConfirmationDialog
-        confirmLabel={unsyncedCount > 0 ? "Discard and sign out" : "Sign out"}
-        destructive={unsyncedCount > 0}
+        confirmLabel={requiresDiscardConfirmation ? "Discard and sign out" : "Sign out"}
+        destructive={requiresDiscardConfirmation}
         message={
           unsyncedCount > 0
             ? `${unsyncedCount} local change${unsyncedCount === 1 ? " has" : "s have"} not been safely synchronized. Signing out now permanently removes that work from this device.`
-            : "Your encrypted local copy will be removed from this device. Records already synchronized with Zoption will remain available when you sign in again."
+            : requiresDiscardConfirmation
+              ? "This device has local changes that have not been safely synchronized. Signing out now permanently removes that work from this device."
+              : "Your encrypted local copy will be removed from this device. Records already synchronized with Zoption will remain available when you sign in again."
         }
-        title={unsyncedCount > 0 ? "Discard local changes?" : "Sign out of Zoption?"}
+        title={requiresDiscardConfirmation ? "Discard local changes?" : "Sign out of Zoption?"}
         visible={confirmingSignOut}
-        onCancel={() => setConfirmingSignOut(false)}
+        onCancel={() => {
+          setConfirmingSignOut(false);
+          setDiscardRisk(null);
+        }}
         onConfirm={() => void confirmSignOut()}
       />
     </Screen>

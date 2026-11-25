@@ -14,6 +14,7 @@ import { apiRequest, ApiTransportError, decodeJson, mapApiError } from "./authen
 interface FamilyApi {
   accessToken: string;
   workspaceId: string;
+  signal?: AbortSignal;
   fetchImpl?: typeof fetch;
 }
 
@@ -76,10 +77,16 @@ const EXTENSIONS: Record<string, string> = {
 
 /** Adds one photo to every entry named, replacing any earlier photo on them. */
 export async function uploadFamilyReceipt(
-  { accessToken, workspaceId, fetchImpl = fetch }: FamilyApi,
+  { accessToken, workspaceId, signal: apiSignal, fetchImpl = fetch }: FamilyApi,
   transactionIds: readonly string[],
   photo: { mimeType: string; base64: string },
+  signal: AbortSignal | undefined = apiSignal,
 ): Promise<void> {
+  if (signal?.aborted) {
+    const error = new Error("The operation was aborted.");
+    error.name = "AbortError";
+    throw error;
+  }
   const extension = EXTENSIONS[photo.mimeType] ?? "jpg";
   // RN sends a multipart file only from a path, so the photo passes through the cache briefly.
   const file = new File(Paths.cache, `receipt-upload-${Crypto.randomUUID()}.${extension}`);
@@ -100,13 +107,16 @@ export async function uploadFamilyReceipt(
           [WORKSPACE_HEADER]: workspaceId,
         },
         body: form,
+        signal,
       },
       60_000,
       "The receipt photo took too long to upload.",
       () => discardTemporarySourceFile(file.uri),
+      signal,
     );
   } catch (error) {
     if (error instanceof ApiTransportError) throw error;
+    if (error instanceof Error && error.name === "AbortError") throw error;
     throw new ApiTransportError("The receipt photo could not be uploaded.", "network", 0);
   }
   if (!response.ok) {

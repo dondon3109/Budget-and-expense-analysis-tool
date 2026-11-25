@@ -1946,3 +1946,55 @@ describe("durable local calendar event mutations", () => {
     ).toEqual({ title: "Server Event", server_revision: 4, sync_state: "synced" });
   });
 });
+
+describe("outbox backoff bypass and pending status checks", () => {
+  let database: TestDatabase;
+
+  beforeEach(() => {
+    database = new TestDatabase();
+  });
+
+  afterEach(() => database.close());
+
+  it("bypasses retryable backoff when ignoreBackoff is true while respecting failed/conflicted and dependencies", async () => {
+    const mutations = repository(database);
+    await expect(mutations.hasPendingOutbox()).resolves.toBe(false);
+    await expect(mutations.hasPendingSyncWork()).resolves.toBe(false);
+
+    // Retryable dependency graph should be blocked normally, then picked in dependency order with ignoreBackoff.
+    const accountId = await mutations.createAccount({ name: "Retry Bank", type: "checking" });
+    const txId = await mutations.createTransaction({ ...input, accountId });
+    const graphBatch = (await mutations.getPushBatch())!;
+    await mutations.recordPushFailure(graphBatch, "retryable", 3600);
+
+    await expect(mutations.hasPendingOutbox()).resolves.toBe(true);
+    await expect(mutations.hasPendingSyncWork()).resolves.toBe(true);
+    await expect(mutations.getPushBatch()).resolves.toBeNull();
+
+    // Add a failed row and a conflicted row to ensure ignoreBackoff never picks them.
+    database.native.exec(`
+      INSERT INTO sync_outbox (
+        operation_id, idempotency_key, entity_type, entity_id, operation_type,
+        base_revision, payload_json, dependency_ids_json, base_json, state, created_sequence
+      ) VALUES (
+        '00000000-0000-4000-8000-000000000091',
+        '00000000-0000-4000-8000-000000000092',
+        'goal', 'goal-failed', 'create', 0, '{"name":"G","targetAmountMinor":100,"currentAmountMinor":0,"targetDate":"2026-12-31","status":"active"}',
+        '[]', '{}', 'failed', 91
+      ), (
+        '00000000-0000-4000-8000-000000000093',
+        '00000000-0000-4000-8000-000000000094',
+        'debt', 'debt-conflicted', 'create', 0, '{"name":"D","type":"other","balanceMinor":100,"aprBasisPoints":0,"minimumPaymentMinor":0,"balanceAsOf":"2026-08-13","status":"active"}',
+        '[]', '{}', 'conflicted', 92
+      );
+    `);
+
+    const forcedBatch = await mutations.getPushBatch(50, { ignoreBackoff: true });
+    expect(forcedBatch?.operations.map((op) => op.entityId)).toEqual([accountId, txId]);
+    expect(
+      forcedBatch?.operations.some(
+        (op) => op.entityId === "goal-failed" || op.entityId === "debt-conflicted",
+      ),
+    ).toBe(false);
+  });
+});

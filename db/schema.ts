@@ -228,6 +228,7 @@ export const mobileSyncClients = sqliteTable(
       .default(sql`(datetime('now', '+90 days'))`),
     snapshotSequence: integer("snapshot_sequence"),
     snapshotExpiresAt: text("snapshot_expires_at"),
+    snapshotCheckpointJson: text("snapshot_checkpoint_json"),
   },
   (table) => [
     primaryKey({ columns: [table.tenantId, table.clientId] }),
@@ -271,6 +272,13 @@ export const mobileSyncChanges = sqliteTable(
       table.tenantId,
       table.entityType,
       table.entityId,
+    ),
+    index("mobile_sync_changes_snapshot_idx").on(
+      table.tenantId,
+      table.entityType,
+      table.entityId,
+      table.sequence,
+      table.operation,
     ),
   ],
 );

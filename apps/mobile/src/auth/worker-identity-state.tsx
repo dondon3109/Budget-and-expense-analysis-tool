@@ -42,16 +42,26 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
     message: null,
   });
   const requestRef = useRef(0);
+  const lastSubjectRef = useRef<string | null>(null);
+  const offlineErrorRef = useRef(false);
+  const wasReachableRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
+    offlineErrorRef.current = false;
+    if (lastSubjectRef.current !== subject) {
+      lastSubjectRef.current = subject;
+      wasReachableRef.current = null;
+    }
     if (sessionStatus !== "signed-in" || !subject) {
+      wasReachableRef.current = null;
       setSnapshot({ subject: null, status: "idle", message: null });
       return;
     }
 
     if (isDummyDevelopmentSubject(subject)) {
+      wasReachableRef.current = null;
       setSnapshot({ subject, status: "verified", message: null });
       return;
     }
@@ -73,11 +83,14 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
           await verifyWorkerIdentity({ subject, accessToken, signal: controller.signal });
         }
         if (requestRef.current === requestId) {
+          offlineErrorRef.current = false;
+          wasReachableRef.current = null;
           setSnapshot({ subject, status: "verified", message: null });
         }
       } catch (error) {
         if (requestRef.current !== requestId) return;
         if (error instanceof DOMException && error.name === "AbortError") {
+          offlineErrorRef.current = true;
           setSnapshot({
             subject,
             status: "error",
@@ -99,6 +112,7 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
           return;
         }
         if (error instanceof WorkerIdentityError && error.code === "session_expired") {
+          offlineErrorRef.current = false;
           setSnapshot({
             subject,
             status: "error",
@@ -107,7 +121,13 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
           });
           return;
         }
-        if (isAuthRetryableFetchError(error)) {
+        const isOfflineFailure =
+          isAuthRetryableFetchError(error) ||
+          (error instanceof WorkerIdentityError &&
+            error.code === "unreachable" &&
+            error.status === 0);
+        if (isOfflineFailure) {
+          offlineErrorRef.current = true;
           setSnapshot({
             subject,
             status: "error",
@@ -115,6 +135,7 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
           });
           return;
         }
+        offlineErrorRef.current = false;
         setSnapshot({
           subject,
           status: "error",
@@ -149,15 +170,22 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
     return { status: snapshot.status, message: snapshot.message, retry };
   }, [retry, sessionStatus, snapshot, subject]);
 
-  // A check that failed offline, including an offline start, runs again once
-  // the device reconnects, so sync resumes without the user asking.
+  // A check that failed offline, including an offline start where NetInfo's first
+  // online event transitions from null -> true, runs again once the device reconnects.
+  // Keep wasReachableRef across retries while in error so an already-online 5xx
+  // or captive-portal failure cannot spin in a tight loop.
   useEffect(() => {
     if (value.status !== "error") return;
-    let wasReachable: boolean | null = null;
+    if (typeof NetInfo?.addEventListener !== "function") return;
     return NetInfo.addEventListener((state) => {
       const reachable = state.isInternetReachable ?? state.isConnected;
-      if (wasReachable === false && reachable) retry();
-      wasReachable = reachable;
+      if (reachable === null || reachable === undefined) return;
+      const previous = wasReachableRef.current;
+      wasReachableRef.current = Boolean(reachable);
+      if (!reachable) return;
+      if (previous === false || (previous === null && offlineErrorRef.current)) {
+        retry();
+      }
     });
   }, [retry, value.status]);
 

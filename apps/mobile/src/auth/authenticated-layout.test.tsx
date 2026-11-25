@@ -1,11 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { useEffect } from "react";
 import { Text } from "react-native";
 
+import { useGoalProfileSync } from "@/auth/goal-profile-sync";
+import { usePetSync } from "@/auth/pet-sync";
 import { useSessionSnapshot, type SessionContextValue } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
+import { useWorkspaceCurrencySync } from "@/auth/workspace-currency-sync";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalWorkspace } from "@/db/workspace";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { usePushRegistration } from "@/features/push/use-push-registration";
 import { useSyncState } from "@/sync/sync-state";
 import { AuthenticatedGate } from "./authenticated-layout";
 
@@ -19,8 +24,15 @@ jest.mock("expo-router", () => ({
   Stack: Object.assign(() => null, { Screen: () => null }),
 }));
 
+jest.mock("@react-native-community/netinfo", () => ({
+  addEventListener: jest.fn(() => () => undefined),
+}));
 jest.mock("@/auth/session-state", () => ({ useSessionSnapshot: jest.fn() }));
 jest.mock("@/auth/worker-identity-state", () => ({ useWorkerIdentity: jest.fn() }));
+jest.mock("@/auth/workspace-currency-sync", () => ({ useWorkspaceCurrencySync: jest.fn() }));
+jest.mock("@/auth/goal-profile-sync", () => ({ useGoalProfileSync: jest.fn() }));
+jest.mock("@/auth/pet-sync", () => ({ usePetSync: jest.fn() }));
+jest.mock("@/features/push/use-push-registration", () => ({ usePushRegistration: jest.fn() }));
 jest.mock("@/db/local-workspace-state", () => ({
   LocalWorkspaceProvider: ({ children }: { children: React.ReactNode }) => children,
   useLocalWorkspace: jest.fn(),
@@ -287,5 +299,71 @@ describe("authenticated layout session gate", () => {
     expect(await screen.findByText("Couldn't sync your workspace")).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("gates companion metadata hooks until worker identity is verified", async () => {
+    jest
+      .mocked(useSessionSnapshot)
+      .mockReturnValue(session({ status: "signed-in", subject: "user-1" }));
+    jest.mocked(useWorkerIdentity).mockReturnValue({
+      status: "checking",
+      message: null,
+      retry: jest.fn(),
+    });
+
+    const view = await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
+    expect(useWorkspaceCurrencySync).toHaveBeenLastCalledWith(false);
+    expect(useGoalProfileSync).toHaveBeenLastCalledWith(false);
+    expect(usePetSync).toHaveBeenLastCalledWith(false);
+    expect(usePushRegistration).toHaveBeenLastCalledWith(false);
+
+    jest.mocked(useWorkerIdentity).mockReturnValue({
+      status: "verified",
+      message: null,
+      retry: jest.fn(),
+    });
+    await view.rerender(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
+    expect(useWorkspaceCurrencySync).toHaveBeenLastCalledWith(true);
+    expect(useGoalProfileSync).toHaveBeenLastCalledWith(true);
+    expect(usePetSync).toHaveBeenLastCalledWith(true);
+    expect(usePushRegistration).toHaveBeenLastCalledWith(true);
+  });
+
+  it("keeps the workspace mounted across guest -> signed-in transitions", async () => {
+    let mounts = 0;
+    let unmounts = 0;
+    function ProbeRoutes() {
+      useEffect(() => {
+        mounts += 1;
+        return () => {
+          unmounts += 1;
+        };
+      }, []);
+      return <Text>Workspace routes</Text>;
+    }
+
+    jest
+      .mocked(useSessionSnapshot)
+      .mockReturnValue(session({ status: "guest", subject: "zoption-guest" }));
+    const view = await render(
+      <AuthenticatedGate>
+        <ProbeRoutes />
+      </AuthenticatedGate>,
+    );
+    expect(await screen.findByText("Workspace routes")).toBeTruthy();
+    expect(mounts).toBe(1);
+    expect(unmounts).toBe(0);
+
+    jest
+      .mocked(useSessionSnapshot)
+      .mockReturnValue(session({ status: "signed-in", subject: "user-1" }));
+    await view.rerender(
+      <AuthenticatedGate>
+        <ProbeRoutes />
+      </AuthenticatedGate>,
+    );
+    expect(await screen.findByText("Workspace routes")).toBeTruthy();
+    expect(mounts).toBe(1);
+    expect(unmounts).toBe(0);
   });
 });

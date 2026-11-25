@@ -4,6 +4,10 @@ import * as SecureStore from "expo-secure-store";
 import { AuthApiError, AuthRetryableFetchError, type Session } from "@supabase/supabase-js";
 import { Platform } from "react-native";
 
+jest.mock("@react-native-community/netinfo", () => ({
+  addEventListener: jest.fn(() => () => undefined),
+}));
+
 const mockSecureValues = new Map<string, string>();
 
 jest.mock("expo-secure-store", () => ({
@@ -66,11 +70,17 @@ jest.mock("@/db/workspace", () => ({
   ),
 }));
 
-import { discardLocalWorkspace } from "@/db/workspace";
+import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 
 import { GUEST_SUBJECT } from "@/db/guest-workspace";
+import {
+  resetAccountLinkForTests,
+  setSignedInAccount,
+  useAccountLink,
+} from "@/telemetry/account-link";
 
 import { ANDROID_BOOT_COUNT_KEY } from "./android-boot-session";
+import { UnsyncedChangesError } from "./sign-out-policy";
 import {
   DUMMY_DEV_STORAGE_KEY,
   DUMMY_DEV_SUBJECT,
@@ -94,6 +104,7 @@ function TestConsumer({
 describe("SessionProvider and dummy session handling", () => {
   beforeEach(() => {
     mockSecureValues.clear();
+    resetAccountLinkForTests();
     mockDevelopmentVariant = false;
     mockCurrentSession = null;
     mockStoredSubject = null;
@@ -120,6 +131,11 @@ describe("SessionProvider and dummy session handling", () => {
     (SecureStore.getItemAsync as jest.Mock).mockClear();
     (SecureStore.setItemAsync as jest.Mock).mockClear();
     (discardLocalWorkspace as jest.Mock).mockClear();
+    (inspectLocalWorkspaceForSignOut as jest.Mock)
+      .mockReset()
+      .mockImplementation(() =>
+        Promise.resolve({ unsyncedOperationCount: 0, unresolvedConflictCount: 0 }),
+      );
   });
 
   it("exports the canonical dummy UUID and does not hardcode production user ID", () => {
@@ -320,6 +336,168 @@ describe("SessionProvider and dummy session handling", () => {
     expect(mockAuth.signOut).toHaveBeenNthCalledWith(2, { scope: "local" });
     expect(discardLocalWorkspace).toHaveBeenCalledWith("real-user-id");
     expect(latest.current?.status).toBe("signed-out");
+  });
+
+  it("short-circuits redundant TOKEN_REFRESHED events for the settled subject", async () => {
+    let onAuth: ((event: string, session: Session | null) => void) | null = null;
+    mockAuth.onAuthStateChange.mockImplementation((callback) => {
+      onAuth = callback;
+      return { data: { subscription: { unsubscribe: jest.fn() } } };
+    });
+    mockCurrentSession = {
+      access_token: "token-1",
+      refresh_token: "refresh-1",
+      user: { id: "real-user-id", email: "user@example.com" } as any,
+    } as Session;
+
+    const snapshots: ReturnType<typeof useSessionSnapshot>[] = [];
+    await act(async () => {
+      render(
+        <SessionProvider>
+          <TestConsumer onSnapshot={(snap) => snapshots.push(snap)} />
+        </SessionProvider>,
+      );
+    });
+    await waitFor(() => expect(snapshots.at(-1)?.status).toBe("signed-in"));
+
+    const settledContext = snapshots.at(-1)!;
+    const countAfterSignIn = snapshots.length;
+    (SecureStore.deleteItemAsync as jest.Mock).mockClear();
+    (SecureStore.getItemAsync as jest.Mock).mockClear();
+
+    await act(async () => {
+      onAuth?.("TOKEN_REFRESHED", {
+        access_token: "token-2",
+        refresh_token: "refresh-2",
+        user: { id: "real-user-id", email: "user@example.com" } as any,
+      } as Session);
+    });
+
+    expect(snapshots).toHaveLength(countAfterSignIn);
+    expect(snapshots.at(-1)).toBe(settledContext);
+    expect(SecureStore.deleteItemAsync).not.toHaveBeenCalled();
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+  });
+
+  it("avoids redundant SecureStore reads in setSignedInAccount when the same account is re-applied", async () => {
+    let viewState: ReturnType<typeof useAccountLink> | null = null;
+    function AccountProbe() {
+      viewState = useAccountLink();
+      return null;
+    }
+
+    await act(async () => {
+      render(<AccountProbe />);
+      setSignedInAccount({ id: "user-1", email: "user@example.com" });
+    });
+    await waitFor(() => expect(viewState?.needsChoice).toBe(true));
+    expect(SecureStore.getItemAsync).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      setSignedInAccount({ id: "user-1", email: "user@example.com" });
+    });
+    expect(SecureStore.getItemAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("deduplicates concurrent forced and expiring token refreshes", async () => {
+    let resolveRefresh!: (value: { data: { session: Session | null }; error: null }) => void;
+    mockAuth.refreshSession.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRefresh = resolve;
+        }) as never,
+    );
+    const latest = await renderSignedInSession();
+
+    const p1 = latest.current!.getAccessToken(true);
+    const p2 = latest.current!.getAccessToken(true);
+    const p3 = latest.current!.getAccessToken(false);
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(1);
+
+    resolveRefresh({
+      data: {
+        session: {
+          access_token: "refreshed-token",
+          refresh_token: "refresh-2",
+          user: { id: "real-user-id", email: "user@example.com" } as any,
+        } as Session,
+      },
+      error: null,
+    });
+
+    await expect(Promise.all([p1, p2, p3])).resolves.toEqual([
+      "refreshed-token",
+      "refreshed-token",
+      "refreshed-token",
+    ]);
+
+    // A later force refresh after settle runs a new refreshSession call.
+    mockAuth.refreshSession.mockResolvedValueOnce({
+      data: {
+        session: {
+          access_token: "refreshed-token-2",
+          refresh_token: "refresh-3",
+          user: { id: "real-user-id", email: "user@example.com" } as any,
+        } as Session,
+      },
+      error: null,
+    } as never);
+    await expect(latest.current!.getAccessToken(true)).resolves.toBe("refreshed-token-2");
+    expect(mockAuth.refreshSession).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to local sign-out when global revocation hangs past the timeout", async () => {
+    const latest = await renderSignedInSession();
+    jest.useFakeTimers();
+    try {
+      mockAuth.signOut
+        .mockImplementationOnce(() => new Promise(() => undefined) as never)
+        .mockImplementationOnce(() => {
+          mockCurrentSession = null;
+          return Promise.resolve({ error: null });
+        });
+
+      let done = false;
+      const signOutPromise = latest.current!.signOut().then(() => {
+        done = true;
+      });
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(3_000);
+        await signOutPromise;
+      });
+
+      expect(done).toBe(true);
+      expect(mockAuth.signOut).toHaveBeenNthCalledWith(1, { scope: "global" });
+      expect(mockAuth.signOut).toHaveBeenNthCalledWith(2, { scope: "local" });
+      expect(latest.current?.status).toBe("signed-out");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("checks unique non-guest workspaceSubjects on sign-out and throws UnsyncedChangesError", async () => {
+    const latest = await renderSignedInSession();
+    (inspectLocalWorkspaceForSignOut as jest.Mock).mockResolvedValueOnce({
+      unsyncedOperationCount: 2,
+      unresolvedConflictCount: 0,
+    });
+
+    await expect(
+      latest.current!.signOut({
+        workspaceSubjects: [
+          "real-user-id",
+          "real-user-id#family:fam-1",
+          "real-user-id",
+          GUEST_SUBJECT,
+        ],
+      }),
+    ).rejects.toThrow(UnsyncedChangesError);
+
+    expect(inspectLocalWorkspaceForSignOut).toHaveBeenCalledWith([
+      "real-user-id",
+      "real-user-id#family:fam-1",
+    ]);
+    expect(mockAuth.signOut).not.toHaveBeenCalled();
   });
 
   describe("offline start", () => {

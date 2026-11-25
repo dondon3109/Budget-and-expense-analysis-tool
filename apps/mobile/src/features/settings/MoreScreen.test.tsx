@@ -3,9 +3,11 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { router } from "expo-router";
 
 import { MoreScreen } from "./MoreScreen";
-import { useSessionSnapshot } from "@/auth/session-state";
+import { useSessionSnapshot, type SignOutOptions } from "@/auth/session-state";
+import { UnsyncedChangesError } from "@/auth/sign-out-policy";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { useLocalWorkspaceStats } from "@/db/local-workspace-state";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
 
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 
@@ -15,7 +17,7 @@ jest.mock("@react-native-community/netinfo", () => ({
 
 jest.mock("@/auth/session-state", () => ({ useSessionSnapshot: jest.fn() }));
 jest.mock("@/features/family/active-workspace", () => ({
-  useActiveWorkspace: () => ({ family: null, writable: true }),
+  useActiveWorkspace: jest.fn(() => ({ family: null, families: [], synced: [], writable: true })),
 }));
 jest.mock("@/auth/plan-state", () => ({
   usePlan: () => ({ plan: "free", status: "ready", retry: jest.fn() }),
@@ -35,7 +37,7 @@ jest.mock("@/config/app-version", () => ({
   appVersionInfo: () => ({ version: "0.2.64-beta", build: "20364", source: "Google Play" }),
 }));
 
-const signOut = jest.fn<Promise<void>, [{ discardUnsyncedChanges: boolean }]>();
+const signOut = jest.fn<Promise<void>, [SignOutOptions]>();
 
 function withLocalChanges(unsyncedOperationCount: number, unresolvedConflictCount: number): void {
   jest.mocked(useLocalWorkspaceStats).mockReturnValue({
@@ -55,6 +57,12 @@ describe("MoreScreen sign out", () => {
     jest.clearAllMocks();
     signOut.mockResolvedValue(undefined);
     jest.mocked(isDevelopmentAppVariant).mockReturnValue(false);
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: null,
+      families: [],
+      synced: [],
+      writable: true,
+    } as unknown as ReturnType<typeof useActiveWorkspace>);
     jest
       .mocked(useSessionSnapshot)
       .mockReturnValue({ signOut } as unknown as ReturnType<typeof useSessionSnapshot>);
@@ -111,5 +119,48 @@ describe("MoreScreen sign out", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "About Zoption, 0.2.64-beta" }));
     expect(router.push).toHaveBeenCalledWith("/(app)/about");
+  });
+
+  it("checks personal and family workspaces and opens discard confirmation on UnsyncedChangesError", async () => {
+    withLocalChanges(0, 0);
+    jest.mocked(useSessionSnapshot).mockReturnValue({
+      subject: "user-1",
+      status: "signed-in",
+      signOut,
+    } as unknown as ReturnType<typeof useSessionSnapshot>);
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: { id: "fam-2", kind: "family", name: "Home", role: "member" },
+      families: [{ id: "fam-2", kind: "family", name: "Home", role: "member" }],
+      synced: ["fam-1", "fam-2"],
+      writable: true,
+    } as unknown as ReturnType<typeof useActiveWorkspace>);
+
+    signOut
+      .mockRejectedValueOnce(
+        new UnsyncedChangesError({ unsyncedOperationCount: 2, unresolvedConflictCount: 1 }),
+      )
+      .mockResolvedValueOnce(undefined);
+
+    await render(<MoreScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
+    await fireEvent.press(screen.getAllByRole("button", { name: "Sign out" }).at(-1)!);
+
+    await waitFor(() =>
+      expect(signOut).toHaveBeenNthCalledWith(1, {
+        discardUnsyncedChanges: false,
+        workspaceSubjects: ["user-1", "user-1#family:fam-1", "user-1#family:fam-2"],
+      }),
+    );
+
+    expect(await screen.findByText("Discard local changes?")).toBeTruthy();
+    expect(screen.getByText(/^3 local changes have not been safely synchronized\./)).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Discard and sign out" }));
+    await waitFor(() =>
+      expect(signOut).toHaveBeenNthCalledWith(2, {
+        discardUnsyncedChanges: true,
+        workspaceSubjects: ["user-1", "user-1#family:fam-1", "user-1#family:fam-2"],
+      }),
+    );
   });
 });

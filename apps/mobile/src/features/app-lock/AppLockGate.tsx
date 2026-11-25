@@ -22,6 +22,7 @@ import {
 } from "@/auth/app-lock";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { UnsyncedChangesError } from "@/auth/sign-out-policy";
+import { isGuestSubject } from "@/db/guest-workspace";
 import { Button, ConfirmationDialog, FormField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
@@ -75,32 +76,51 @@ export function useAttemptLimit() {
 /**
  * Holds the signed-in app behind the user's PIN when they set one. Children
  * stay mounted under the lock, so re-locking after time away keeps navigation
- * and unsaved form input.
+ * and unsaved form input. A null or guest subject is unlocked without reading
+ * SecureStore, keeping children mounted across guest -> signed-in transitions.
  */
-export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: string }>) {
+export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: string | null }>) {
   const theme = useZoptionTheme();
-  const [lockState, setLockState] = useState<LockState>("checking");
+  const lockSubject = subject && !isGuestSubject(subject) ? subject : null;
+  const [lockState, setLockState] = useState<LockState>(() =>
+    lockSubject ? "checking" : "unlocked",
+  );
+  // Once children have mounted (for example in guest mode), keep them mounted
+  // across guest -> signed-in transitions so navigation and local workspace do
+  // not tear down while checking whether the account has a lock.
+  const [childrenMounted, setChildrenMounted] = useState(() => lockSubject === null);
   // Keys the lock screen so every relock starts it fresh. Without this, a relock
   // while the lock is already showing (for example mid legacy-password
   // replacement, after the old password was accepted) would keep that state.
   const [lockGeneration, setLockGeneration] = useState(0);
 
   useEffect(() => {
+    if (!lockSubject) {
+      setLockState("unlocked");
+      setChildrenMounted(true);
+      return;
+    }
+    setLockState("checking");
     let active = true;
-    readAppLockKind(subject)
+    readAppLockKind(lockSubject)
       .then((kind) => {
-        if (active) setLockState(kind ?? "unlocked");
+        if (!active) return;
+        setLockState(kind ?? "unlocked");
+        setChildrenMounted(true);
       })
       .catch(() => {
         // Fail closed: an unreadable lock store keeps the workspace covered.
-        if (active) setLockState("pin");
+        if (!active) return;
+        setLockState("pin");
+        setChildrenMounted(true);
       });
     return () => {
       active = false;
     };
-  }, [subject]);
+  }, [lockSubject]);
 
   useEffect(() => {
+    if (!lockSubject) return;
     let backgroundedAt: number | null = null;
     const subscription = AppState.addEventListener("change", (next) => {
       if (next === "background") {
@@ -115,19 +135,19 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
         setLockState(kind);
         setLockGeneration((generation) => generation + 1);
       };
-      void readAppLockKind(subject)
+      void readAppLockKind(lockSubject)
         .then((kind) => {
           if (kind) relock(kind);
         })
         .catch(() => relock("pin"));
     });
     return () => subscription.remove();
-  }, [subject]);
+  }, [lockSubject]);
 
-  if (lockState === "checking") {
+  if (lockState === "checking" && !childrenMounted) {
     return <View style={{ flex: 1, backgroundColor: theme.colors.canvas }} />;
   }
-  const locked = lockState === "pin" || lockState === "password";
+  const locked = lockSubject !== null && (lockState === "pin" || lockState === "password");
   return (
     <AppLockUnlockedContext.Provider value={lockState === "unlocked"}>
       {children}
@@ -139,8 +159,8 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
       >
         {locked ? (
           <AppLockScreen
-            key={lockGeneration}
-            subject={subject}
+            key={`${lockSubject}:${lockGeneration}`}
+            subject={lockSubject}
             kind={lockState}
             onUnlock={() => setLockState("unlocked")}
           />

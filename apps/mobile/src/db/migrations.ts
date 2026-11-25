@@ -1,5 +1,10 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
+import {
+  BASELINE_MIGRATION_NAME,
+  BASELINE_SCHEMA_SQL,
+  LOCAL_BASELINE_VERSION,
+} from "./baseline-schema";
 import { familyWorkspaceMigration } from "./family-migration";
 
 export interface MigrationTransaction {
@@ -904,9 +909,22 @@ export const migrations: readonly Migration[] = [
 
 export async function applyLocalMigrations(database: MigrationDatabase): Promise<number> {
   const current = await database.getFirstAsync("PRAGMA user_version");
-  const currentVersion = current?.user_version ?? 0;
+  let currentVersion = current?.user_version ?? 0;
   if (currentVersion > LOCAL_SCHEMA_VERSION) {
     throw new Error("This local workspace was created by a newer Zoption version.");
+  }
+
+  // Fresh databases jump straight to the baseline schema in one transaction instead of
+  // paying 20 separate fsyncs before the app can render.
+  if (currentVersion === 0) {
+    await database.withTransactionAsync(async (transaction) => {
+      await transaction.execAsync(BASELINE_SCHEMA_SQL);
+      await transaction.execAsync(`PRAGMA user_version = ${LOCAL_BASELINE_VERSION}`);
+      await transaction.execAsync(
+        `INSERT INTO workspace_metadata (key, value) VALUES ('migration:${LOCAL_BASELINE_VERSION}', '${BASELINE_MIGRATION_NAME}')`,
+      );
+    });
+    currentVersion = LOCAL_BASELINE_VERSION;
   }
 
   for (const migration of migrations) {

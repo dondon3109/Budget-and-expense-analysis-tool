@@ -77,6 +77,33 @@ describe("background sync task", () => {
     expect(runner).toHaveBeenCalledTimes(1);
   });
 
+  it("awaits an async runner until completion and coalesces overlapping runs", async () => {
+    let resolveRun!: () => void;
+    const runner = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRun = resolve;
+        }),
+    );
+    setBackgroundSyncRunner(runner);
+
+    let settled = false;
+    const first = runBackgroundSync().then((result) => {
+      settled = true;
+      return result;
+    });
+    const second = runBackgroundSync();
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(runner).toHaveBeenCalledTimes(1);
+    expect(settled).toBe(false);
+
+    resolveRun();
+    await expect(first).resolves.toBe(BackgroundTask.BackgroundTaskResult.Success);
+    await expect(second).resolves.toBe(BackgroundTask.BackgroundTaskResult.Success);
+  });
+
   it("reports failure when the runner throws so the OS may retry", async () => {
     setBackgroundSyncRunner(async () => {
       throw new Error("push rejected");

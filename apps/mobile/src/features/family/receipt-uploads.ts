@@ -8,12 +8,16 @@ import type { LocalWorkspace } from "@/db/workspace";
  */
 export async function uploadQueuedReceipts(
   workspace: LocalWorkspace,
-  api: { accessToken: string; workspaceId: string },
+  api: { accessToken: string; workspaceId: string; signal?: AbortSignal },
+  signal: AbortSignal | undefined = api.signal,
 ): Promise<void> {
+  if (signal?.aborted) return;
   for (const upload of await workspace.transactionMutations.readyReceiptUploads()) {
+    if (signal?.aborted) return;
     try {
-      await uploadFamilyReceipt(api, upload.transactionIds, upload);
+      await uploadFamilyReceipt({ ...api, signal }, upload.transactionIds, upload);
     } catch (error) {
+      if (signal?.aborted || (error instanceof Error && error.name === "AbortError")) return;
       const refused =
         error instanceof ApiTransportError &&
         (error.code === "invalid_request" || error.code === "not_found" || error.status === 403);

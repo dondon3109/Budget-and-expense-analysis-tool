@@ -24,6 +24,12 @@ export interface CollectedSnapshot {
   resumeCursor: string;
 }
 
+export interface SnapshotStreamResult {
+  resumeCursor: string;
+  pageCount: number;
+  changeCount: number;
+}
+
 export class SnapshotRecoveryError extends Error {
   constructor(message: string) {
     super(message);
@@ -31,14 +37,22 @@ export class SnapshotRecoveryError extends Error {
   }
 }
 
-export async function collectSnapshotPages(
+/**
+ * Fetches snapshot pages sequentially and yields each page to `onPage` immediately so callers
+ * can write pages directly to SQLite without buffering the full snapshot in memory.
+ */
+export async function streamSnapshotPages(
   fetchPage: SnapshotPageFetcher,
-  maxPages = 500,
-): Promise<CollectedSnapshot> {
+  onPage: (changes: readonly MobileSyncChange[]) => Promise<void> | void,
+  options: { maxPages?: number; expectedServerCursor?: string | null } = {},
+): Promise<SnapshotStreamResult> {
+  const maxPages = options.maxPages ?? 500;
   let snapshotCursor: string | null = null;
   let offset = 0;
   let resumeCursor: string | null = null;
-  const changes: MobileSyncChange[] = [];
+  let pageCount = 0;
+  let changeCount = 0;
+
   for (let page = 0; page < maxPages; page += 1) {
     const response = await fetchPage(snapshotCursor, offset);
     if (snapshotCursor !== null && response.snapshotCursor !== snapshotCursor) {
@@ -50,15 +64,47 @@ export async function collectSnapshotPages(
     if (resumeCursor !== null && response.resumeCursor !== resumeCursor) {
       throw new SnapshotRecoveryError("The full snapshot resume cursor changed during recovery.");
     }
+    if (
+      options.expectedServerCursor !== undefined &&
+      options.expectedServerCursor !== null &&
+      response.resumeCursor !== options.expectedServerCursor
+    ) {
+      throw new SnapshotRecoveryError(
+        "The full snapshot resume cursor did not match the expected cursor.",
+      );
+    }
     snapshotCursor = response.snapshotCursor;
     offset = response.nextOffset;
     resumeCursor = response.resumeCursor;
-    changes.push(...response.changes);
+    pageCount += 1;
+    changeCount += response.changes.length;
+    if (response.changes.length > 0) {
+      await onPage(response.changes);
+    }
     if (!response.hasMore) {
-      return { changes, resumeCursor: resumeCursor ?? response.resumeCursor };
+      return {
+        resumeCursor: resumeCursor ?? response.resumeCursor,
+        pageCount,
+        changeCount,
+      };
     }
   }
   throw new SnapshotRecoveryError("The full snapshot exceeded the safe recovery page limit.");
+}
+
+export async function collectSnapshotPages(
+  fetchPage: SnapshotPageFetcher,
+  maxPages = 500,
+): Promise<CollectedSnapshot> {
+  const changes: MobileSyncChange[] = [];
+  const { resumeCursor } = await streamSnapshotPages(
+    fetchPage,
+    (pageChanges) => {
+      changes.push(...pageChanges);
+    },
+    { maxPages },
+  );
+  return { changes, resumeCursor };
 }
 
 export interface SnapshotVerification {

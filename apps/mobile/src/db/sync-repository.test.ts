@@ -27,6 +27,10 @@ class TestDatabase {
     );
   }
 
+  async getAllAsync<T>(source: string, ...params: unknown[]): Promise<T[]> {
+    return this.native.prepare(source).all(...(params as SQLInputValue[])) as T[];
+  }
+
   async runAsync(source: string, ...params: unknown[]): Promise<unknown> {
     return this.native.prepare(source).run(...(params as SQLInputValue[]));
   }
@@ -645,6 +649,114 @@ describe("atomic encrypted pull application", () => {
     });
   });
 
+  it("handles empty pull pages without losing cursor alignment or resetting stale checks", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, {
+      protocolVersion: 1,
+      nextCursor: "v1.0",
+      hasMore: false,
+      changes: [],
+    });
+    await expect(repository.getCursor()).resolves.toBe("v1.0");
+
+    // Empty poll at the current cursor short-circuits cleanly and preserves cursor mismatch guards.
+    await repository.applyPullPage("v1.0", {
+      protocolVersion: 1,
+      nextCursor: "v1.0",
+      hasMore: false,
+      changes: [],
+    });
+    await expect(
+      repository.applyPullPage("v1.0", {
+        protocolVersion: 1,
+        nextCursor: "v1.1",
+        hasMore: false,
+        changes: [],
+      }),
+    ).rejects.toMatchObject({ code: "invalid_page" });
+    await expect(
+      repository.applyPullPage("v1.2", {
+        protocolVersion: 1,
+        nextCursor: "v1.2",
+        hasMore: false,
+        changes: [],
+      }),
+    ).rejects.toMatchObject({ code: "cursor_mismatch" });
+  });
+
+  it("clears a prior tombstone when a later upsert arrives and handles intra-page sequence", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, {
+      protocolVersion: 1,
+      nextCursor: "v1.3",
+      hasMore: false,
+      changes: [
+        ...bootstrapPage.changes,
+        {
+          entityType: "transaction",
+          entityId: "transaction-1",
+          revision: 2,
+          operation: "delete",
+          serverUpdatedAt: "2026-08-13 15:00:00",
+          payload: null,
+        },
+      ],
+    });
+    expect(
+      database.native
+        .prepare("SELECT server_revision FROM sync_tombstones WHERE entity_id = ?")
+        .get("transaction-1"),
+    ).toEqual({ server_revision: 2 });
+
+    await repository.applyPullPage("v1.3", {
+      protocolVersion: 1,
+      nextCursor: "v1.4",
+      hasMore: false,
+      changes: [
+        {
+          ...bootstrapPage.changes[2]!,
+          revision: 3,
+          serverUpdatedAt: "2026-08-13 16:00:00",
+          payload: {
+            ...bootstrapPage.changes[2]!.payload!,
+            description: "Restored",
+            revision: 3,
+            updatedAt: "2026-08-13 16:00:00",
+          },
+        },
+      ],
+    });
+    expect(
+      database.native
+        .prepare("SELECT * FROM sync_tombstones WHERE entity_id = ?")
+        .get("transaction-1"),
+    ).toBeUndefined();
+    expect(
+      database.native
+        .prepare("SELECT description, deleted_at FROM transactions WHERE id = ?")
+        .get("transaction-1"),
+    ).toEqual({ description: "Restored", deleted_at: null });
+  });
+
+  it("applies snapshot pages, records completion summary, and reports pending sync work", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await expect(repository.hasPendingSyncWork()).resolves.toBe(false);
+
+    await repository.applySnapshotPage(bootstrapPage.changes);
+    await repository.recordSnapshotCompletion("v1.3");
+    await expect(repository.getSyncSummary()).resolves.toMatchObject({
+      serverCursor: "v1.3",
+      serverAcknowledgedCursor: null,
+    });
+    expect((await repository.getSyncSummary()).lastSyncedAt).toBeTruthy();
+
+    database.native.exec(`
+      INSERT INTO receipt_uploads (id, transaction_ids_json, mime_type, data_base64, created_at)
+      VALUES ('r1', '["transaction-1"]', 'image/jpeg', 'abcd', '2026-08-13T14:00:00.000Z')
+    `);
+    await expect(repository.hasPendingSyncWork()).resolves.toBe(true);
+  });
+
   it("notifies local subscribers of touched tables after a pull page commits and never on rollback", async () => {
     jest.mocked(notifyLocalChanges).mockClear();
     const repository = new LocalSyncRepository(
@@ -665,5 +777,27 @@ describe("atomic encrypted pull application", () => {
       code: "cursor_mismatch",
     });
     expect(notifyLocalChanges).not.toHaveBeenCalled();
+  });
+
+  it("notifies local subscribers of touched tables after a snapshot page commits and never on rollback", async () => {
+    jest.mocked(notifyLocalChanges).mockClear();
+    const repository = new LocalSyncRepository(
+      database as unknown as SQLiteDatabase,
+      undefined,
+      "workspace-snapshot.db",
+    );
+    // Missing category foreign key triggers a transaction rollback inside applySnapshotPage.
+    await expect(
+      repository.applySnapshotPage([bootstrapPage.changes[0]!, bootstrapPage.changes[2]!]),
+    ).rejects.toThrow();
+    expect(notifyLocalChanges).not.toHaveBeenCalled();
+
+    await repository.applySnapshotPage(bootstrapPage.changes);
+    expect(notifyLocalChanges).toHaveBeenCalledTimes(1);
+    expect(notifyLocalChanges).toHaveBeenCalledWith("workspace-snapshot.db", [
+      "accounts",
+      "categories",
+      "transactions",
+    ]);
   });
 });

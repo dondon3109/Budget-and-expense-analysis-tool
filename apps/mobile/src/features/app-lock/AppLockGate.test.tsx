@@ -1,6 +1,8 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type * as NodeCrypto from "crypto";
+import { useEffect } from "react";
 import { AppState, Platform, Text, type AppStateStatus } from "react-native";
+import * as SecureStore from "expo-secure-store";
 
 const mockSecureValues = new Map<string, string>();
 
@@ -60,6 +62,7 @@ import {
 import { UnsyncedChangesError } from "@/auth/sign-out-policy";
 
 import { AppLockGate, MAX_ATTEMPTS, RELOCK_AFTER_MS, useAppLockUnlocked } from "./AppLockGate";
+import { GUEST_SUBJECT } from "@/db/guest-workspace";
 
 const subject = "08060c19-8a55-4046-a2e7-7384808dd81c";
 
@@ -82,6 +85,7 @@ async function renderGate() {
 describe("app lock", () => {
   beforeEach(() => {
     mockSecureValues.clear();
+    jest.mocked(SecureStore.getItemAsync).mockClear();
     mockSignOut.mockReset().mockResolvedValue(undefined);
     mockBiometrics.level = 0;
     mockBiometrics.succeed = true;
@@ -305,5 +309,54 @@ describe("app lock", () => {
     expect(unlocked).toBe(false);
     await enterPin("482913");
     await waitFor(() => expect(unlocked).toBe(true));
+  });
+
+  it("treats null and guest subjects as unlocked without reading SecureStore", async () => {
+    const view = await render(
+      <AppLockGate subject={null}>
+        <Text>Workspace content</Text>
+      </AppLockGate>,
+    );
+    expect(screen.getByText("Workspace content")).toBeTruthy();
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+
+    await view.rerender(
+      <AppLockGate subject={GUEST_SUBJECT}>
+        <Text>Workspace content</Text>
+      </AppLockGate>,
+    );
+    expect(screen.getByText("Workspace content")).toBeTruthy();
+    expect(SecureStore.getItemAsync).not.toHaveBeenCalled();
+  });
+
+  it("keeps children mounted when transitioning from guest to a signed-in subject", async () => {
+    let mounts = 0;
+    let unmounts = 0;
+    function ChildProbe() {
+      useEffect(() => {
+        mounts += 1;
+        return () => {
+          unmounts += 1;
+        };
+      }, []);
+      return <Text>Workspace content</Text>;
+    }
+
+    const view = await render(
+      <AppLockGate subject={GUEST_SUBJECT}>
+        <ChildProbe />
+      </AppLockGate>,
+    );
+    expect(screen.getByText("Workspace content")).toBeTruthy();
+    expect(mounts).toBe(1);
+
+    await view.rerender(
+      <AppLockGate subject={subject}>
+        <ChildProbe />
+      </AppLockGate>,
+    );
+    expect(screen.getByText("Workspace content")).toBeTruthy();
+    expect(mounts).toBe(1);
+    expect(unmounts).toBe(0);
   });
 });
