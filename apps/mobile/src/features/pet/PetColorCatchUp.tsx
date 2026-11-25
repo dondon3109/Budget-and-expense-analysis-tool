@@ -13,7 +13,7 @@ import { spacing, typography } from "@/ui/tokens";
 
 import { EggSprite } from "./EggSprite";
 import { PetColorPicker } from "./PetColorPicker";
-import { TintedPetImage } from "./TintedPetImage";
+import { PetFigureView } from "./PetFigureView";
 
 interface PetColorCatchUpProps {
   pet: PetView & { species: PetSpecies };
@@ -51,10 +51,10 @@ export function PetColorCatchUp({ pet, name, busy, error, onPick }: PetColorCatc
               still
             />
           ) : (
-            <TintedPetImage
+            <PetFigureView
               species={pet.species}
               stage={pet.stage}
-              look="healthy"
+              health="healthy"
               color={color}
               size={56}
             />

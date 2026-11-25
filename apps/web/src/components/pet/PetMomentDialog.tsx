@@ -2,15 +2,15 @@ import { useId, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
-import { petMomentCopy } from "@zoption/shared";
+import { eggArt, petFigureHealth, petMomentCopy, tombstoneArt } from "@zoption/shared";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { usePetMoment } from "../../hooks/usePetMoment";
 import { useRootLock } from "../../hooks/useRootLock";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
-import { petImageUrl, petLook } from "../../lib/petImages";
 import { usePet } from "../../queries/pet";
-import { TintedPicture } from "./TintedPicture";
+import { PetFigure } from "./PetFigure";
+import { PetSvg } from "./PetSvg";
 import "./PetMomentDialog.css";
 
 /** The pet pop-up in the workspace: the pet's picture and how it is doing, at most once per open. */
@@ -57,19 +57,20 @@ function PetMomentContent({
         onKeyDown={handleKeyDown}
       >
         {pet.species === null ? (
-          <img
+          <PetSvg className="pet-moment-picture" art={tombstoneArt()} size={200} still />
+        ) : pet.stage === "egg" ? (
+          <PetSvg
             className="pet-moment-picture"
-            src={petImageUrl(null, pet.stage)}
-            alt=""
-            width={200}
-            height={200}
+            art={eggArt(pet.species, pet.eggStreakDays, 0, pet.color ?? "original")}
+            size={200}
+            still
           />
         ) : (
-          <TintedPicture
+          <PetFigure
             className="pet-moment-picture"
             species={pet.species}
             stage={pet.stage}
-            look={petLook(pet)}
+            health={petFigureHealth(pet)}
             color={pet.color}
             size={200}
           />

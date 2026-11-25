@@ -1,7 +1,7 @@
 import { router } from "expo-router";
-import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { petMomentCopy, petMood } from "@zoption/shared";
+import { eggArt, petFigureHealth, petMomentCopy, tombstoneArt } from "@zoption/shared";
 
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { useThankYouOpen } from "@/features/thank-you/ThankYouHost";
@@ -11,8 +11,9 @@ import { Button } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { elevation, radii, spacing, typography } from "@/ui/tokens";
 
-import { petImage } from "./pet-images";
-import { TintedPetImage } from "./TintedPetImage";
+import { EggSprite } from "./EggSprite";
+import { PetArtSvg } from "./PetArtSvg";
+import { PetFigureView } from "./PetFigureView";
 import { usePetMoment } from "./use-pet-moment";
 
 /**
@@ -30,8 +31,6 @@ export function PetMomentModal() {
 
   const { pet } = shown;
   const copy = petMomentCopy(shown.moment, pet);
-  const mood = petMood(pet);
-  const look = mood === "sick" || mood === "fading" ? mood : "healthy";
   const open = () => {
     close();
     router.push("/(app)/pet");
@@ -60,16 +59,20 @@ export function PetMomentModal() {
           ]}
         >
           {pet.species === null ? (
-            <Image
-              accessibilityIgnoresInvertColors
-              source={petImage(null, pet.stage)}
-              style={styles.picture}
+            <PetArtSvg layers={tombstoneArt()} size={200} idBase="petMomentStone" />
+          ) : pet.stage === "egg" ? (
+            <EggSprite
+              art={eggArt(pet.species, pet.eggStreakDays, 0, pet.color ?? "original")}
+              size={200}
+              accessibilityLabel=""
+              interactive={false}
+              still
             />
           ) : (
-            <TintedPetImage
+            <PetFigureView
               species={pet.species}
               stage={pet.stage}
-              look={look}
+              health={petFigureHealth(pet)}
               color={pet.color}
               size={200}
             />
@@ -108,6 +111,5 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     gap: spacing.sm,
   },
-  picture: { width: 200, height: 200 },
   center: { textAlign: "center" },
 });

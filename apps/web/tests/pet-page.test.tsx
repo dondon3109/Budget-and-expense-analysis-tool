@@ -135,7 +135,7 @@ describe("pet on the web", () => {
     expect(await screen.findByRole("heading", { name: "Pick a color for Bao" })).toBeVisible();
     // The pet itself previews each color.
     expect(
-      screen.getByRole("radio", { name: "Pink" }).closest("label")?.querySelector("img"),
+      screen.getByRole("radio", { name: "Pink" }).closest("label")?.querySelector("svg.pet-figure"),
     ).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Keep original" }));
 

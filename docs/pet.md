@@ -109,61 +109,53 @@ every identity change, and only after first-run setup), the web in local storage
 ## Art
 
 Eggs are SVG shape data (`packages/shared/src/petArt/eggs.ts`, drawn by mobile `EggSprite.tsx`
-and web `components/pet/PetSvg.tsx`), so cracks can spread with the streak and with each tap on a
+and web `components/pet/PetSvg.tsx`, through the same shape renderers as the figures: mobile
+`PetArtSvg.tsx`, web `PetLayers`), so cracks can spread with the streak and with each tap on a
 ready egg. Every pair of taps adds a crack and every tap shakes it harder; once the Worker accepts the hatch, the shell bursts in a
 shared light (`hatchShineLayer`) alongside `playPetHatch` (sparkle plus baby happy chirp), and a
 failed hatch settles the egg back to zero taps.
 
-Hatched pets and the pop-up use pictures (mobile `PetPicture.tsx`, web `components/pet/PetPicture.tsx`):
+Hatched pets are soft vinyl-toy figures drawn from shape data in
+`packages/shared/src/petArt/figures.ts` (`petFigureArt`), so the web (`components/pet/PetFigure.tsx`)
+and mobile (`PetPicture.tsx`, `PetFigureView.tsx`) draw the same figure with no image files. The
+tombstone (`tombstoneArt`) is drawn the same way; the pop-up shows the egg (with its streak cracks),
+the figure, or the tombstone.
 
-- 31 base pictures made with the Grok CLI's `image_gen` tool (`grok -p`): each species' egg and
-  four stages, plus a shared tombstone. The pop-up shows the egg picture; the pet page draws the
-  SVG egg.
-- Three looks of each hatched stage (72), made by editing the base picture so the character and
-  framing carry over: `-blink` (eyes closed, mouth unchanged), `-sick` (droopy eyes, thermometer,
-  sweat drop, paler), and `-fading` (lying flat, eyes nearly closed, washed out). Hedgehog, pig, and
-  hamster used the Grok CLI's `image_edit`; penguin, panda, and hippo used Gemini's image model,
-  through the Antigravity CLI's (`agy -p`) `image-generator` subagent or, for nine hippo looks, the
-  Gemini Mac app, with the same prompts. The Legend pictures and their looks were remade in the
-  Gemini Mac app with an outfit each (below).
-- A healthy pet breathes and blinks: its `-blink` picture flashes on top for about 130ms every
-  3.4s. A blink is cut with its base picture's own mask and crop, so the two line up pixel for
-  pixel. A sick pet shows `-sick` and shivers; a fading pet shows `-fading` and barely breathes.
-- All live in `apps/mobile/assets/pet/` and `apps/web/public/pet/` as 512px WebP with the white
-  background flood-filled to transparent from the edges.
-
-Every prompt ends with the same style: "soft flat vector illustration with clean dark brown outlines
-and subtle cel shading, app mascot sticker look, centered, full body, facing the viewer, plain solid
-white background, no ground, no text, no gradient background, square 1:1". The subject names the
-species with its palette, and the stage reads as follows.
-
-- Egg: the species' egg pattern (see `petArt/eggs.ts`), standing upright with a tiny smiling face.
-- Baby: tiny and extra round, oversized head, big sparkly eyes, sitting, sweet small smile.
-- Juvenile: small and playful, standing with a cheerful open smile.
-- Adult: round heavy body, gentle closed-mouth smile, standing.
-- Legend: fully grown, mature and dignified, upright and proud with a calm smile, dressed in a
-  golden outfit of its own, with no glow, aura, or sparkles: hedgehog in silver armor with a red cape
-  and gold shield, pig in a top hat, monocle, and vest holding a gold coin, hamster in a crown and
-  ermine cloak holding a golden seed, penguin in a crown and ermine cape with a golden fish scepter,
-  panda in a bamboo hat and red jacket holding a golden bamboo staff, hippo in a lotus crown and
-  sash holding a golden lotus.
-- Tombstone: a small rounded light grey stone, blank face, a tiny pink flower and grass tuft.
+- Style: every rounded part is a radial gradient lit from the upper left (a bright spot, the base
+  tone, a shaded edge, and a faint bounce light at the rim), with a glossy streak on the head and
+  belly, blush cheeks, glossy eyes with two catchlights, no outlines, and a soft contact shadow on
+  the ground. Shadows shade toward a warm plum rather than black. Eggs use the same lighting over
+  their pattern, with a thin warm outline so the cracks still read.
+- One chibi template: the stage sets the proportions (Baby sits with its feet forward and has the
+  biggest head and eyes and an open smile; Juvenile stands with arms out and an open smile; Adult is
+  rounder and heavier with a closed smile; Legend is the Adult in an outfit), and younger stages
+  are scaled around the feet. The species adds its parts: hedgehog spines and cream face, pig
+  floppy ears and snout, hamster round ears and cream muzzle, penguin white face, beak, flippers,
+  and tuft, panda black ears, eye patches, arms, and feet, hippo wide head, muzzle, and nostrils.
+- Legend outfits, all gold with no glow or sparkles: hedgehog in a red cape with a gold shield, pig
+  in a top hat and purple sash holding a gold coin, hamster in a crown and purple cape holding a
+  golden seed, penguin in a crown and blue cape with a golden fish scepter, panda in a straw hat and
+  red cape holding a golden bamboo staff, hippo in a lotus crown and teal sash holding a golden
+  lotus.
+- Health looks: a sick pet goes pale and slightly green, with half-closed droopy eyes, a wavy
+  mouth, a sweat drop, and a thermometer; a fading pet washes out toward grey, slumps lower and
+  wider, and its eyes are flat lines.
+- Motion (web `PetFigure.css`, mobile `PetPicture.tsx`, the same keyframes): a healthy pet hops
+  every 2.6s with squash and stretch (squash before, stretch in the air, squash on landing, then
+  settle) while its ground shadow shrinks and fades under it, and blinks (closed eyes for about
+  130ms every 3.4s). A sick pet shivers and a fading one barely breathes. A tap's reaction plays on
+  top. Reduced motion stills all of it.
+- The figure is returned in parts (`shadow`, `body`, `eyes`, `blink`) so the shadow stays on the
+  ground while the body moves and the eyes can swap for a blink.
 
 ### Colors
 
-A pet color changes only the body (fur, skin, feathers), so cheeks, bellies, eyes, outlines, and
-Legend outfits stay as drawn, and Pink is the same pink on every species, black panda patches
-included. Each body pixel's luminance picks a point between the color's dark and light ends
-(`packages/shared/src/petArt/colors.ts`), so shading survives.
-
-- Pictures: `scripts/generate-pet-masks.mjs` writes a 256px body mask per picture to
-  `apps/web/public/pet/masks/` and `apps/mobile/assets/pet/masks/` (plus the mobile import map
-  `pet-masks.ts`), picking body pixels by per-species hue, lightness, and saturation bands, with
-  paler bands for sick and fading looks. Rerun it after a picture changes and look at the result.
-  The web (`TintedPicture.tsx`) and mobile (`TintedPetImage.tsx`) draw the picture, then a copy cut
-  to the mask and run through `petColorMatrix` as an sRGB `feColorMatrix`: CSS `mask-image` with
-  an SVG filter on the web, a `react-native-svg` `Mask` and `Filter` on mobile.
-- SVG eggs: `eggArt` tints the species' body fills with `tintPetHex`, the same math.
+A pet color changes only the body (fur, skin, feathers), so cheeks, bellies, eyes, and Legend
+outfits stay as drawn, and Pink is the same pink on every species, black panda patches included.
+`tintPetHex` (`packages/shared/src/petArt/colors.ts`) maps a body color's luminance onto the
+color's dark-to-light ramp, so shading survives: eggs tint their body fills, and figures tint the
+species' base body color before deriving its shading (pig and hippo derive their snout, muzzle,
+and belly from the tinted body too).
 
 ## Notifications
 

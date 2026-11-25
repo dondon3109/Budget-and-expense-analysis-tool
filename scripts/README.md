@@ -15,25 +15,24 @@ root Vitest `scripts` project (`pnpm vitest run --project scripts`).
 
 ## Release and deployment (run by workflows)
 
-| Script                          | Workflow                            | Purpose                                                                                                                  |
-| ------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `next-semantic-release`         | Production Release                  | Turns the semantic-release dry run into workflow outputs                                                                 |
-| `release-summary`               | Production Release                  | Writes the approval summary (changes, bot authors, migrations, CODEOWNERS paths) and the Telegram notice                 |
-| `check-migration-safety`        | Migration safety                    | Fails a new migration that drops or renames unless the destructive-migration label is set                                |
-| `validate-deployment-config`    | Production Release                  | Checks `apps/api/wrangler.deploy.jsonc` has every required variable                                                      |
-| `export-deployment-env`         | Production Release, Android         | Exports one environment's public build and smoke values from the Wrangler config                                         |
-| `github-production-deployment`  | Production Release                  | Records the GitHub deployment and its stage statuses                                                                     |
-| `wait-for-production-release`   | Production Release                  | Waits until the deployed site reports the expected app version                                                           |
-| `smoke-production`              | `pnpm smoke:production`             | Read-only smoke checks of production or preview; uses `deployment-smoke-helpers`                                         |
-| `worker-canary`                 | Production Release                  | Plans, probes, and soaks the gradual production Worker rollout                                                           |
-| `rollback-pages`                | Production Rollback                 | Rolls a Pages project back to the production deployment of a release commit                                              |
-| `submit-indexnow`               | Production Release                  | Submits the live sitemap URLs to IndexNow (Bing) after a deploy; never fails a release                                   |
-| `android-release-metadata`      | Android Play Bundle                 | Resolves the signed Android release identity from the two version sources                                                |
-| `validate-mobile-telemetry-env` | Android Play Bundle                 | Rejects a release build with an unapproved PostHog host or flag                                                          |
-| `freeze-mobile-sync-contract`   | By hand at a mobile bump            | Records a release's sync contract for the API compatibility test                                                         |
-| `generate-pet-masks`            | By hand after a pet picture changes | Writes the pet color body masks into the mobile and web asset folders and the mobile mask import map                     |
-| `generate-pet-sounds`           | By hand to change a pet clip        | Synthesizes the per-species, per-stage pet voice clips and sparkle into mobile and web assets, plus the mobile asset map |
-| `copy-supabase-avatars-to-r2`   | By hand, once per project           | Copies pre-R2 profile pictures from Supabase Storage into the avatar R2 bucket                                           |
+| Script                          | Workflow                     | Purpose                                                                                                                  |
+| ------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `next-semantic-release`         | Production Release           | Turns the semantic-release dry run into workflow outputs                                                                 |
+| `release-summary`               | Production Release           | Writes the approval summary (changes, bot authors, migrations, CODEOWNERS paths) and the Telegram notice                 |
+| `check-migration-safety`        | Migration safety             | Fails a new migration that drops or renames unless the destructive-migration label is set                                |
+| `validate-deployment-config`    | Production Release           | Checks `apps/api/wrangler.deploy.jsonc` has every required variable                                                      |
+| `export-deployment-env`         | Production Release, Android  | Exports one environment's public build and smoke values from the Wrangler config                                         |
+| `github-production-deployment`  | Production Release           | Records the GitHub deployment and its stage statuses                                                                     |
+| `wait-for-production-release`   | Production Release           | Waits until the deployed site reports the expected app version                                                           |
+| `smoke-production`              | `pnpm smoke:production`      | Read-only smoke checks of production or preview; uses `deployment-smoke-helpers`                                         |
+| `worker-canary`                 | Production Release           | Plans, probes, and soaks the gradual production Worker rollout                                                           |
+| `rollback-pages`                | Production Rollback          | Rolls a Pages project back to the production deployment of a release commit                                              |
+| `submit-indexnow`               | Production Release           | Submits the live sitemap URLs to IndexNow (Bing) after a deploy; never fails a release                                   |
+| `android-release-metadata`      | Android Play Bundle          | Resolves the signed Android release identity from the two version sources                                                |
+| `validate-mobile-telemetry-env` | Android Play Bundle          | Rejects a release build with an unapproved PostHog host or flag                                                          |
+| `freeze-mobile-sync-contract`   | By hand at a mobile bump     | Records a release's sync contract for the API compatibility test                                                         |
+| `generate-pet-sounds`           | By hand to change a pet clip | Synthesizes the per-species, per-stage pet voice clips and sparkle into mobile and web assets, plus the mobile asset map |
+| `copy-supabase-avatars-to-r2`   | By hand, once per project    | Copies pre-R2 profile pictures from Supabase Storage into the avatar R2 bucket                                           |
 
 ## Local development
 

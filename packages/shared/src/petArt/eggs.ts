@@ -7,7 +7,6 @@ import {
   dot,
   groundShadow,
   line,
-  LINE,
   OUTLINE,
   oval,
   type PetArt,
@@ -21,12 +20,49 @@ const EGG =
 const BASE = "M33 146 C60 158 140 158 167 146 C160 174 134 188 100 188 C66 188 40 174 33 146 Z";
 
 const shell = (fill: string): PetShape => ({ kind: "path", d: EGG, fill });
-const outline: PetShape = { kind: "path", d: EGG, stroke: OUTLINE, strokeWidth: LINE };
-const shine: PetShape = oval(70, 66, 11, 22, "#FFFFFF", {
-  strokeWidth: 0,
-  opacity: 0.45,
-  rotate: 20,
-});
+// A thin warm outline and soft lighting, so the egg sits beside the vinyl figures it hatches into.
+const outline: PetShape = {
+  kind: "path",
+  d: EGG,
+  stroke: "#5A3A3A",
+  strokeWidth: 2.5,
+  opacity: 0.55,
+};
+/** Light from the upper left over a shaded lower right, laid over the pattern. */
+const shading: PetShape = {
+  kind: "path",
+  d: EGG,
+  fill: {
+    cx: 0.44,
+    cy: 0.4,
+    r: 0.7,
+    fx: 0.34,
+    fy: 0.22,
+    stops: [
+      { offset: 0, color: "#FFFFFF", opacity: 0.5 },
+      { offset: 0.42, color: "#FFFFFF", opacity: 0 },
+      { offset: 0.84, color: "#2A1626", opacity: 0.2 },
+      { offset: 1, color: "#2A1626", opacity: 0.3 },
+    ],
+  },
+};
+const shine: PetShape = {
+  kind: "ellipse",
+  cx: 72,
+  cy: 62,
+  rx: 10,
+  ry: 20,
+  rotate: 24,
+  fill: {
+    cx: 0.5,
+    cy: 0.5,
+    r: 0.5,
+    stops: [
+      { offset: 0, color: "#FFFFFF", opacity: 0.8 },
+      { offset: 1, color: "#FFFFFF", opacity: 0 },
+    ],
+  },
+};
 
 const triangle = (x: number, y: number): string =>
   `M${x - 6} ${y + 6} L${x} ${y - 8} L${x + 6} ${y + 6} Z`;
@@ -169,7 +205,7 @@ function tinted(species: PetSpecies, color: PetColor): PetShape[] {
   if (color === "original") return patterns[species];
   const body = bodyFills[species];
   return patterns[species].map((shape) =>
-    shape.fill && body.includes(shape.fill)
+    typeof shape.fill === "string" && body.includes(shape.fill)
       ? { ...shape, fill: tintPetHex(shape.fill, color) }
       : shape,
   );
@@ -187,7 +223,7 @@ export function eggArt(
 ): PetArt {
   return [
     groundShadow(56),
-    { clip: EGG, shapes: tinted(species, color) },
+    { clip: EGG, shapes: [...tinted(species, color), shading] },
     { shapes: [shine, outline, ...eggCracks(days, taps)] },
   ];
 }

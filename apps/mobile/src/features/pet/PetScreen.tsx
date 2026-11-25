@@ -7,12 +7,12 @@ import {
   petHealthHint,
   petSpeciesLabels,
   petStageLabels,
+  tombstoneArt,
   type PetView,
 } from "@zoption/shared";
 import { router, Stack, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -33,7 +33,7 @@ import { HatchEgg, HatchPop } from "./HatchEgg";
 import { PetColorCatchUp } from "./PetColorCatchUp";
 import { PetColorPicker } from "./PetColorPicker";
 import { EggSprite } from "./EggSprite";
-import { petImage } from "./pet-images";
+import { PetArtSvg } from "./PetArtSvg";
 import { PetPicture } from "./PetPicture";
 import {
   EarnTiles,
@@ -220,11 +220,7 @@ export function PetScreen() {
           <Stack.Screen options={{ title }} />
           {pet.diedAt ? (
             <Card style={styles.memorial}>
-              <Image
-                accessibilityIgnoresInvertColors
-                source={petImage(null, "egg")}
-                style={styles.memorialPicture}
-              />
+              <PetArtSvg layers={tombstoneArt()} size={64} idBase="petMemorialStone" />
               <View style={styles.memorialCopy}>
                 <Text style={[typography.headline, { color: theme.colors.text }]}>
                   {pet.name ?? "Your last pet"} passed away
@@ -391,6 +387,5 @@ const styles = StyleSheet.create({
   track: { height: 14, borderRadius: radii.round, overflow: "hidden" },
   fill: { height: 14, minWidth: 14, borderRadius: radii.round },
   memorial: { flexDirection: "row", alignItems: "center", gap: spacing.md },
-  memorialPicture: { width: 64, height: 64 },
   memorialCopy: { flex: 1, minWidth: 0, gap: 2 },
 });

@@ -1,9 +1,29 @@
-// The egg art is plain shape data on a 200 × 200 canvas, so the same drawing renders through
-// react-native-svg in the app and as SVG on the web. Hatched pets are Grok pictures instead (see
-// docs/pet.md). Art colors are the eggs' own and live here, not in the theme tokens.
+// The pet art is plain shape data on a 200 × 200 canvas, so the same drawing renders through
+// react-native-svg in the app and as SVG on the web (see docs/pet.md). Art colors are the pets'
+// own and live here, not in the theme tokens.
+
+/** One color stop of a gradient fill; `opacity` defaults to 1. */
+export interface PetGradientStop {
+  offset: number;
+  color: string;
+  opacity?: number;
+}
+
+/**
+ * A radial gradient fill in the shape's own bounding box (0 to 1 on each axis), the soft shading
+ * that makes a pet read as a rounded figure. `fx`/`fy` move the brightest point off center.
+ */
+export interface PetGradient {
+  cx: number;
+  cy: number;
+  r: number;
+  fx?: number;
+  fy?: number;
+  stops: PetGradientStop[];
+}
 
 interface Paint {
-  fill?: string;
+  fill?: string | PetGradient;
   stroke?: string;
   strokeWidth?: number;
   opacity?: number;
@@ -18,6 +38,8 @@ export interface PetLayer {
   shapes: PetShape[];
   /** A path the layer is clipped to, so patterns never spill past an outline. */
   clip?: string;
+  /** An SVG transform for the whole layer, such as a stage's scale around the pet's feet. */
+  transform?: string;
 }
 
 export type PetArt = PetLayer[];
@@ -45,7 +67,7 @@ export const oval = (
   cy: number,
   rx: number,
   ry: number,
-  fill: string,
+  fill: string | PetGradient,
   extra: Partial<Paint> & { rotate?: number } = {},
 ): PetShape => ({
   kind: "ellipse",
@@ -74,6 +96,25 @@ export const dot = (
   opacity,
 });
 
+/** A soft contact shadow on the ground, darkest under the middle. */
 export const groundShadow = (rx = 52): PetLayer => ({
-  shapes: [oval(100, 190, rx, 7, "#000000", { strokeWidth: 0, opacity: 0.12 })],
+  shapes: [
+    oval(
+      100,
+      190,
+      rx,
+      8,
+      {
+        cx: 0.5,
+        cy: 0.5,
+        r: 0.5,
+        stops: [
+          { offset: 0, color: "#2A1626", opacity: 0.3 },
+          { offset: 0.6, color: "#2A1626", opacity: 0.13 },
+          { offset: 1, color: "#2A1626", opacity: 0 },
+        ],
+      },
+      { strokeWidth: 0 },
+    ),
+  ],
 });

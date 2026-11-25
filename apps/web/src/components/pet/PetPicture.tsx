@@ -1,5 +1,7 @@
 import {
   PET_REACTION_MOTION,
+  petFigureHealth,
+  petMood,
   type PetReaction,
   type PetSpecies,
   type PetView,
@@ -7,14 +9,12 @@ import {
 import { useEffect, useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { petLook } from "../../lib/petImages";
-import { TintedPicture } from "./TintedPicture";
+import { PetFigure } from "./PetFigure";
 import "./PetPicture.css";
 
 /**
- * A hatched pet as its Grok picture in its pet color, like the phone app's: a healthy pet breathes
- * and blinks (an eyes-closed copy of the same picture flashes on top), a sick one shows its sick
- * picture and shivers, and a fading one shows its fading picture and barely breathes. Each new
+ * A hatched pet as its live vinyl figure in its pet color, like the phone app's: it bounces and
+ * blinks when healthy, shivers when sick, and barely breathes when fading (PetFigure.css). Each new
  * `tap` plays that reaction's motion once on top of the idle one, unless motion is reduced.
  */
 export function PetPicture({
@@ -28,8 +28,6 @@ export function PetPicture({
   className?: string;
   tap?: { reaction: PetReaction; id: number } | null;
 }) {
-  const look = petLook(pet);
-  const picture = { species: pet.species, stage: pet.stage, color: pet.color, size };
   const reduceMotion = useReducedMotion();
   const reacting = useRef<HTMLSpanElement>(null);
 
@@ -46,17 +44,22 @@ export function PetPicture({
     return () => animation.cancel();
   }, [reduceMotion, tap]);
 
+  if (pet.stage === "egg") return null;
   return (
     <span
       className={className ? `pet-live ${className}` : "pet-live"}
-      data-look={look}
+      data-mood={petMood(pet)}
       style={{ width: size, height: size }}
     >
       <span ref={reacting} className="pet-live-react">
-        <TintedPicture {...picture} look={look} />
-        {look === "healthy" ? (
-          <TintedPicture {...picture} look="blink" className="pet-live-blink" />
-        ) : null}
+        <PetFigure
+          species={pet.species}
+          stage={pet.stage}
+          health={petFigureHealth(pet)}
+          color={pet.color}
+          size={size}
+          live
+        />
       </span>
     </span>
   );

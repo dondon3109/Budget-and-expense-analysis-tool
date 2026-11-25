@@ -62,6 +62,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Your pet is now a soft 3D figure, on web and mobile: every species and stage has rounded, glossy shading and a soft shadow, hops with a squash-and-stretch bounce and blinks when healthy, looks pale and sweaty when sick, and slumps and washes out when fading. Legends keep their golden outfits, and pet colors still apply.
 - First-run setup runs in the same order on web and mobile: base currency, starting cash, your goal, your money habits, then Make it yours (theme and streak pet). Zoption suggests a currency from your browser or phone settings, and leaving the starting cash blank counts as zero. Mobile setup drops from up to 8 steps to 5 or 6.
 - Workspaces in a currency other than PHP no longer start with GCash and Maya accounts, and setup wording that only fits the Philippines is shown only in PHP workspaces.
 - Mobile asks for notification permission, and shows the "Help us improve Zoption" prompt, only after setup closes instead of during sign-in or setup.

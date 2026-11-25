@@ -1,0 +1,128 @@
+/* Parts move around the pet's feet on the 200 × 200 canvas (figures.ts GROUND). */
+.pet-figure {
+  display: block;
+  overflow: visible;
+}
+
+.pet-figure-body,
+.pet-figure-shadow {
+  transform-origin: 100px 188px;
+}
+
+.pet-figure-blink {
+  opacity: 0;
+}
+
+/* Squash before the hop, stretch in the air, squash on landing, then settle and rest. */
+.pet-figure[data-live][data-health="healthy"] .pet-figure-body {
+  animation: pet-figure-bounce 2.6s ease-in-out infinite;
+}
+
+.pet-figure[data-live][data-health="healthy"] .pet-figure-shadow {
+  animation: pet-figure-shadow 2.6s ease-in-out infinite;
+}
+
+/* The closed eyes show for about 130ms of each cycle. */
+.pet-figure[data-live][data-health="healthy"] .pet-figure-blink {
+  animation: pet-figure-blink 3.4s steps(1, end) infinite;
+}
+
+.pet-figure[data-live][data-health="healthy"] .pet-figure-eyes {
+  animation: pet-figure-unblink 3.4s steps(1, end) infinite;
+}
+
+.pet-figure[data-live][data-health="sick"] .pet-figure-body {
+  animation: pet-figure-shiver 0.18s linear infinite;
+}
+
+.pet-figure[data-live][data-health="fading"] .pet-figure-body {
+  animation: pet-figure-faint 2.2s ease-in-out infinite alternate;
+}
+
+@keyframes pet-figure-bounce {
+  0%,
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+  14% {
+    transform: translateY(0) scale(1.05, 0.94);
+  }
+  30% {
+    transform: translateY(-10px) scale(0.95, 1.06);
+  }
+  42% {
+    transform: translateY(-12px) scale(0.98, 1.02);
+  }
+  54% {
+    transform: translateY(0) scale(1.07, 0.92);
+  }
+  64% {
+    transform: translateY(0) scale(0.98, 1.03);
+  }
+  74% {
+    transform: translateY(0) scale(1.01, 0.99);
+  }
+  84% {
+    transform: translateY(0) scale(1, 1.012);
+  }
+}
+
+@keyframes pet-figure-shadow {
+  0%,
+  100%,
+  64% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  14%,
+  54% {
+    transform: scale(1.06, 1);
+  }
+  36% {
+    transform: scale(0.8);
+    opacity: 0.65;
+  }
+}
+
+@keyframes pet-figure-blink {
+  0%,
+  96% {
+    opacity: 0;
+  }
+  96.2% {
+    opacity: 1;
+  }
+}
+
+@keyframes pet-figure-unblink {
+  0%,
+  96% {
+    opacity: 1;
+  }
+  96.2% {
+    opacity: 0;
+  }
+}
+
+@keyframes pet-figure-shiver {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(1.2px) rotate(0.6deg);
+  }
+  75% {
+    transform: translateX(-1.2px) rotate(-0.6deg);
+  }
+}
+
+@keyframes pet-figure-faint {
+  to {
+    transform: scale(1.015, 0.985);
+  }
+}
+
+:root[data-reduce-motion] .pet-figure * {
+  animation: none !important;
+}

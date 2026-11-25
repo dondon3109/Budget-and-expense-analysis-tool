@@ -18,6 +18,7 @@ import {
   petStageLabels,
   petStages,
   petTapReaction,
+  tombstoneArt,
   type PetColor,
   type PetReaction,
   type PetSpecies,
@@ -29,11 +30,10 @@ import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { HatchEgg, HatchShine } from "../components/pet/HatchEgg";
 import { PetColorPicker } from "../components/pet/PetColorPicker";
+import { PetFigure } from "../components/pet/PetFigure";
 import { PetPicture } from "../components/pet/PetPicture";
 import { PetSvg } from "../components/pet/PetSvg";
-import { TintedPicture } from "../components/pet/TintedPicture";
 import { useBillingSummary } from "../hooks/useBillingSummary";
-import { petImageUrl } from "../lib/petImages";
 import { playPetReaction, warmUpPetVoices } from "../lib/petSounds";
 import { userWorkspace } from "../lib/workspace";
 import {
@@ -252,10 +252,10 @@ function PetColorCatchUp({
           pet.stage === "egg" ? (
             <PetSvg art={eggArt(pet.species, 0, 0, color)} size={72} still />
           ) : (
-            <TintedPicture
+            <PetFigure
               species={pet.species}
               stage={pet.stage}
-              look="healthy"
+              health="healthy"
               color={color}
               size={72}
             />
@@ -429,13 +429,7 @@ export function PetPage() {
           <div className="pet-panel">
             {pet.data.diedAt ? (
               <div className="pet-memorial">
-                <img
-                  src={petImageUrl(null, "egg")}
-                  alt=""
-                  width={72}
-                  height={72}
-                  aria-hidden="true"
-                />
+                <PetSvg art={tombstoneArt()} size={72} still />
                 <div>
                   <strong>{pet.data.name ?? "Your last pet"} passed away</strong>
                   <p className="pet-note">
