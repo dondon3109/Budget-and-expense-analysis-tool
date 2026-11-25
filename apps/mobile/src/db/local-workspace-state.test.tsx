@@ -34,13 +34,13 @@ describe("LocalWorkspaceProvider", () => {
 
   // A recovery rebuilds the file and reopens it. Dropping back to "opening" would make the
   // authenticated gate show the full-screen loader and remount navigation on Home.
-  it("keeps the shown workspace ready while a reopen of the same file is pending", async () => {
+  it("keeps the shown workspace ready and open while a reopen of the same file is pending", async () => {
     const reopened = deferred<LocalWorkspace>();
     jest
       .mocked(openLocalWorkspace)
       .mockResolvedValueOnce(first)
       .mockReturnValueOnce(reopened.promise);
-    await render(
+    const view = await render(
       <LocalWorkspaceProvider subject="user-1">
         <Probe />
       </LocalWorkspaceProvider>,
@@ -49,12 +49,17 @@ describe("LocalWorkspaceProvider", () => {
 
     await act(async () => latest.reopen());
     expect(latest).toMatchObject({ status: "ready", workspace: first });
+    expect(closeLocalWorkspace).not.toHaveBeenCalled();
 
     await act(async () => reopened.resolve(rebuilt));
     expect(latest).toMatchObject({ status: "ready", workspace: rebuilt });
+    expect(closeLocalWorkspace).not.toHaveBeenCalled();
+
+    await view.unmount();
+    expect(closeLocalWorkspace).toHaveBeenCalledWith("user-1", expect.any(Symbol));
   });
 
-  it("shows opening again for a different workspace", async () => {
+  it("shows opening again and closes the prior subject for a different workspace", async () => {
     const family = deferred<LocalWorkspace>();
     jest
       .mocked(openLocalWorkspace)
@@ -72,6 +77,7 @@ describe("LocalWorkspaceProvider", () => {
         <Probe />
       </LocalWorkspaceProvider>,
     );
+    expect(closeLocalWorkspace).toHaveBeenCalledWith("user-1", expect.any(Symbol));
     expect(latest).toMatchObject({ status: "opening", workspace: null });
     await act(async () => family.resolve(rebuilt));
     expect(latest).toMatchObject({ status: "ready", workspace: rebuilt });

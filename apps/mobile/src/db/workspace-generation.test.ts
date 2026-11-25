@@ -4,6 +4,7 @@ import {
   collectSnapshotPages,
   databaseNameForGeneration,
   SnapshotRecoveryError,
+  streamSnapshotPages,
   verifySnapshotGeneration,
 } from "./workspace-generation";
 
@@ -110,6 +111,53 @@ describe("workspace generation recovery helpers", () => {
     );
 
     await expect(collectSnapshotPages(fetchPage, 2)).rejects.toBeInstanceOf(SnapshotRecoveryError);
+  });
+
+  it("streams each snapshot page immediately to onPage and validates expectedServerCursor", async () => {
+    const seenPages: MobileSyncChange[][] = [];
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce({
+        snapshotCursor: "s1.9",
+        changes: [accountChange],
+        nextOffset: 1,
+        hasMore: true,
+        resumeCursor: "v1.9",
+      })
+      .mockResolvedValueOnce({
+        snapshotCursor: "s1.9",
+        changes: [{ ...accountChange, entityId: "account-2" }],
+        nextOffset: 2,
+        hasMore: false,
+        resumeCursor: "v1.9",
+      });
+
+    const result = await streamSnapshotPages(
+      fetchPage,
+      async (changes) => {
+        // Confirm page 1 is processed before page 2 is fetched.
+        if (seenPages.length === 0) expect(fetchPage).toHaveBeenCalledTimes(1);
+        seenPages.push([...changes]);
+      },
+      { expectedServerCursor: "v1.9" },
+    );
+
+    expect(result).toEqual({ resumeCursor: "v1.9", pageCount: 2, changeCount: 2 });
+    expect(seenPages).toHaveLength(2);
+
+    await expect(
+      streamSnapshotPages(
+        jest.fn().mockResolvedValueOnce({
+          snapshotCursor: "s1.9",
+          changes: [accountChange],
+          nextOffset: 1,
+          hasMore: false,
+          resumeCursor: "v1.10",
+        }),
+        async () => undefined,
+        { expectedServerCursor: "v1.9" },
+      ),
+    ).rejects.toBeInstanceOf(SnapshotRecoveryError);
   });
 });
 

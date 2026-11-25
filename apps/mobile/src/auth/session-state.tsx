@@ -94,7 +94,15 @@ export interface SignOutOptions {
    * recovery. A user-initiated sign-out never sets it.
    */
   preserveLocalWorkspace?: boolean;
+  /**
+   * Local workspace file subjects to inspect for unsynced edits and discard on sign-out.
+   * Defaults to the current subject plus any recorded family workspaces.
+   */
+  workspaceSubjects?: readonly string[];
 }
+
+const GLOBAL_SIGN_OUT_TIMEOUT_MS = 3_000;
+const TOKEN_EXPIRY_MARGIN_MS = 30_000;
 
 const signedOutSession: SessionSnapshot = { status: "signed-out", subject: null };
 
@@ -148,11 +156,26 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const demoEnabled = isDevelopmentAppVariant();
   const [snapshot, setSnapshot] = useState<SessionSnapshot>({ status: "loading", subject: null });
   const subjectRef = useRef<string | null>(null);
+  const emailRef = useRef<string | undefined>(undefined);
   const isDummySessionRef = useRef(false);
   const initializedRef = useRef(false);
   const bootCountRef = useRef<number | null>(null);
+  const refreshPromiseRef = useRef<{ subject: string; promise: Promise<string> } | null>(null);
 
   const applySubject = useCallback((nextSubject: string | null, email?: string) => {
+    if (
+      initializedRef.current &&
+      subjectRef.current === nextSubject &&
+      !isDummySessionRef.current &&
+      subjectRef.current !== GUEST_SUBJECT
+    ) {
+      if (nextSubject && email !== undefined && email !== emailRef.current) {
+        emailRef.current = email;
+        setSignedInAccount({ id: nextSubject, email });
+      }
+      return;
+    }
+
     isDummySessionRef.current = false;
     if (nextSubject) {
       void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
@@ -160,6 +183,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
       void SecureStore.deleteItemAsync(GUEST_STORAGE_KEY).catch(() => undefined);
     }
     const previousSubject = subjectRef.current;
+    if (previousSubject !== nextSubject) {
+      refreshPromiseRef.current = null;
+    }
     if (initializedRef.current && previousSubject !== nextSubject) {
       clearUserScopedRuntimeState();
     }
@@ -171,6 +197,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       void telemetry.reset();
     }
     subjectRef.current = nextSubject;
+    emailRef.current = nextSubject ? email : undefined;
     initializedRef.current = true;
     const nextStatus: SessionStatus = nextSubject ? "signed-in" : "signed-out";
     setSnapshot((prev) =>
@@ -181,10 +208,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   const enterGuest = useCallback(() => {
+    if (subjectRef.current !== GUEST_SUBJECT) {
+      refreshPromiseRef.current = null;
+    }
     if (initializedRef.current && subjectRef.current !== GUEST_SUBJECT) {
       clearUserScopedRuntimeState();
     }
     subjectRef.current = GUEST_SUBJECT;
+    emailRef.current = undefined;
     isDummySessionRef.current = false;
     initializedRef.current = true;
     setSnapshot({ status: "guest", subject: GUEST_SUBJECT });
@@ -355,10 +386,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
       throw new Error("Dummy account sign-in is available only in Zoption Dev.");
     }
     await SecureStore.setItemAsync(DUMMY_DEV_STORAGE_KEY, DUMMY_DEV_SUBJECT).catch(() => undefined);
+    if (subjectRef.current !== DUMMY_DEV_SUBJECT) {
+      refreshPromiseRef.current = null;
+    }
     if (initializedRef.current && subjectRef.current !== DUMMY_DEV_SUBJECT) {
       clearUserScopedRuntimeState();
     }
     subjectRef.current = DUMMY_DEV_SUBJECT;
+    emailRef.current = undefined;
     isDummySessionRef.current = true;
     initializedRef.current = true;
     setSnapshot({
@@ -405,9 +440,40 @@ export function SessionProvider({ children }: PropsWithChildren) {
     return { confirmationRequired: !data.session };
   }, []);
 
+  const refreshAccessToken = useCallback((expectedSubject: string): Promise<string> => {
+    const existing = refreshPromiseRef.current;
+    if (existing && existing.subject === expectedSubject) {
+      return existing.promise;
+    }
+    const entry: { subject: string; promise: Promise<string> } = {
+      subject: expectedSubject,
+      promise: Promise.resolve(""),
+    };
+    entry.promise = (async () => {
+      const result = await getSupabaseClient().auth.refreshSession();
+      if (result.error) throw result.error;
+      const session = result.data.session;
+      if (
+        !session ||
+        subjectRef.current !== expectedSubject ||
+        session.user.id !== expectedSubject
+      ) {
+        throw new Error("Your session expired. Sign in again to open your workspace.");
+      }
+      return session.access_token;
+    })().finally(() => {
+      if (refreshPromiseRef.current === entry) {
+        refreshPromiseRef.current = null;
+      }
+    });
+    refreshPromiseRef.current = entry;
+    return entry.promise;
+  }, []);
+
   const getAccessToken = useCallback(
     async (refresh: boolean) => {
-      if (subjectRef.current === GUEST_SUBJECT) {
+      const expectedSubject = subjectRef.current;
+      if (expectedSubject === GUEST_SUBJECT) {
         throw new Error("Sign in to use this feature.");
       }
       if (isDummySessionRef.current) {
@@ -416,17 +482,34 @@ export function SessionProvider({ children }: PropsWithChildren) {
         }
         return "dummy-dev-access-token";
       }
-      const result = refresh
-        ? await getSupabaseClient().auth.refreshSession()
-        : await getSupabaseClient().auth.getSession();
+      if (!expectedSubject) {
+        throw new Error("Your session expired. Sign in again to open your workspace.");
+      }
+      if (refresh) {
+        return refreshAccessToken(expectedSubject);
+      }
+      if (refreshPromiseRef.current?.subject === expectedSubject) {
+        return refreshPromiseRef.current.promise;
+      }
+      const result = await getSupabaseClient().auth.getSession();
       if (result.error) throw result.error;
       const session = result.data.session;
-      if (!session || !subjectRef.current || session.user.id !== subjectRef.current) {
+      if (
+        !session ||
+        subjectRef.current !== expectedSubject ||
+        session.user.id !== expectedSubject
+      ) {
         throw new Error("Your session expired. Sign in again to open your workspace.");
+      }
+      if (
+        typeof session.expires_at === "number" &&
+        session.expires_at * 1000 <= Date.now() + TOKEN_EXPIRY_MARGIN_MS
+      ) {
+        return refreshAccessToken(expectedSubject);
       }
       return session.access_token;
     },
-    [demoEnabled],
+    [demoEnabled, refreshAccessToken],
   );
 
   const sendPasswordReset = useCallback(async (email: string) => {
@@ -495,13 +578,24 @@ export function SessionProvider({ children }: PropsWithChildren) {
     async (options: SignOutOptions = {}) => {
       const subject = subjectRef.current;
       // Every family the person belongs to has its own file, and each one goes with the account.
-      const localSubjects = subject
+      const storedSubjects = subject
         ? workspaceSubjects(
             subject,
             (await loadWorkspaceRecord(subject).catch(() => null)) ?? EMPTY_WORKSPACE_RECORD,
           )
         : [];
-      if (subject && !options.preserveLocalWorkspace) {
+      const candidateSubjects = [
+        ...(options.workspaceSubjects ?? (subject ? [subject] : [])),
+        ...storedSubjects,
+      ];
+      const localSubjects = Array.from(
+        new Set(
+          candidateSubjects.filter(
+            (candidate) => Boolean(candidate) && candidate !== GUEST_SUBJECT,
+          ),
+        ),
+      );
+      if (localSubjects.length > 0 && !options.preserveLocalWorkspace) {
         const risk = await inspectLocalWorkspaceForSignOut(localSubjects);
         assertSignOutRiskAllowed(risk, options.discardUnsyncedChanges === true);
       }
@@ -514,6 +608,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
           .catch(() => undefined);
       }
 
+      refreshPromiseRef.current = null;
       if (isDummySessionRef.current) {
         await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
       } else if (supabase) {
@@ -531,9 +626,23 @@ export function SessionProvider({ children }: PropsWithChildren) {
           } else {
             // A user-initiated sign-out revokes the refresh token server-side
             // (auth-js's default global scope), so a copied refresh token stops
-            // minting access tokens.
-            const { error } = await client.auth.signOut({ scope: "global" });
-            if (error) {
+            // minting access tokens. Bound the remote call so a flaky network
+            // falls back to local sign-out promptly.
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const globalResult = await Promise.race([
+              client.auth.signOut({ scope: "global" }).catch((error: unknown) => ({
+                error: error instanceof Error ? error : new Error("Global sign-out failed."),
+              })),
+              new Promise<{ error: Error }>((resolve) => {
+                timer = setTimeout(
+                  () => resolve({ error: new Error("Global sign-out timed out.") }),
+                  GLOBAL_SIGN_OUT_TIMEOUT_MS,
+                );
+              }),
+            ]).finally(() => {
+              if (timer !== undefined) clearTimeout(timer);
+            });
+            if (globalResult.error) {
               // Revocation needs Supabase, and offline is normal on mobile. A user
               // who asked to sign out must never stay signed in here, so clear
               // this device as well. Revocation is best-effort in that case, and
@@ -555,13 +664,17 @@ export function SessionProvider({ children }: PropsWithChildren) {
         setSignedInAccount(null);
       }
 
-      if (subject && !options.preserveLocalWorkspace) {
+      if (!options.preserveLocalWorkspace) {
         for (const localSubject of localSubjects) await discardLocalWorkspace(localSubject);
-        await clearWorkspaceRecord(subject).catch(() => undefined);
-        await clearAppLock(subject);
+        if (subject && subject !== GUEST_SUBJECT) {
+          await clearWorkspaceRecord(subject).catch(() => undefined);
+          await clearAppLock(subject);
+        }
       }
       if (subjectRef.current === subject || subjectRef.current === null) {
         subjectRef.current = null;
+        emailRef.current = undefined;
+        initializedRef.current = true;
         setSnapshot((prev) =>
           prev.status === "signed-out" && prev.subject === null ? prev : signedOutSession,
         );

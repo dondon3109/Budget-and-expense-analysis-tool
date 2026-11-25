@@ -83,6 +83,22 @@ export function LocalWorkspaceProvider({
   const subjectRef = useRef(subject);
   subjectRef.current = subject;
   const openingSubjectRef = useRef<string | null>(null);
+  const subjectLeaseRef = useRef<{ subject: string; lease: symbol } | null>(null);
+
+  useEffect(() => {
+    if (!subject) {
+      subjectLeaseRef.current = null;
+      return;
+    }
+    const lease = Symbol("local-workspace");
+    subjectLeaseRef.current = { subject, lease };
+    return () => {
+      if (subjectLeaseRef.current?.lease === lease) {
+        subjectLeaseRef.current = null;
+      }
+      void closeLocalWorkspace(subject, lease);
+    };
+  }, [subject]);
 
   useEffect(() => {
     const requestId = requestRef.current + 1;
@@ -94,14 +110,18 @@ export function LocalWorkspaceProvider({
       return;
     }
     // Reopening the file already shown (sync rebuilt it from the server) keeps the last workspace
-    // until the new one is open. Going back to "opening" would make the authenticated gate swap
-    // every screen for the full-screen loader and remount navigation on Home, dropping the form
-    // the user was in. Reads in that short gap trigger a reopen or wait for the new handle.
+    // open until the new one is ready. Going back to "opening" would make the authenticated gate
+    // swap every screen for the full-screen loader and remount navigation on Home, and closing
+    // prematurely would leave rendered screens querying a closed SQLite handle. Reads in that short
+    // gap trigger a reopen or wait for the new handle.
     if (readySubjectRef.current !== subject) {
       setSnapshot({ subject, status: "opening", workspace: null, message: null });
     }
     openingSubjectRef.current = subject;
-    const lease = Symbol("local-workspace");
+    const lease =
+      subjectLeaseRef.current?.subject === subject
+        ? subjectLeaseRef.current.lease
+        : Symbol("local-workspace");
     void openLocalWorkspace(subject, lease)
       .then((workspace) => {
         if (requestRef.current === requestId) {
@@ -127,7 +147,6 @@ export function LocalWorkspaceProvider({
     return () => {
       requestRef.current += 1;
       if (openingSubjectRef.current === subject) openingSubjectRef.current = null;
-      void closeLocalWorkspace(subject, lease);
     };
   }, [attempt, subject]);
 

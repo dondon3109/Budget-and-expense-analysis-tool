@@ -1,23 +1,178 @@
+import NetInfo from "@react-native-community/netinfo";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
+import type { OnboardingState } from "@zoption/shared";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
-import { getGoalsProfile, getMoneyPreferences } from "@/api/goal-profile";
+import { ApiTransportError } from "@/api/authenticated";
 import { dismissQuickStart, getOnboardingState, getQuickStartState } from "@/api/onboarding";
+import { loadGoalProfileOnce, loadMoneyPreferencesOnce } from "@/auth/goal-profile-sync";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { quickStartDismissStorageKey } from "@/features/dashboard/QuickStartGuideCard";
-import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useSyncState } from "@/sync/sync-state";
 
+let loadedSubject: string | null = null;
+let loadedGeneration: number | null = null;
+let inFlightOnboarding: {
+  subject: string;
+  generation: number;
+  token: object;
+  promise: Promise<OnboardingState>;
+} | null = null;
+let inFlightQuickStart: {
+  subject: string;
+  generation: number;
+  token: object;
+  promise: Promise<boolean>;
+} | null = null;
+
+function ensureOnboardingSubject(subject: string, generation: number): void {
+  if (loadedSubject === subject && loadedGeneration === generation) return;
+  loadedSubject = subject;
+  loadedGeneration = generation;
+  inFlightOnboarding = null;
+  inFlightQuickStart = null;
+}
+
+function clearOnboardingInFlight(): void {
+  loadedSubject = null;
+  loadedGeneration = null;
+  inFlightOnboarding = null;
+  inFlightQuickStart = null;
+}
+
+function isOfflineNetworkError(error: unknown): boolean {
+  if (isAuthRetryableFetchError(error)) return true;
+  if (error instanceof ApiTransportError) {
+    return error.code === "network" && error.status === 0;
+  }
+  return !(error instanceof DOMException && error.name === "AbortError");
+}
+
+async function withTokenRetry<T>(
+  getAccessToken: (refresh: boolean) => Promise<string>,
+  run: (accessToken: string) => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  const accessToken = await getAccessToken(false);
+  if (signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+  try {
+    return await run(accessToken);
+  } catch (error) {
+    if (
+      signal?.aborted ||
+      !(error instanceof ApiTransportError) ||
+      error.code !== "session_expired"
+    ) {
+      throw error;
+    }
+    const freshToken = await getAccessToken(true);
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
+    }
+    return run(freshToken);
+  }
+}
+
+function loadOnboardingStateOnce(
+  subject: string,
+  getAccessToken: (refresh: boolean) => Promise<string>,
+): Promise<OnboardingState> {
+  const generation = useOnboardingStore.getState().sessionGeneration;
+  ensureOnboardingSubject(subject, generation);
+  const existing = useOnboardingStore.getState().state;
+  if (existing) return Promise.resolve(existing);
+  if (
+    inFlightOnboarding &&
+    inFlightOnboarding.subject === subject &&
+    inFlightOnboarding.generation === generation
+  ) {
+    return inFlightOnboarding.promise;
+  }
+  const token = {};
+  const promise = withTokenRetry(getAccessToken, (accessToken) =>
+    getOnboardingState({ accessToken }),
+  )
+    .then((state) => {
+      if (
+        inFlightOnboarding?.token === token &&
+        loadedSubject === subject &&
+        useOnboardingStore.getState().sessionGeneration === generation
+      ) {
+        useOnboardingStore.getState().setState(state);
+      }
+      return state;
+    })
+    .finally(() => {
+      if (inFlightOnboarding?.token === token) inFlightOnboarding = null;
+    });
+  inFlightOnboarding = { subject, generation, token, promise };
+  return promise;
+}
+
+function loadQuickStartDismissedOnce(
+  subject: string,
+  getAccessToken: (refresh: boolean) => Promise<string>,
+): Promise<boolean> {
+  const generation = useOnboardingStore.getState().sessionGeneration;
+  ensureOnboardingSubject(subject, generation);
+  const existing = useOnboardingStore.getState().quickStartDismissed;
+  if (existing !== null) return Promise.resolve(existing);
+  if (
+    inFlightQuickStart &&
+    inFlightQuickStart.subject === subject &&
+    inFlightQuickStart.generation === generation
+  ) {
+    return inFlightQuickStart.promise;
+  }
+  const token = {};
+  const promise = withTokenRetry(getAccessToken, async (accessToken) => {
+    const quickStart = await getQuickStartState({ accessToken });
+    if (quickStart.dismissed) return true;
+    const localDismissed = await SecureStore.getItemAsync(
+      quickStartDismissStorageKey(subject),
+    ).catch(() => null);
+    if (localDismissed === "true") {
+      if (useOnboardingStore.getState().sessionGeneration === generation) {
+        void dismissQuickStart({ accessToken }).catch(() => undefined);
+      }
+      return true;
+    }
+    return false;
+  })
+    .then((dismissed) => {
+      if (
+        inFlightQuickStart?.token === token &&
+        loadedSubject === subject &&
+        useOnboardingStore.getState().sessionGeneration === generation
+      ) {
+        const current = useOnboardingStore.getState().quickStartDismissed;
+        useOnboardingStore.getState().setQuickStartDismissed(current === true || dismissed);
+      }
+      return dismissed;
+    })
+    .finally(() => {
+      if (inFlightQuickStart?.token === token) inFlightQuickStart = null;
+    });
+  inFlightQuickStart = { subject, generation, token, promise };
+  return promise;
+}
+
 /**
- * Opens first-run setup once per launch while the Worker says it is unfinished. Fetches the goal
- * profile and money preferences alongside onboarding state before pushing the modal so setup never
- * freezes `askGoals` / `askPreferences` to false on a startup race. Also reads Quick start guide
- * state once per launch so dismissed or aged-out accounts never flash the tutorial card.
+ * Opens first-run setup once per launch while the Worker says it is unfinished,
+ * retrying when connectivity recovers after an offline failure. Reuses the goal
+ * profile and money preferences loaders so `useGoalProfileSync` and onboarding
+ * never issue duplicate requests, and waits for both before pushing the modal
+ * so setup never freezes `askGoals` / `askPreferences` to false on a startup race.
+ * Also reads Quick start guide state once per launch so dismissed or aged-out
+ * accounts never flash the tutorial card.
  */
 export function useOnboardingPrompt(): void {
   const { subject, status, getAccessToken } = useSessionSnapshot();
@@ -25,60 +180,106 @@ export function useOnboardingPrompt(): void {
   const prompted = useOnboardingStore((state) => state.prompted);
 
   useEffect(() => {
-    if (prompted || status !== "signed-in" || !subject || isDummyDevelopmentSubject(subject))
+    if (status !== "signed-in" || !subject) {
+      clearOnboardingInFlight();
       return;
-    const controller = new AbortController();
-    void (async () => {
+    }
+    if (prompted || isDummyDevelopmentSubject(subject)) return;
+
+    let active = true;
+    let inFlight = false;
+    let needsRetry = false;
+    let offlineFailure = false;
+    let wasReachable: boolean | null = null;
+    let reconnectedWhileInFlight = false;
+
+    const run = async (): Promise<void> => {
+      if (inFlight || !active) return;
+      inFlight = true;
+      needsRetry = false;
+      offlineFailure = false;
+      reconnectedWhileInFlight = false;
+      // Share a single initial token fetch and 401 refresh across the parallel onboarding and
+      // quick-start requests in this attempt.
+      let tokenPromise: Promise<string> | null = null;
+      let refreshPromise: Promise<string> | null = null;
+      const resolveToken = (refresh: boolean): Promise<string> => {
+        if (refresh) {
+          refreshPromise ??= getAccessToken(true);
+          tokenPromise = refreshPromise;
+          return refreshPromise;
+        }
+        tokenPromise ??= getAccessToken(false);
+        return tokenPromise;
+      };
       try {
-        const accessToken = await getAccessToken(false);
-        const api = { accessToken, signal: controller.signal };
         const [onboardingResult, quickStartResult] = await Promise.allSettled([
-          getOnboardingState(api),
-          getQuickStartState(api),
+          loadOnboardingStateOnce(subject, resolveToken),
+          loadQuickStartDismissedOnce(subject, resolveToken),
         ]);
-        if (controller.signal.aborted) return;
-        if (quickStartResult.status === "fulfilled") {
-          if (quickStartResult.value.dismissed) {
-            useOnboardingStore.getState().setQuickStartDismissed(true);
-          } else {
-            const localDismissed = await SecureStore.getItemAsync(
-              quickStartDismissStorageKey(subject),
-            ).catch(() => null);
-            if (controller.signal.aborted) return;
-            if (localDismissed === "true") {
-              useOnboardingStore.getState().setQuickStartDismissed(true);
-              void dismissQuickStart(api).catch(() => undefined);
-            } else {
-              useOnboardingStore.getState().setQuickStartDismissed(false);
-            }
-          }
+        if (!active) return;
+        const rejectedReasons: unknown[] = [];
+        if (onboardingResult.status === "rejected") rejectedReasons.push(onboardingResult.reason);
+        if (quickStartResult.status === "rejected") rejectedReasons.push(quickStartResult.reason);
+        if (rejectedReasons.length > 0) {
+          needsRetry = true;
+          offlineFailure = rejectedReasons.some(isOfflineNetworkError);
         }
         if (onboardingResult.status !== "fulfilled") return;
         const state = onboardingResult.value;
-        useOnboardingStore.getState().setState(state);
         if (state.step === "complete") return;
 
         // Ensure goals and money preferences are settled in the store before opening setup.
-        const goalStore = useGoalProfileStore.getState();
-        const [profileResult, preferencesResult] = await Promise.allSettled([
-          goalStore.profile ? Promise.resolve(goalStore.profile) : getGoalsProfile(api),
-          goalStore.preferences ? Promise.resolve(goalStore.preferences) : getMoneyPreferences(api),
+        await Promise.allSettled([
+          loadGoalProfileOnce(subject, getAccessToken),
+          loadMoneyPreferencesOnce(subject, getAccessToken),
         ]);
-        if (controller.signal.aborted) return;
-        if (profileResult.status === "fulfilled") {
-          useGoalProfileStore.getState().setProfile(profileResult.value);
-        }
-        if (preferencesResult.status === "fulfilled") {
-          useGoalProfileStore.getState().setPreferences(preferencesResult.value);
-        }
+        if (!active || useOnboardingStore.getState().prompted) return;
 
         useOnboardingStore.getState().markPrompted();
         router.push("/(app)/onboarding");
-      } catch {
-        // Offline or unreachable: setup is offered again on the next launch.
+      } catch (error) {
+        if (active) {
+          needsRetry = true;
+          offlineFailure = isOfflineNetworkError(error);
+        }
+        // Offline or unreachable: reconnect or the next launch offers setup again.
+      } finally {
+        if (active) {
+          inFlight = false;
+          if (needsRetry && reconnectedWhileInFlight) {
+            reconnectedWhileInFlight = false;
+            void run();
+          }
+        }
       }
-    })();
-    return () => controller.abort();
+    };
+
+    void run();
+    const netInfo =
+      typeof NetInfo?.addEventListener === "function"
+        ? NetInfo.addEventListener((state) => {
+            const reachable = state.isInternetReachable ?? state.isConnected;
+            if (reachable === null || reachable === undefined) return;
+            const previous = wasReachable;
+            wasReachable = Boolean(reachable);
+            if (!reachable) return;
+            if (inFlight) {
+              if (previous === false || previous === null) {
+                reconnectedWhileInFlight = true;
+              }
+              return;
+            }
+            if (!needsRetry) return;
+            if (previous === false || (previous === null && offlineFailure)) {
+              void run();
+            }
+          })
+        : null;
+    return () => {
+      active = false;
+      netInfo?.();
+    };
   }, [getAccessToken, prompted, status, subject]);
 
   // If setup was finished on web or another device, clear the Resume setup card when returning.
@@ -98,12 +299,21 @@ export function useOnboardingPrompt(): void {
       controller.abort();
       controller = new AbortController();
       const { signal } = controller;
+      const generation = store.sessionGeneration;
       void (async () => {
         try {
-          const accessToken = await getAccessToken(false);
-          if (signal.aborted) return;
-          const latest = await getOnboardingState({ accessToken, signal });
-          if (signal.aborted || useOnboardingStore.getState().open) return;
+          const latest = await withTokenRetry(
+            getAccessToken,
+            (accessToken) => getOnboardingState({ accessToken, signal }),
+            signal,
+          );
+          if (
+            signal.aborted ||
+            useOnboardingStore.getState().open ||
+            useOnboardingStore.getState().sessionGeneration !== generation
+          ) {
+            return;
+          }
           useWorkspaceCurrencyStore.getState().setCurrency(latest.currency);
           useOnboardingStore.getState().setState(latest);
           if (latest.step === "complete") {

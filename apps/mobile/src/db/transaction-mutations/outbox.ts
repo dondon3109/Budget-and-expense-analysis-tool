@@ -33,12 +33,18 @@ export class LocalMutationOutbox {
     private readonly randomUuid: () => string,
     private readonly now: () => Date,
     private readonly random: () => number,
+    private readonly onSyncDirtyChange?: (dirty: boolean) => void,
+    private readonly hasPendingSyncWork?: () => Promise<boolean>,
   ) {}
 
-  async getPushBatch(limit = 50): Promise<MobileSyncPushRequest | null> {
+  async getPushBatch(
+    limit = 50,
+    options?: { ignoreBackoff?: boolean },
+  ): Promise<MobileSyncPushRequest | null> {
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 50) {
       throw new Error("Choose a synchronization push size from 1 to 50.");
     }
+    const ignoreBackoff = options?.ignoreBackoff === true;
     return this.writer.run(async () => {
       // Skip opening a write transaction on the common case where nothing is queued.
       const graphRows = z.array(outboxGraphRowSchema).parse(
@@ -49,7 +55,12 @@ export class LocalMutationOutbox {
            ORDER BY CASE WHEN state = 'sending' THEN 0 ELSE 1 END, created_sequence`,
         ),
       );
-      if (graphRows.length === 0) return null;
+      if (graphRows.length === 0) {
+        if (this.onSyncDirtyChange && this.hasPendingSyncWork) {
+          this.onSyncDirtyChange(await this.hasPendingSyncWork());
+        }
+        return null;
+      }
       let request: MobileSyncPushRequest | null = null;
       await this.database.withTransactionAsync(async () => {
         const nodes = new Map(
@@ -116,12 +127,13 @@ export class LocalMutationOutbox {
         const now = this.now().getTime();
         const ready = (node: OutboxGraphNode): boolean => {
           if (node.state === "sending" || node.state === "pending") return true;
-          if (node.state !== "retryable" || node.next_attempt_at === null) return false;
+          if (node.state !== "retryable") return false;
+          if (node.next_attempt_at === null) return ignoreBackoff;
           const next = Date.parse(node.next_attempt_at);
           if (!Number.isFinite(next)) {
             throw new LocalMutationError("The encrypted outbox is invalid.", "invalid_outbox");
           }
-          return next <= now;
+          return ignoreBackoff || next <= now;
         };
         const selected: string[] = [];
         for (const component of components) {
@@ -339,6 +351,9 @@ export class LocalMutationOutbox {
           }
         }
       });
+      if (this.onSyncDirtyChange && this.hasPendingSyncWork) {
+        this.onSyncDirtyChange(await this.hasPendingSyncWork());
+      }
     });
   }
 
@@ -368,6 +383,9 @@ export class LocalMutationOutbox {
           );
         }
       });
+      if (this.onSyncDirtyChange && this.hasPendingSyncWork) {
+        this.onSyncDirtyChange(await this.hasPendingSyncWork());
+      }
     });
   }
 
@@ -396,6 +414,9 @@ export class LocalMutationOutbox {
           }
         }
       });
+      if (this.onSyncDirtyChange && this.hasPendingSyncWork) {
+        this.onSyncDirtyChange(await this.hasPendingSyncWork());
+      }
     });
   }
 }

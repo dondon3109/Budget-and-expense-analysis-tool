@@ -27,7 +27,7 @@ function nativeMigrationDatabase(native: DatabaseSync): MigrationDatabase {
 }
 
 describe("local SQLCipher migrations", () => {
-  it("applies pending migrations transactionally and advances the version last", async () => {
+  it("applies the baseline schema in a single transaction on a fresh database", async () => {
     const statements: string[] = [];
     const database = {
       getFirstAsync: jest.fn(() => Promise.resolve({ user_version: 0 })),
@@ -46,6 +46,7 @@ describe("local SQLCipher migrations", () => {
     };
 
     await expect(applyLocalMigrations(database)).resolves.toBe(LOCAL_SCHEMA_VERSION);
+    expect(database.withTransactionAsync).toHaveBeenCalledTimes(1);
     expect(statements.some((statement) => statement.includes("CREATE TABLE sync_outbox"))).toBe(
       true,
     );
@@ -57,7 +58,7 @@ describe("local SQLCipher migrations", () => {
     );
     expect(statements.some((statement) => statement.includes("CREATE TABLE budgets"))).toBe(true);
     expect(
-      statements.some((statement) => statement.includes("budgets_month_category_unique")),
+      statements.some((statement) => statement.includes("budgets_period_category_unique")),
     ).toBe(true);
     expect(statements.some((statement) => statement.includes("CREATE TABLE financial_goals"))).toBe(
       true,
@@ -78,7 +79,7 @@ describe("local SQLCipher migrations", () => {
     );
     expect(statements.some((statement) => statement.includes("'subscription'"))).toBe(true);
     expect(statements.some((statement) => statement.includes("'event'"))).toBe(true);
-    expect(statements.some((statement) => statement.includes("ADD COLUMN icon_emoji"))).toBe(true);
+    expect(statements.some((statement) => statement.includes("icon_emoji"))).toBe(true);
     expect(statements.some((statement) => statement.includes("server_acknowledged_cursor"))).toBe(
       true,
     );
@@ -88,6 +89,34 @@ describe("local SQLCipher migrations", () => {
     expect(
       statements.some((statement) => statement.includes("transactions_account_balance_idx")),
     ).toBe(true);
+    expect(statements.at(-2)).toBe(`PRAGMA user_version = ${LOCAL_SCHEMA_VERSION}`);
+    expect(statements.at(-1)).toContain(`migration:${LOCAL_SCHEMA_VERSION}`);
+  });
+
+  it("applies only pending incremental migrations when upgrading an existing database", async () => {
+    const statements: string[] = [];
+    const database = {
+      getFirstAsync: jest.fn(() => Promise.resolve({ user_version: 1 })),
+      withTransactionAsync: jest.fn(
+        async (
+          task: (transaction: { execAsync(source: string): Promise<void> }) => Promise<void>,
+        ) => {
+          await task({
+            execAsync: (source) => {
+              statements.push(source);
+              return Promise.resolve();
+            },
+          });
+        },
+      ),
+    };
+
+    await expect(applyLocalMigrations(database)).resolves.toBe(LOCAL_SCHEMA_VERSION);
+    expect(database.withTransactionAsync).toHaveBeenCalledTimes(LOCAL_SCHEMA_VERSION - 1);
+    expect(
+      statements.some((statement) => statement.includes("budgets_month_category_unique")),
+    ).toBe(true);
+    expect(statements.some((statement) => statement.includes("ADD COLUMN icon_emoji"))).toBe(true);
     expect(statements.at(-2)).toBe(`PRAGMA user_version = ${LOCAL_SCHEMA_VERSION}`);
     expect(statements.at(-1)).toContain(`migration:${LOCAL_SCHEMA_VERSION}`);
   });
@@ -155,5 +184,86 @@ describe("local SQLCipher migrations", () => {
       native.exec(`INSERT INTO transactions (id, account_id, category_id, date, description, amount_minor, currency, kind)
         VALUES ('t2', 'missing', 'c1', '2026-10-01', 'x', -1, 'PHP', 'expense')`),
     ).toThrow("FOREIGN KEY");
+  });
+
+  it("produces the exact same schema from the v20 baseline as running migrations 1..20 incrementally", async () => {
+    const incremental = new DatabaseSync(":memory:");
+    incremental.exec("PRAGMA foreign_keys = ON");
+    for (const migration of migrations) {
+      incremental.exec(migration.sql);
+      incremental.exec(`PRAGMA user_version = ${migration.version}`);
+      incremental.exec(
+        `INSERT INTO workspace_metadata (key, value) VALUES ('migration:${migration.version}', '${migration.name}')`,
+      );
+    }
+
+    const fresh = new DatabaseSync(":memory:");
+    fresh.exec("PRAGMA foreign_keys = ON");
+    await expect(applyLocalMigrations(nativeMigrationDatabase(fresh))).resolves.toBe(
+      LOCAL_SCHEMA_VERSION,
+    );
+
+    const inspectSchema = (db: DatabaseSync) => {
+      const userVersion = (db.prepare("PRAGMA user_version").get() as { user_version: number })
+        .user_version;
+      const tables = (
+        db
+          .prepare(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+          )
+          .all() as { name: string }[]
+      ).map((row) => row.name);
+      const indexes = (
+        db
+          .prepare(
+            "SELECT name, tbl_name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_autoindex_%' ORDER BY name",
+          )
+          .all() as { name: string; tbl_name: string }[]
+      ).map((row) => ({
+        ...row,
+        columns: db.prepare(`PRAGMA index_info("${row.name}")`).all(),
+      }));
+      const tableDetails = Object.fromEntries(
+        tables.map((table) => [
+          table,
+          {
+            columns: db.prepare(`PRAGMA table_info("${table}")`).all(),
+            foreignKeys: db.prepare(`PRAGMA foreign_key_list("${table}")`).all(),
+            indexList: (
+              db.prepare(`PRAGMA index_list("${table}")`).all() as {
+                name: string;
+                unique: number;
+                origin: string;
+                partial: number;
+              }[]
+            )
+              .map((idx) => ({
+                unique: idx.unique,
+                origin: idx.origin,
+                partial: idx.partial,
+                columns: (
+                  db.prepare(`PRAGMA index_info("${idx.name}")`).all() as {
+                    seqno: number;
+                    name: string | null;
+                  }[]
+                ).map((c) => ({ seqno: c.seqno, name: c.name })),
+              }))
+              .sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+          },
+        ]),
+      );
+      const syncMetadata = db.prepare("SELECT * FROM sync_metadata").all();
+      return { userVersion, tables, indexes, tableDetails, syncMetadata };
+    };
+
+    expect(inspectSchema(fresh)).toEqual(inspectSchema(incremental));
+    expect(
+      fresh
+        .prepare("SELECT value FROM workspace_metadata WHERE key = ?")
+        .get(`migration:${LOCAL_SCHEMA_VERSION}`),
+    ).toBeDefined();
+
+    incremental.close();
+    fresh.close();
   });
 });

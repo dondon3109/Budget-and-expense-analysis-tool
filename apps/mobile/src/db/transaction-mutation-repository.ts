@@ -119,6 +119,7 @@ export class LocalTransactionMutationRepository {
     private readonly now: () => Date = () => new Date(),
     private readonly random: () => number = Math.random,
     private readonly databaseName?: string,
+    private readonly onSyncDirtyChange?: (dirty: boolean) => void,
   ) {
     this.store = new LocalMutationStore(database);
     this.conflicts = new LocalConflictRepository(database, writer, this.store, randomUuid, now);
@@ -130,6 +131,8 @@ export class LocalTransactionMutationRepository {
       randomUuid,
       now,
       random,
+      onSyncDirtyChange,
+      () => this.hasPendingSyncWork(),
     );
     this.commands = {
       database,
@@ -139,6 +142,44 @@ export class LocalTransactionMutationRepository {
       now,
       clientId: () => this.clientId(),
     };
+  }
+
+  private async markDirty<T>(task: Promise<T>): Promise<T> {
+    const result = await task;
+    this.onSyncDirtyChange?.(true);
+    return result;
+  }
+
+  private async refreshDirty<T>(task: Promise<T>): Promise<T> {
+    const result = await task;
+    if (this.onSyncDirtyChange) {
+      this.onSyncDirtyChange(await this.hasPendingSyncWork());
+    }
+    return result;
+  }
+
+  async hasPendingOutbox(): Promise<boolean> {
+    const row = await this.database.getFirstAsync<{ has_pending: number }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM sync_outbox
+         WHERE state IN ('pending', 'sending', 'retryable', 'failed', 'conflicted')
+       ) AS has_pending`,
+    );
+    return row?.has_pending === 1;
+  }
+
+  async hasPendingSyncWork(): Promise<boolean> {
+    const row = await this.database.getFirstAsync<{ has_pending: number }>(
+      `SELECT (
+         EXISTS(
+           SELECT 1 FROM sync_outbox
+           WHERE state IN ('pending', 'sending', 'retryable', 'failed', 'conflicted')
+         )
+         OR EXISTS(SELECT 1 FROM sync_conflicts WHERE resolved_at IS NULL)
+         OR EXISTS(SELECT 1 FROM receipt_uploads)
+       ) AS has_pending`,
+    );
+    return row?.has_pending === 1;
   }
 
   async clientId(): Promise<string> {
@@ -155,91 +196,91 @@ export class LocalTransactionMutationRepository {
   }
 
   createAccount(value: AccountInput, currency?: Currency): Promise<string> {
-    return createAccount(this.commands, value, currency);
+    return this.markDirty(createAccount(this.commands, value, currency));
   }
 
   updateAccount(id: string, value: AccountUpdateWithInterest): Promise<void> {
-    return updateAccount(this.commands, id, value);
+    return this.markDirty(updateAccount(this.commands, id, value));
   }
 
   /** Requeues a rejected interest change after the user has confirmed their Pro access. */
   retryAccountInterestSync(id: string): Promise<void> {
-    return retryAccountInterestSync(this.commands, id);
+    return this.markDirty(retryAccountInterestSync(this.commands, id));
   }
 
   updateAccountInterest(id: string, value: AccountInterestUpdate): Promise<void> {
-    return updateAccountInterest(this.commands, id, value);
+    return this.markDirty(updateAccountInterest(this.commands, id, value));
   }
 
   archiveAccount(id: string): Promise<void> {
-    return archiveReferenceEntity(this.commands, "account", id);
+    return this.refreshDirty(archiveReferenceEntity(this.commands, "account", id));
   }
 
   createCategory(value: CategoryInput): Promise<string> {
-    return createCategory(this.commands, value);
+    return this.markDirty(createCategory(this.commands, value));
   }
 
   updateCategory(id: string, value: CategoryUpdate): Promise<void> {
-    return updateCategory(this.commands, id, value);
+    return this.markDirty(updateCategory(this.commands, id, value));
   }
 
   archiveCategory(id: string): Promise<void> {
-    return archiveReferenceEntity(this.commands, "category", id);
+    return this.refreshDirty(archiveReferenceEntity(this.commands, "category", id));
   }
 
   setBudgetLimit(period: BudgetQuery, categoryId: string, limitMinor: number): Promise<void> {
-    return setBudgetLimit(this.commands, period, categoryId, limitMinor);
+    return this.markDirty(setBudgetLimit(this.commands, period, categoryId, limitMinor));
   }
 
   createGoal(value: FinancialGoalInput): Promise<string> {
-    return createGoal(this.commands, value);
+    return this.markDirty(createGoal(this.commands, value));
   }
 
   updateGoal(id: string, value: FinancialGoalUpdate): Promise<void> {
-    return updateGoal(this.commands, id, value);
+    return this.markDirty(updateGoal(this.commands, id, value));
   }
 
   deleteGoal(id: string): Promise<void> {
-    return deleteGoal(this.commands, id);
+    return this.refreshDirty(deleteGoal(this.commands, id));
   }
 
   createDebt(value: DebtInput): Promise<string> {
-    return createDebt(this.commands, value);
+    return this.markDirty(createDebt(this.commands, value));
   }
 
   updateDebt(id: string, value: DebtUpdate): Promise<void> {
-    return updateDebt(this.commands, id, value);
+    return this.markDirty(updateDebt(this.commands, id, value));
   }
 
   deleteDebt(id: string): Promise<void> {
-    return deleteDebt(this.commands, id);
+    return this.refreshDirty(deleteDebt(this.commands, id));
   }
 
   createSubscription(value: SubscriptionInput): Promise<string> {
-    return createSubscription(this.commands, value);
+    return this.markDirty(createSubscription(this.commands, value));
   }
 
   updateSubscription(
     id: string,
     value: SubscriptionInput & { status?: SubscriptionStatus },
   ): Promise<void> {
-    return updateSubscription(this.commands, id, value);
+    return this.markDirty(updateSubscription(this.commands, id, value));
   }
 
   deleteSubscription(id: string): Promise<void> {
-    return deleteSubscription(this.commands, id);
+    return this.refreshDirty(deleteSubscription(this.commands, id));
   }
 
   createEvent(value: CalendarEventInput): Promise<string> {
-    return createEvent(this.commands, value);
+    return this.markDirty(createEvent(this.commands, value));
   }
 
   updateEvent(id: string, value: CalendarEventInput): Promise<void> {
-    return updateEvent(this.commands, id, value);
+    return this.markDirty(updateEvent(this.commands, id, value));
   }
 
   deleteEvent(id: string): Promise<void> {
-    return deleteEvent(this.commands, id);
+    return this.refreshDirty(deleteEvent(this.commands, id));
   }
 
   /**
@@ -247,23 +288,23 @@ export class LocalTransactionMutationRepository {
    * line and its outbox record exist, or none do.
    */
   createTransactions(values: NonTransferInput[]): Promise<string[]> {
-    return createTransactions(this.commands, values);
+    return this.markDirty(createTransactions(this.commands, values));
   }
 
   createTransaction(value: TransactionInput): Promise<string> {
-    return createTransaction(this.commands, value);
+    return this.markDirty(createTransaction(this.commands, value));
   }
 
   updateTransfer(id: string, value: TransferInput): Promise<void> {
-    return updateTransfer(this.commands, id, value);
+    return this.markDirty(updateTransfer(this.commands, id, value));
   }
 
   updateTransaction(id: string, value: TransactionUpdate): Promise<void> {
-    return updateTransaction(this.commands, id, value);
+    return this.markDirty(updateTransaction(this.commands, id, value));
   }
 
   async deleteTransaction(id: string): Promise<void> {
-    await deleteTransaction(this.commands, id);
+    await this.refreshDirty(deleteTransaction(this.commands, id));
     await this.setTransactionPhoto(id, null);
   }
 
@@ -298,7 +339,7 @@ export class LocalTransactionMutationRepository {
 
   /** Records a family remittance sent by `userId`, with its arrival when already known. */
   sendRemittance(userId: string, value: FamilyRemittanceSendInput): Promise<string> {
-    return sendRemittance(this.commands, userId, value);
+    return this.markDirty(sendRemittance(this.commands, userId, value));
   }
 
   receiveRemittance(
@@ -306,16 +347,16 @@ export class LocalTransactionMutationRepository {
     id: string,
     value: FamilyRemittanceReceiveInput,
   ): Promise<void> {
-    return receiveRemittance(this.commands, userId, id, value);
+    return this.markDirty(receiveRemittance(this.commands, userId, id, value));
   }
 
   cancelRemittance(id: string): Promise<void> {
-    return cancelRemittance(this.commands, id);
+    return this.refreshDirty(cancelRemittance(this.commands, id));
   }
 
   /** Drops a refused or conflicting remittance change and puts back the family's version. */
   discardRemittanceChange(id: string): Promise<void> {
-    return discardRemittanceChange(this.commands, id);
+    return this.refreshDirty(discardRemittanceChange(this.commands, id));
   }
 
   /**
@@ -337,6 +378,7 @@ export class LocalTransactionMutationRepository {
         this.now().toISOString(),
       );
     });
+    this.onSyncDirtyChange?.(true);
   }
 
   /**
@@ -382,6 +424,9 @@ export class LocalTransactionMutationRepository {
     await this.commands.writer.run(async () => {
       await this.database.runAsync("DELETE FROM receipt_uploads WHERE id = ?", id);
     });
+    if (this.onSyncDirtyChange) {
+      this.onSyncDirtyChange(await this.hasPendingSyncWork());
+    }
   }
 
   /** A Subscription ROI tap (check-in, undo, or the Track usage switch), applied and queued. */
@@ -405,8 +450,11 @@ export class LocalTransactionMutationRepository {
     return replaceSubscriptionUsage(this.commands, list);
   }
 
-  getPushBatch(limit = 50): Promise<MobileSyncPushRequest | null> {
-    return this.outbox.getPushBatch(limit);
+  getPushBatch(
+    limit = 50,
+    options?: { ignoreBackoff?: boolean },
+  ): Promise<MobileSyncPushRequest | null> {
+    return this.outbox.getPushBatch(limit, options);
   }
 
   getPushSchedule(): Promise<LocalPushSchedule> {
@@ -429,11 +477,13 @@ export class LocalTransactionMutationRepository {
     entityId: string,
     resolution: "keep_local" | "keep_server",
   ): Promise<void> {
-    return this.conflicts.resolveReferenceConflict(entityType, entityId, resolution);
+    return this.refreshDirty(
+      this.conflicts.resolveReferenceConflict(entityType, entityId, resolution),
+    );
   }
 
   resolveConflict(entityId: string, resolution: "keep_local" | "keep_server"): Promise<void> {
-    return this.conflicts.resolveConflict(entityId, resolution);
+    return this.refreshDirty(this.conflicts.resolveConflict(entityId, resolution));
   }
 
   getBudgetConflict(entityId: string): Promise<LocalBudgetConflict | null> {
@@ -441,7 +491,7 @@ export class LocalTransactionMutationRepository {
   }
 
   resolveBudgetConflict(entityId: string, resolution: "keep_local" | "keep_server"): Promise<void> {
-    return this.conflicts.resolveBudgetConflict(entityId, resolution);
+    return this.refreshDirty(this.conflicts.resolveBudgetConflict(entityId, resolution));
   }
 
   getGoalConflict(entityId: string): Promise<LocalGoalConflict | null> {
@@ -449,7 +499,7 @@ export class LocalTransactionMutationRepository {
   }
 
   resolveGoalConflict(entityId: string, resolution: "keep_local" | "keep_server"): Promise<void> {
-    return this.conflicts.resolveGoalConflict(entityId, resolution);
+    return this.refreshDirty(this.conflicts.resolveGoalConflict(entityId, resolution));
   }
 
   getDebtConflict(entityId: string): Promise<LocalDebtConflict | null> {
@@ -457,7 +507,7 @@ export class LocalTransactionMutationRepository {
   }
 
   resolveDebtConflict(entityId: string, resolution: "keep_local" | "keep_server"): Promise<void> {
-    return this.conflicts.resolveDebtConflict(entityId, resolution);
+    return this.refreshDirty(this.conflicts.resolveDebtConflict(entityId, resolution));
   }
 
   getSubscriptionConflict(entityId: string): Promise<LocalSubscriptionConflict | null> {
@@ -468,7 +518,7 @@ export class LocalTransactionMutationRepository {
     entityId: string,
     resolution: "keep_local" | "keep_server",
   ): Promise<void> {
-    return this.conflicts.resolveSubscriptionConflict(entityId, resolution);
+    return this.refreshDirty(this.conflicts.resolveSubscriptionConflict(entityId, resolution));
   }
 
   getEventConflict(entityId: string): Promise<LocalEventConflict | null> {
@@ -476,7 +526,7 @@ export class LocalTransactionMutationRepository {
   }
 
   resolveEventConflict(entityId: string, resolution: "keep_local" | "keep_server"): Promise<void> {
-    return this.conflicts.resolveEventConflict(entityId, resolution);
+    return this.refreshDirty(this.conflicts.resolveEventConflict(entityId, resolution));
   }
 
   async applyPushResponse(

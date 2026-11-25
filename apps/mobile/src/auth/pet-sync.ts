@@ -1,36 +1,76 @@
+import NetInfo from "@react-native-community/netinfo";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
+import { ApiTransportError } from "@/api/authenticated";
 import { checkInPet } from "@/api/pet";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { usePetStore } from "@/stores/pet-store";
 
+function isOfflineNetworkError(error: unknown): boolean {
+  if (isAuthRetryableFetchError(error)) return true;
+  if (error instanceof ApiTransportError) {
+    return error.code === "network" && error.status === 0;
+  }
+  return !(error instanceof DOMException && error.name === "AbortError");
+}
+
 /**
- * Checks in with the pet when a signed-in session starts and each time the app returns to the
- * foreground, so a day the app was opened always counts toward the egg streak and daily points.
+ * Checks in with the pet when a signed-in session starts, when connectivity recovers
+ * after an error, and each time the app returns to the foreground, so a day the app
+ * was opened always counts toward the egg streak and daily points.
  */
-export function usePetSync(): void {
+export function usePetSync(enabled = true): void {
   const { subject, status, getAccessToken } = useSessionSnapshot();
 
   useEffect(() => {
-    if (status !== "signed-in" || !subject || isDummyDevelopmentSubject(subject)) return;
+    if (!enabled || status !== "signed-in" || !subject || isDummyDevelopmentSubject(subject))
+      return;
     const controller = new AbortController();
     let sawBackground = false;
     let inFlight = false;
+    let needsRetry = false;
+    let offlineFailure = false;
+    let wasReachable: boolean | null = null;
+    let reconnectedWhileInFlight = false;
+
     const checkIn = async () => {
-      if (inFlight) return;
+      if (inFlight || controller.signal.aborted) return;
       inFlight = true;
+      needsRetry = false;
+      offlineFailure = false;
+      reconnectedWhileInFlight = false;
       try {
-        const accessToken = await getAccessToken(false);
+        let accessToken = await getAccessToken(false);
         if (controller.signal.aborted) return;
-        const pet = await checkInPet({ accessToken, signal: controller.signal });
+        let pet;
+        try {
+          pet = await checkInPet({ accessToken, signal: controller.signal });
+        } catch (error) {
+          if (!(error instanceof ApiTransportError) || error.code !== "session_expired") {
+            throw error;
+          }
+          if (controller.signal.aborted) return;
+          accessToken = await getAccessToken(true);
+          if (controller.signal.aborted) return;
+          pet = await checkInPet({ accessToken, signal: controller.signal });
+        }
         if (controller.signal.aborted) return;
         usePetStore.getState().setPet(pet);
-      } catch {
-        // Offline or unreachable: the next foreground tries again.
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          needsRetry = true;
+          offlineFailure = isOfflineNetworkError(error);
+        }
+        // Offline or unreachable: reconnect or the next foreground tries again.
       } finally {
         inFlight = false;
+        if (!controller.signal.aborted && needsRetry && reconnectedWhileInFlight) {
+          reconnectedWhileInFlight = false;
+          void checkIn();
+        }
       }
     };
     void checkIn();
@@ -44,9 +84,30 @@ export function usePetSync(): void {
         void checkIn();
       }
     });
+    const netInfo =
+      typeof NetInfo?.addEventListener === "function"
+        ? NetInfo.addEventListener((state) => {
+            const reachable = state.isInternetReachable ?? state.isConnected;
+            if (reachable === null || reachable === undefined) return;
+            const previous = wasReachable;
+            wasReachable = Boolean(reachable);
+            if (!reachable) return;
+            if (inFlight) {
+              if (previous === false || previous === null) {
+                reconnectedWhileInFlight = true;
+              }
+              return;
+            }
+            if (!needsRetry) return;
+            if (previous === false || (previous === null && offlineFailure)) {
+              void checkIn();
+            }
+          })
+        : null;
     return () => {
       subscription.remove();
+      netInfo?.();
       controller.abort();
     };
-  }, [getAccessToken, status, subject]);
+  }, [enabled, getAccessToken, status, subject]);
 }

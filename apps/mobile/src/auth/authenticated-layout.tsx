@@ -48,17 +48,15 @@ export function AuthenticatedGate({ children }: PropsWithChildren) {
   if (!session.subject) return <Redirect href="/(public)/sign-in" />;
   const gate = <LocalWorkspaceGate identity={identity}>{children}</LocalWorkspaceGate>;
   // Load the workspace record and open SQLite in parallel with the app-lock check
-  // instead of waiting for each SecureStore read in series. AppLockGate holds every
-  // screen, SyncProvider, and SharedReceiptHandoff only until it has read the lock kind;
-  // after that they mount beneath the lock screen, which covers them until unlock.
+  // instead of waiting for each SecureStore read in series. Keep AppLockGate
+  // mounted across guest -> signed-in transitions so LocalWorkspaceGate and
+  // navigation never unmount/remount when the user signs in.
   return (
-    <ActiveWorkspaceProvider subject={session.subject}>
+    <ActiveWorkspaceProvider subject={session.subject} enabled={identity.status === "verified"}>
       <ActiveLocalWorkspace>
-        {session.status === "guest" ? (
-          gate
-        ) : (
-          <AppLockGate subject={session.subject}>{gate}</AppLockGate>
-        )}
+        <AppLockGate subject={session.status === "guest" ? null : session.subject}>
+          {gate}
+        </AppLockGate>
       </ActiveLocalWorkspace>
     </ActiveWorkspaceProvider>
   );
@@ -79,11 +77,14 @@ function LocalWorkspaceGate({
   children,
 }: PropsWithChildren<{ identity: ReturnType<typeof useWorkerIdentity> }>) {
   const local = useLocalWorkspace();
-  useWorkspaceCurrencySync();
-  useGoalProfileSync();
-  usePetSync();
+  // Wait for GET /api/app/me (verifyWorkerIdentity) to finish bootstrapping the
+  // tenant before companion metadata hooks issue parallel Worker requests.
+  const identityVerified = identity.status === "verified";
+  useWorkspaceCurrencySync(identityVerified);
+  useGoalProfileSync(identityVerified);
+  usePetSync(identityVerified);
   usePetNotifications();
-  usePushRegistration();
+  usePushRegistration(identityVerified);
   if (local.status === "opening") {
     return <AppLoadingScreen accessibilityLabel="Opening encrypted local workspace" />;
   }

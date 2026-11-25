@@ -232,7 +232,15 @@ row. The mobile client now streams those pages into a new encrypted generation b
 database, applies each validated change on the keyed SQLCipher connection, records the resumed incremental
 cursor, verifies referential and transfer-pair integrity plus subject/client identity, then atomically
 switches the generation pointer and removes only the superseded copy. A failed or partial build is deleted
-and never clears the readable local database first.
+and never clears the readable local database first. The Worker keeps a keyset checkpoint per page in
+`mobile_sync_clients.snapshot_checkpoint_json`, so each later page of the session seeks to where the
+previous one stopped instead of rescanning earlier pages.
+
+A first sync, where the workspace has no cursor, no outbox rows, and no synchronized rows, streams the
+snapshot straight into the live database instead: each page commits on its own and the resumed cursor is
+recorded only after the last page. Because a snapshot carries no deletes, a workspace left with rows but no
+cursor by an interrupted first sync never takes that path again; it pulls incrementally from the start,
+which replays every delete since.
 
 Each transfer revision assigns the same atomic-group token to its two adjacent change rows. Pull never
 cuts that pair: a limit of one still returns both legs when the pair is first, while a pair that would
@@ -250,7 +258,7 @@ stay mounted on the previous workspace until the new one opens, so the user neve
 full-screen loader or to Home.
 
 The mobile transport uses the fixed pull path, caps decoded response size, and validates the shared
-schema before persistence. Each page and its cursor commit on the keyed SQLCipher connection in one
+schema before persistence. Each pull page and its cursor commit on the keyed SQLCipher connection in one
 transaction. A process interruption therefore leaves either the prior page/cursor or the complete new
 page/cursor. Tombstones remain even when the deleted row was never present locally. Server revisions
 older than the local durable revision are ignored; any server change overlapping a pending, failed, or
@@ -259,7 +267,7 @@ conflicted local row stops with `local_conflict` and does not advance the cursor
 Foreground pulls are bounded by page count and per-request timeout. An expired token is refreshed
 once. Pull, snapshot, and acknowledge draw from their own tenant budget of 300 requests a minute
 (`tenant-sync-read`), apart from the 60 a minute that push and every other write share, because a
-first sync on a new phone pulls page after page. A `429` inside a run waits its `Retry-After` (at most
+first sync on a new phone reads page after page. A `429` inside a run waits its `Retry-After` (at most
 a minute, three times per request) and repeats the request; past that the run reports the limit and
 schedules its own retry, resuming from the durable cursor. NetInfo can delay an attempt but only the Worker response and local commit produce `synced`.
 Startup opens an already-synced immutable-subject-scoped local workspace without waiting for Worker

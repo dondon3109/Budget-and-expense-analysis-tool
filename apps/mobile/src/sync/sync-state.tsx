@@ -1,5 +1,6 @@
 import { setBackgroundSyncRunner } from "./background-sync-task";
 import { useNetInfo } from "@react-native-community/netinfo";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import {
   createContext,
   useCallback,
@@ -18,14 +19,23 @@ import {
   MobileSyncTransportError,
   pullMobileSync,
   pushMobileSync,
+  snapshotMobileSync,
   type WorkspaceAccessCode,
 } from "@/api/mobile-sync";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
-import { LocalSyncApplyError } from "@/db/sync-repository";
+import { LocalSyncApplyError, type LocalSyncSummary } from "@/db/sync-repository";
+import type { LocalPushSchedule } from "@/db/transaction-mutation-repository";
+import {
+  fetchAndApplySnapshot,
+  isWorkspaceSyncDirty,
+  markWorkspaceSyncDirty,
+  recoverLocalWorkspace,
+  withDetachedWorkspace,
+  type LocalWorkspace,
+} from "@/db/workspace";
 import { reportPlanLimit } from "@/features/billing/PlanLimitDialog";
-import { recoverLocalWorkspace, withDetachedWorkspace, type LocalWorkspace } from "@/db/workspace";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { uploadQueuedReceipts } from "@/features/family/receipt-uploads";
 import { describeRefusedChanges } from "@/features/family/refused-changes";
@@ -67,6 +77,52 @@ const SyncContext = createContext<SyncSnapshot>({
  * for the JS thread and the serialized local writer.
  */
 const INITIAL_SYNC_DELAY_MS = 400;
+const ACK_HEARTBEAT_INTERVAL_MS = 12 * 60 * 60 * 1000;
+const PULL_RETRY_BASE_MS = 2_000;
+const PULL_RETRY_MAX_MS = 60_000;
+
+function abortError(): Error {
+  const error = new Error("Synchronization was cancelled.");
+  error.name = "AbortError";
+  return error;
+}
+
+function isSyncTimestampRecent(value: string | null): boolean {
+  if (!value) return false;
+  const trimmed = value.trim();
+  // Server change timestamps arrive as UTC "YYYY-MM-DD HH:MM:SS" without a zone suffix.
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(trimmed)
+    ? `${trimmed.replace(" ", "T")}Z`
+    : trimmed;
+  const parsed = Date.parse(normalized);
+  return Number.isFinite(parsed) && Date.now() - parsed < ACK_HEARTBEAT_INTERVAL_MS;
+}
+
+function isTransientSyncError(error: unknown): boolean {
+  return (
+    (error instanceof MobileSyncTransportError &&
+      (error.code === "retryable" || error.code === "rate_limited")) ||
+    isAuthRetryableFetchError(error)
+  );
+}
+
+function computePullRetryDelayMs(error: unknown, retryAttempt: number): number {
+  const exponentialDelayMs = Math.min(
+    PULL_RETRY_BASE_MS * 2 ** Math.min(retryAttempt, 10),
+    PULL_RETRY_MAX_MS,
+  );
+  if (error instanceof MobileSyncTransportError && error.code === "rate_limited") {
+    if (error.retryAfterSeconds !== null) {
+      return rateLimitDelaySeconds(error, 300) * 1000;
+    }
+    return Math.max(exponentialDelayMs, rateLimitDelaySeconds(error, 300) * 1000);
+  }
+  return exponentialDelayMs;
+}
+
+function settleWaiters(waiters: (() => void)[]): void {
+  for (const resolve of waiters) resolve();
+}
 
 /**
  * Runs one sync request with its own 30 second ceiling, aborted with the run. A timeout reads
@@ -145,9 +201,10 @@ async function pushOutbox(
   auth: SyncAuth,
   signal: AbortSignal,
   stale: () => boolean,
+  ignoreBackoff = false,
 ): Promise<boolean> {
   for (let batchNumber = 0; batchNumber < 100; batchNumber += 1) {
-    const request = await workspace.transactionMutations.getPushBatch();
+    const request = await workspace.transactionMutations.getPushBatch(50, { ignoreBackoff });
     if (!request) return true;
     let response;
     try {
@@ -189,6 +246,17 @@ async function pushOutbox(
   throw new Error("Synchronization exceeded the safe foreground push limit.");
 }
 
+async function readLocalSyncSummary(workspace: LocalWorkspace): Promise<LocalSyncSummary> {
+  if (workspace.syncRepository.getSyncSummary) {
+    return workspace.syncRepository.getSyncSummary();
+  }
+  return {
+    serverCursor: await workspace.syncRepository.getCursor(),
+    serverAcknowledgedCursor: null,
+    lastSyncedAt: null,
+  };
+}
+
 /** A workspace other than the shown one whose pending changes still need uploading. */
 interface DrainTarget {
   subject: string;
@@ -209,7 +277,14 @@ export function SyncProvider({
     signOut: signOutSession,
   } = useSessionSnapshot();
   const active = useActiveWorkspace();
-  const { markSynced, forgetFamily, refresh: refreshFamilies, workspaceSubject } = active;
+  const {
+    markSynced,
+    forgetFamily,
+    refresh: refreshFamilies,
+    workspaceSubject,
+    families: activeFamilies,
+    synced: activeSynced,
+  } = active;
   const familyId = active.family?.id ?? null;
   const familyName = active.family?.name ?? null;
   const netInfo = useNetInfo();
@@ -223,17 +298,25 @@ export function SyncProvider({
     message: null,
   });
   const requestRef = useRef(0);
+  const wasOfflineRef = useRef(offline);
+  const reconnectedRef = useRef(false);
+  const manualRetryRef = useRef(false);
+  const backgroundTriggerRef = useRef(false);
+  const timerWakeRef = useRef(false);
+  const initialMountDelayConsumedRef = useRef(false);
+  const pullRetryAttemptRef = useRef(0);
+  const pendingBackgroundWaitersRef = useRef<(() => void)[]>([]);
 
   // Every other workspace on this phone that may hold changes made before a switch. They upload
   // after the shown one syncs, once per launch, switch, or background run, never pulling.
   const drainTargets = useMemo<DrainTarget[]>(() => {
     if (!sessionSubject) return [];
     const subject = sessionSubject;
-    const families = active.synced
-      .filter((id) => id !== familyId && active.families.some((family) => family.id === id))
+    const families = activeSynced
+      .filter((id) => id !== familyId && activeFamilies.some((family) => family.id === id))
       .map((id) => ({ subject: familySubject(subject, id), workspaceId: id }));
     return familyId ? [{ subject, workspaceId: null }, ...families] : families;
-  }, [active.families, active.synced, familyId, sessionSubject]);
+  }, [activeFamilies, activeSynced, familyId, sessionSubject]);
   const drainTargetsRef = useRef(drainTargets);
   const drainRequestedRef = useRef(true);
   useEffect(() => {
@@ -241,60 +324,131 @@ export function SyncProvider({
   }, [drainTargets]);
   useEffect(() => {
     drainRequestedRef.current = true;
-  }, [workspaceSubject]);
+    pullRetryAttemptRef.current = 0;
+  }, [workspace, workspaceSubject]);
+
+  useEffect(() => {
+    const waiters = pendingBackgroundWaitersRef.current;
+    return () => {
+      settleWaiters(waiters.splice(0));
+    };
+  }, []);
 
   useEffect(() => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
-    if (!workspace || sessionStatus !== "signed-in") return;
+    if (!workspace || sessionStatus !== "signed-in") {
+      settleWaiters(pendingBackgroundWaitersRef.current.splice(0));
+      return;
+    }
     if (isDummyDevelopmentSubject(sessionSubject)) {
+      settleWaiters(pendingBackgroundWaitersRef.current.splice(0));
       setSnapshot({
         status: "synced",
         message: null,
       });
       return;
     }
+    if (offline) {
+      wasOfflineRef.current = true;
+      reconnectedRef.current = false;
+      manualRetryRef.current = false;
+      backgroundTriggerRef.current = false;
+      timerWakeRef.current = false;
+      pullRetryAttemptRef.current = 0;
+      settleWaiters(pendingBackgroundWaitersRef.current.splice(0));
+      setSnapshot({
+        status: "waiting",
+        message: null,
+      });
+      return;
+    }
+    if (wasOfflineRef.current) {
+      wasOfflineRef.current = false;
+      reconnectedRef.current = true;
+      pullRetryAttemptRef.current = 0;
+    }
     if (!enabled) {
+      settleWaiters(pendingBackgroundWaitersRef.current.splice(0));
       setSnapshot({
         status: unavailableMessage ? "failed" : "waiting",
         message: unavailableMessage,
       });
       return;
     }
-    if (offline) {
-      setSnapshot({
-        status: "waiting",
-        message: "Offline. Showing records already protected on this device.",
-      });
-      return;
-    }
 
+    const isReconnect = reconnectedRef.current;
+    const isManualRetry = manualRetryRef.current;
+    const isBackground = backgroundTriggerRef.current;
+    const isTimerWake = timerWakeRef.current;
+    reconnectedRef.current = false;
+    manualRetryRef.current = false;
+    backgroundTriggerRef.current = false;
+    timerWakeRef.current = false;
+
+    const ignoreBackoff = isReconnect || isManualRetry || isBackground;
+    const isInitialMountedSyncedRun =
+      !initialMountDelayConsumedRef.current &&
+      workspace.hasSynced &&
+      !ignoreBackoff &&
+      !isTimerWake;
+    initialMountDelayConsumedRef.current = true;
+    const delayMs = isInitialMountedSyncedRun ? INITIAL_SYNC_DELAY_MS : 0;
+
+    const activeBackgroundWaiters = pendingBackgroundWaitersRef.current.splice(0);
     const controller = new AbortController();
     const stale = () => requestRef.current !== requestId || controller.signal.aborted;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
-    const scheduleOutstandingRetry = async () => {
+    const scheduleOutstandingRetry = async (): Promise<LocalPushSchedule> => {
       const schedule = await workspace.transactionMutations.getPushSchedule();
       if (schedule.nextAttemptAt && !stale()) {
         const delay = Math.max(250, Date.parse(schedule.nextAttemptAt) - Date.now());
-        retryTimer = setTimeout(() => setAttempt((value) => value + 1), delay);
+        retryTimer = setTimeout(() => {
+          timerWakeRef.current = true;
+          setAttempt((value) => value + 1);
+        }, delay);
       }
       return schedule;
     };
     const drainOtherWorkspaces = async (auth: SyncAuth) => {
       if (!drainRequestedRef.current) return;
-      drainRequestedRef.current = false;
       for (const target of drainTargetsRef.current) {
-        if (stale()) return;
+        if (stale() || controller.signal.aborted) return;
+        if (isWorkspaceSyncDirty(target.subject) === false) continue;
         try {
           await withDetachedWorkspace(target.subject, async (other) => {
-            if (!(await pushOutbox(other, target.workspaceId, auth, controller.signal, stale))) {
+            if (stale() || controller.signal.aborted) return;
+            const hasPending = other.transactionMutations.hasPendingSyncWork
+              ? await other.transactionMutations.hasPendingSyncWork()
+              : true;
+            if (!hasPending) {
+              markWorkspaceSyncDirty(target.subject, false);
               return;
             }
-            if (target.workspaceId) {
+            if (
+              !(await pushOutbox(
+                other,
+                target.workspaceId,
+                auth,
+                controller.signal,
+                stale,
+                ignoreBackoff,
+              ))
+            ) {
+              return;
+            }
+            if (target.workspaceId && !controller.signal.aborted && !stale()) {
               await uploadQueuedReceipts(other, {
                 accessToken: auth.token,
                 workspaceId: target.workspaceId,
+                signal: controller.signal,
               });
+            }
+            if (other.transactionMutations.hasPendingSyncWork) {
+              markWorkspaceSyncDirty(
+                target.subject,
+                await other.transactionMutations.hasPendingSyncWork(),
+              );
             }
           });
         } catch (error) {
@@ -304,30 +458,172 @@ export function SyncProvider({
           }
         }
       }
+      if (!stale() && !controller.signal.aborted) {
+        drainRequestedRef.current = false;
+      }
     };
+
     setSnapshot({ status: "syncing", message: null });
     const run = async (): Promise<void> => {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        settleWaiters(activeBackgroundWaiters);
+        return;
+      }
       try {
         const auth: SyncAuth = {
           token: await getAccessToken(false),
           refreshed: false,
           getAccessToken,
         };
-        if (!(await pushOutbox(workspace, familyId, auth, controller.signal, stale))) return;
-        for (let pageNumber = 0; pageNumber < 250; pageNumber += 1) {
-          const cursor = await workspace.syncRepository.getCursor();
-          const page = await withRateLimitWait(controller.signal, () =>
+        if (stale()) return;
+        if (
+          !(await pushOutbox(workspace, familyId, auth, controller.signal, stale, ignoreBackoff))
+        ) {
+          return;
+        }
+
+        const runWithAuth = <T,>(
+          call: (accessToken: string, signal: AbortSignal) => Promise<T>,
+          timeoutMessage = TIMED_OUT,
+        ) =>
+          withRateLimitWait(controller.signal, () =>
             withSessionRetry(auth, (accessToken) =>
-              withTimeout(controller.signal, TIMED_OUT, (signal) =>
-                pullMobileSync({ accessToken, workspaceId: familyId, cursor, signal }),
-              ),
+              withTimeout(controller.signal, timeoutMessage, (signal) => call(accessToken, signal)),
             ),
+          );
+
+        const acknowledgeCursor = async (cursorToAck: string) => {
+          const clientId = await workspace.transactionMutations.clientId();
+          if (stale()) return;
+          const acknowledgement = await runWithAuth(
+            (accessToken, signal) =>
+              acknowledgeMobileSync({
+                accessToken,
+                workspaceId: familyId,
+                clientId,
+                cursor: cursorToAck,
+                signal,
+              }),
+            "Zoption did not confirm synchronization progress before timing out.",
+          );
+          if (stale()) return;
+          await workspace.syncRepository.recordAcknowledgement(
+            acknowledgement.acknowledgedCursor,
+            acknowledgement.retentionFloorCursor,
+          );
+        };
+
+        const finishSync = async () => {
+          pullRetryAttemptRef.current = 0;
+          workspace.hasSynced = true;
+          setSyncedWorkspace(workspace);
+          // From here the family opens offline (the switcher allows it).
+          if (familyId) {
+            markSynced(familyId);
+            await uploadQueuedReceipts(workspace, {
+              accessToken: auth.token,
+              workspaceId: familyId,
+              signal: controller.signal,
+            }).catch(() => undefined);
+          } else {
+            // Subscription ROI taps wait for a personal sync, after any new bill has synced.
+            await uploadSubscriptionUsage(workspace, auth.token).catch(() => undefined);
+          }
+          if (requestRef.current === requestId) {
+            const schedule = await scheduleOutstandingRetry();
+            if (!stale()) {
+              setSnapshot({
+                status:
+                  schedule.blockedCount > 0
+                    ? "failed"
+                    : schedule.outstandingCount > 0
+                      ? "waiting"
+                      : "synced",
+                message:
+                  schedule.blockedCount > 0
+                    ? "Some saved changes need review before synchronization can finish."
+                    : null,
+              });
+            }
+          }
+          await drainOtherWorkspaces(auth);
+        };
+
+        let summary = await readLocalSyncSummary(workspace);
+        const hasOutbox = workspace.transactionMutations.hasPendingOutbox
+          ? await workspace.transactionMutations.hasPendingOutbox()
+          : false;
+        // Snapshot pages commit one by one and carry no deletes, so a snapshot only seeds an
+        // empty workspace. Rows left by an interrupted one pull from the start instead, which
+        // replays deletes made since then.
+        const hasSyncedRows =
+          summary.serverCursor === null &&
+          !hasOutbox &&
+          workspace.syncRepository.hasSyncedEntityRows
+            ? await workspace.syncRepository.hasSyncedEntityRows()
+            : false;
+        if (stale()) return;
+
+        if (summary.serverCursor === null && !hasOutbox && !hasSyncedRows) {
+          const clientId = await workspace.transactionMutations.clientId();
+          if (stale()) return;
+          const snapshotResult = await fetchAndApplySnapshot({
+            syncRepository: workspace.syncRepository,
+            fetchPage: (snapshotCursor, offset) => {
+              if (stale()) return Promise.reject(abortError());
+              return runWithAuth((accessToken, signal) =>
+                snapshotMobileSync({
+                  accessToken,
+                  workspaceId: familyId,
+                  clientId,
+                  snapshotCursor,
+                  offset,
+                  signal,
+                }),
+              );
+            },
+          });
+          if (stale()) return;
+          try {
+            await acknowledgeCursor(snapshotResult.resumeCursor);
+            if (stale()) return;
+            await finishSync();
+            return;
+          } catch (error) {
+            if (!(error instanceof LocalSyncApplyError && error.code === "cursor_mismatch")) {
+              throw error;
+            }
+            summary = await readLocalSyncSummary(workspace);
+          }
+        }
+
+        let appliedAnyChanges = false;
+        for (let pageNumber = 0; pageNumber < 250; pageNumber += 1) {
+          if (pageNumber > 0) {
+            summary = await readLocalSyncSummary(workspace);
+          }
+          const cursor = summary.serverCursor;
+          const page = await runWithAuth((accessToken, signal) =>
+            pullMobileSync({ accessToken, workspaceId: familyId, cursor, signal }),
           );
           if (page.hasMore && page.nextCursor === (cursor ?? "v1.0")) {
             throw new Error("Synchronization did not make cursor progress.");
           }
           if (stale()) return;
+
+          const isUnchangedNoOp =
+            !appliedAnyChanges &&
+            page.changes.length === 0 &&
+            !page.hasMore &&
+            page.nextCursor === summary.serverCursor &&
+            page.nextCursor === summary.serverAcknowledgedCursor &&
+            isSyncTimestampRecent(summary.lastSyncedAt);
+
+          if (isUnchangedNoOp) {
+            await finishSync();
+            return;
+          }
+
           try {
             await workspace.syncRepository.applyPullPage(cursor, page);
           } catch (error) {
@@ -339,66 +635,18 @@ export function SyncProvider({
             }
             throw error;
           }
+          if (page.changes.length > 0) appliedAnyChanges = true;
           if (!page.hasMore) {
-            const clientId = await workspace.transactionMutations.clientId();
-            const acknowledgement = await withRateLimitWait(controller.signal, () =>
-              withSessionRetry(auth, (accessToken) =>
-                withTimeout(
-                  controller.signal,
-                  "Zoption did not confirm synchronization progress before timing out.",
-                  (signal) =>
-                    acknowledgeMobileSync({
-                      accessToken,
-                      workspaceId: familyId,
-                      clientId,
-                      cursor: page.nextCursor,
-                      signal,
-                    }),
-                ),
-              ),
-            );
             try {
-              await workspace.syncRepository.recordAcknowledgement(
-                acknowledgement.acknowledgedCursor,
-                acknowledgement.retentionFloorCursor,
-              );
+              await acknowledgeCursor(page.nextCursor);
             } catch (error) {
               if (error instanceof LocalSyncApplyError && error.code === "cursor_mismatch") {
                 continue;
               }
               throw error;
             }
-            workspace.hasSynced = true;
-            setSyncedWorkspace(workspace);
-            // From here the family opens offline (the switcher allows it).
-            if (familyId) {
-              markSynced(familyId);
-              await uploadQueuedReceipts(workspace, {
-                accessToken: auth.token,
-                workspaceId: familyId,
-              }).catch(() => undefined);
-            } else {
-              // Subscription ROI taps wait for a personal sync, after any new bill has synced.
-              await uploadSubscriptionUsage(workspace, auth.token).catch(() => undefined);
-            }
-            if (requestRef.current === requestId) {
-              const schedule = await scheduleOutstandingRetry();
-              if (!stale()) {
-                setSnapshot({
-                  status:
-                    schedule.blockedCount > 0
-                      ? "failed"
-                      : schedule.outstandingCount > 0
-                        ? "waiting"
-                        : "synced",
-                  message:
-                    schedule.blockedCount > 0
-                      ? "Some saved changes need review before synchronization can finish."
-                      : null,
-                });
-              }
-            }
-            await drainOtherWorkspaces(auth);
+            if (stale()) return;
+            await finishSync();
             return;
           }
         }
@@ -472,23 +720,33 @@ export function SyncProvider({
           }
           return;
         }
-        if (
+        let schedule: LocalPushSchedule | null = null;
+        if (!(
           error instanceof MobileSyncTransportError &&
-          error.code !== "session_expired" &&
-          error.code !== "permanent_rejection" &&
-          error.code !== "idempotency_mismatch" &&
-          // Only an app update clears it; the outbox waits for the updated app's next sync.
-          error.code !== "update_required"
-        ) {
-          await scheduleOutstandingRetry().catch(() => undefined);
+          (error.code === "session_expired" ||
+            error.code === "permanent_rejection" ||
+            error.code === "idempotency_mismatch" ||
+            // Only an app update clears it; the outbox waits for the updated app's next sync.
+            error.code === "update_required")
+        )) {
+          schedule = await scheduleOutstandingRetry().catch(() => null);
         }
         if (stale()) return;
-        if (error instanceof MobileSyncTransportError && error.code === "rate_limited") {
-          // A pull has no outbox row to carry its retry, so the run schedules its own; the
-          // durable cursor makes the next run resume where this one stopped.
+        if (
+          isTransientSyncError(error) &&
+          schedule !== null &&
+          schedule.outstandingCount === 0 &&
+          !schedule.nextAttemptAt
+        ) {
+          // A pull or snapshot has no outbox row to carry its retry, so the run schedules
+          // bounded exponential backoff (and honors Retry-After on rate limits).
           if (retryTimer) clearTimeout(retryTimer);
-          const delayMs = rateLimitDelaySeconds(error, 300) * 1000;
-          retryTimer = setTimeout(() => setAttempt((value) => value + 1), delayMs);
+          const delay = computePullRetryDelayMs(error, pullRetryAttemptRef.current);
+          pullRetryAttemptRef.current += 1;
+          retryTimer = setTimeout(() => {
+            timerWakeRef.current = true;
+            setAttempt((value) => value + 1);
+          }, delay);
         }
         setSnapshot({
           status: "failed",
@@ -501,19 +759,24 @@ export function SyncProvider({
                   ? `Synchronization stopped safely. ${error.message}`
                   : "Synchronization stopped safely. Records already stored on this device are unchanged.",
         });
+      } finally {
+        settleWaiters(activeBackgroundWaiters);
       }
     };
 
-    // A fresh workspace is held behind the full-screen loader with no screen reading SQLite yet,
-    // so start its initial sync immediately instead of waiting INITIAL_SYNC_DELAY_MS.
-    const startTimer = setTimeout(
-      () => void run(),
-      workspace.hasSynced ? INITIAL_SYNC_DELAY_MS : 0,
-    );
+    // Only the initial automatic mount sync of an already-synced workspace yields 400ms
+    // so first screen reads win the JS thread; every subsequent trigger runs at 0ms.
+    let startTimer: ReturnType<typeof setTimeout> | null = null;
+    if (delayMs > 0) {
+      startTimer = setTimeout(() => void run(), delayMs);
+    } else {
+      void run();
+    }
     return () => {
-      clearTimeout(startTimer);
+      if (startTimer !== null) clearTimeout(startTimer);
       controller.abort();
       if (retryTimer) clearTimeout(retryTimer);
+      settleWaiters(activeBackgroundWaiters);
     };
   }, [
     attempt,
@@ -539,19 +802,31 @@ export function SyncProvider({
   // declines instead of half-synchronizing without the workspace and session.
   // A background run also uploads what other workspaces on this phone still hold.
   useEffect(() => {
+    const waiters = pendingBackgroundWaitersRef.current;
     if (!workspace || sessionStatus !== "signed-in" || !enabled) {
       setBackgroundSyncRunner(null);
+      settleWaiters(waiters.splice(0));
       return;
     }
     setBackgroundSyncRunner(() => {
+      const promise = new Promise<void>((resolve) => {
+        waiters.push(resolve);
+      });
       drainRequestedRef.current = true;
+      backgroundTriggerRef.current = true;
+      pullRetryAttemptRef.current = 0;
       setAttempt((value) => value + 1);
-      return Promise.resolve();
+      return promise;
     });
-    return () => setBackgroundSyncRunner(null);
+    return () => {
+      setBackgroundSyncRunner(null);
+      settleWaiters(waiters.splice(0));
+    };
   }, [enabled, sessionStatus, workspace]);
 
   const retry = useCallback(() => {
+    pullRetryAttemptRef.current = 0;
+    manualRetryRef.current = true;
     if (!enabled) {
       onUnavailableRetry?.();
       return;

@@ -1,3 +1,5 @@
+import NetInfo, { type NetInfoState } from "@react-native-community/netinfo";
+import { AuthRetryableFetchError } from "@supabase/supabase-js";
 import { act, render, screen, waitFor } from "@testing-library/react-native";
 import { Platform, Text } from "react-native";
 
@@ -41,6 +43,10 @@ describe("worker identity on Android", () => {
   beforeEach(() => {
     mockSignOut.mockClear();
     mockVerifyWorkerIdentity.mockReset();
+    jest
+      .mocked(NetInfo.addEventListener)
+      .mockReset()
+      .mockImplementation(() => () => undefined);
     mockSession = {
       status: "signed-in",
       subject: "08060c19-8a55-4046-a2e7-7384808dd81c",
@@ -111,5 +117,69 @@ describe("worker identity on Android", () => {
     });
 
     await waitFor(() => expect(mockSignOut).toHaveBeenCalledWith({ preserveLocalWorkspace: true }));
+  });
+
+  it("retries offline launch failures on the first NetInfo null -> true transition without looping", async () => {
+    let listener: ((state: NetInfoState) => void) | undefined;
+    jest.mocked(NetInfo.addEventListener).mockImplementation((cb) => {
+      listener = cb;
+      return () => undefined;
+    });
+    mockVerifyWorkerIdentity
+      .mockRejectedValueOnce(new AuthRetryableFetchError("Network request failed", 0))
+      .mockRejectedValueOnce(new WorkerIdentityError("Offline", "unreachable", 0))
+      .mockResolvedValueOnce(undefined);
+
+    await render(
+      <WorkerIdentityProvider>
+        <Probe />
+      </WorkerIdentityProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText(/You're offline\./)).toBeTruthy());
+    expect(mockVerifyWorkerIdentity).toHaveBeenCalledTimes(1);
+
+    // First NetInfo event arrives as reachable: true directly from wasReachable === null.
+    await act(async () => {
+      listener?.({ isConnected: true, isInternetReachable: true } as NetInfoState);
+    });
+    await waitFor(() => expect(mockVerifyWorkerIdentity).toHaveBeenCalledTimes(2));
+
+    // A second reachable: true event without dropping offline must not spin in a loop.
+    await act(async () => {
+      listener?.({ isConnected: true, isInternetReachable: true } as NetInfoState);
+    });
+    expect(mockVerifyWorkerIdentity).toHaveBeenCalledTimes(2);
+
+    // Dropping offline then reconnecting triggers the next retry cleanly.
+    await act(async () => {
+      listener?.({ isConnected: false, isInternetReachable: false } as NetInfoState);
+      listener?.({ isConnected: true, isInternetReachable: true } as NetInfoState);
+    });
+    await waitFor(() => expect(screen.getByText("verified:")).toBeTruthy());
+    expect(mockVerifyWorkerIdentity).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not tight-loop on an already-online 5xx server error", async () => {
+    let listener: ((state: NetInfoState) => void) | undefined;
+    jest.mocked(NetInfo.addEventListener).mockImplementation((cb) => {
+      listener = cb;
+      return () => undefined;
+    });
+    mockVerifyWorkerIdentity.mockRejectedValue(
+      new WorkerIdentityError("Service unavailable", "unreachable", 503),
+    );
+
+    await render(
+      <WorkerIdentityProvider>
+        <Probe />
+      </WorkerIdentityProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByText("error:Service unavailable")).toBeTruthy());
+    await act(async () => {
+      listener?.({ isConnected: true, isInternetReachable: true } as NetInfoState);
+    });
+    expect(mockVerifyWorkerIdentity).toHaveBeenCalledTimes(1);
   });
 });

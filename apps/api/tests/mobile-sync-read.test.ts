@@ -11,6 +11,7 @@ import {
 import {
   closeSyncEnvironments,
   createSyncEnvironment,
+  grantMobileSyncTestPro,
 } from "./helpers/mobile-sync-test-environment";
 
 afterEach(closeSyncEnvironments);
@@ -169,6 +170,206 @@ describe("mobile sync full snapshot", () => {
         limit: 1,
       }),
     ).rejects.toMatchObject({ status: 409, code: "full_resync_required" });
+  });
+
+  it("resumes checkpointed keyset pages cleanly across buckets, mid-snapshot writes, and atomic transfers", async () => {
+    const { env, database } = createSyncEnvironment();
+    grantMobileSyncTestPro(database, "tenant-1");
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
+
+    const account2Id = "10000000-0000-4000-8000-000000000010";
+    const categoryTransferId = "10000000-0000-4000-8000-000000000011";
+    database
+      .prepare("INSERT INTO categories (id, tenant_id, name, kind, color) VALUES (?, ?, ?, ?, ?)")
+      .run(categoryTransferId, "tenant-1", "Transfer", "transfer", "#008877");
+
+    // Seed accounts, standalone transactions, budgets, and two atomic transfer pairs.
+    const accountPush = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId: "00000000-0000-4000-8000-000000000099",
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-000000000001",
+          idempotencyKey: "10000000-0000-4000-8000-000000000101",
+          entityType: "account",
+          entityId: account2Id,
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: { name: "Savings", type: "savings" },
+        },
+      ],
+    });
+    expect(accountPush.results[0]).toMatchObject({ status: "acknowledged" });
+
+    const pushed = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId: "00000000-0000-4000-8000-000000000099",
+      operations: [
+        {
+          operationId: "10000000-0000-4000-8000-000000000002",
+          idempotencyKey: "10000000-0000-4000-8000-000000000102",
+          entityType: "transaction",
+          entityId: "10000000-0000-4000-8000-000000000020",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            kind: "expense",
+            accountId: "account-1",
+            categoryId: "category-1",
+            date: "2026-08-14",
+            description: "Lunch",
+            amountMinor: 15_000,
+            currency: "PHP",
+          },
+        },
+        {
+          operationId: "10000000-0000-4000-8000-000000000003",
+          idempotencyKey: "10000000-0000-4000-8000-000000000103",
+          entityType: "transfer",
+          entityId: "10000000-0000-4000-8000-000000000030",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            fromTransactionId: "10000000-0000-4000-8000-000000000031",
+            toTransactionId: "10000000-0000-4000-8000-000000000032",
+            transfer: {
+              kind: "transfer",
+              fromAccountId: "account-1",
+              toAccountId: account2Id,
+              categoryId: categoryTransferId,
+              date: "2026-08-14",
+              description: "Move 1",
+              amountMinor: 10_000,
+              transferFeeMinor: 0,
+              currency: "PHP",
+            },
+          },
+        },
+        {
+          operationId: "10000000-0000-4000-8000-000000000004",
+          idempotencyKey: "10000000-0000-4000-8000-000000000104",
+          entityType: "transfer",
+          entityId: "10000000-0000-4000-8000-000000000040",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            fromTransactionId: "10000000-0000-4000-8000-000000000041",
+            toTransactionId: "10000000-0000-4000-8000-000000000042",
+            transfer: {
+              kind: "transfer",
+              fromAccountId: "account-1",
+              toAccountId: account2Id,
+              categoryId: categoryTransferId,
+              date: "2026-08-14",
+              description: "Move 2",
+              amountMinor: 20_000,
+              transferFeeMinor: 0,
+              currency: "PHP",
+            },
+          },
+        },
+        {
+          operationId: "10000000-0000-4000-8000-000000000005",
+          idempotencyKey: "10000000-0000-4000-8000-000000000105",
+          entityType: "budget",
+          entityId: "10000000-0000-4000-8000-000000000050",
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: {
+            categoryId: "category-1",
+            month: "2026-09-01",
+            limitMinor: 50_000,
+          },
+        },
+      ],
+    });
+    expect(pushed.results).toEqual(
+      pushed.results.map((result) =>
+        expect.objectContaining({ entityId: result.entityId, status: "acknowledged" }),
+      ),
+    );
+
+    // Collect full baseline with page size 100 for exact parity check.
+    const singleShot = await repository.snapshot(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      snapshotCursor: null,
+      offset: 0,
+      limit: 100,
+    });
+    expect(singleShot.hasMore).toBe(false);
+    expect(singleShot.changes.length).toBeGreaterThanOrEqual(8);
+
+    // Now stream with small limit = 3 to force multi-page checkpoints + atomic group boundaries,
+    // while mutating/deleting rows AFTER snapshot initiation.
+    const streamed: Array<{ entityType: string; entityId: string }> = [];
+    const first = await repository.snapshot(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      snapshotCursor: null,
+      offset: 0,
+      limit: 3,
+    });
+    streamed.push(
+      ...first.changes.map((c) => ({ entityType: c.entityType, entityId: c.entityId })),
+    );
+
+    // Mutate after snapshot started: update account-2 and delete budget-1 & transfer-2 leg.
+    database.prepare("UPDATE accounts SET name = 'Renamed After' WHERE id = ?").run(account2Id);
+    database
+      .prepare("DELETE FROM budgets WHERE id = ?")
+      .run("10000000-0000-4000-8000-000000000050");
+
+    const cursor = first.snapshotCursor;
+    let offset = first.nextOffset;
+    let hasMore = first.hasMore;
+    let pageGuard = 0;
+    while (hasMore) {
+      pageGuard += 1;
+      expect(pageGuard).toBeLessThan(20);
+      const next = await repository.snapshot(env, "tenant-1", {
+        protocolVersion: 1,
+        clientId,
+        snapshotCursor: cursor,
+        offset,
+        limit: 3,
+      });
+      // Every returned transfer pair on a page must appear with both legs (never half a pair).
+      const transfersOnPage = next.changes.filter(
+        (c) =>
+          c.entityType === "transaction" &&
+          c.payload !== null &&
+          "transferGroupId" in c.payload &&
+          Boolean(c.payload.transferGroupId),
+      );
+      expect(transfersOnPage.length % 2).toBe(0);
+      streamed.push(
+        ...next.changes.map((c) => ({ entityType: c.entityType, entityId: c.entityId })),
+      );
+      offset = next.nextOffset;
+      hasMore = next.hasMore;
+    }
+
+    expect(streamed).toEqual(
+      singleShot.changes.map((c) => ({ entityType: c.entityType, entityId: c.entityId })),
+    );
+
+    // Re-reading an earlier offset falls back safely without losing rows.
+    const rewound = await repository.snapshot(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      snapshotCursor: cursor,
+      offset: 1,
+      limit: 2,
+    });
+    expect(rewound.changes.map((c) => c.entityId)).toEqual(
+      singleShot.changes.slice(1, 3).map((c) => c.entityId),
+    );
   });
 });
 

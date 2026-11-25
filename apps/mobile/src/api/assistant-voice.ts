@@ -180,8 +180,12 @@ export async function fetchMultipartWithTimeout(
   timeoutMs: number = VOICE_REQUEST_TIMEOUT_MS,
   timeoutMessage: string = "Voice mode is taking too long. The provider may not be ready yet - try again shortly.",
   onRequestSettled?: () => void,
+  signal?: AbortSignal,
 ): Promise<Response> {
-  const { signal, ...requestInit } = init;
+  const { signal: initSignal, ...requestInit } = init;
+  const signals = Array.from(
+    new Set([initSignal, signal].filter((entry): entry is AbortSignal => entry != null)),
+  );
 
   return await new Promise<Response>((resolve, reject) => {
     let settled = false;
@@ -189,7 +193,9 @@ export async function fetchMultipartWithTimeout(
 
     const cleanup = () => {
       if (timeout !== null) clearTimeout(timeout);
-      signal?.removeEventListener("abort", onAbort);
+      for (const entry of signals) {
+        entry.removeEventListener("abort", onAbort);
+      }
     };
     const requestSettled = () => {
       try {
@@ -212,12 +218,14 @@ export async function fetchMultipartWithTimeout(
     };
     const onAbort = () => rejectOnce(abortError());
 
-    if (signal?.aborted) {
+    if (signals.some((entry) => entry.aborted)) {
       requestSettled();
       onAbort();
       return;
     }
-    signal?.addEventListener("abort", onAbort, { once: true });
+    for (const entry of signals) {
+      entry.addEventListener("abort", onAbort, { once: true });
+    }
     timeout = setTimeout(() => {
       rejectOnce(new ApiTransportError(timeoutMessage, "network", 0));
     }, timeoutMs);

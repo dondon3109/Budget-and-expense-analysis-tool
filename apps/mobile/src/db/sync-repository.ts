@@ -1,4 +1,5 @@
 import {
+  MOBILE_SYNC_PROTOCOL_VERSION,
   type mobileSyncEntityTypes,
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
@@ -8,7 +9,6 @@ import {
   mobileSyncGoalSnapshotSchema,
   mobileSyncRemittanceSnapshotSchema,
   mobileSyncSubscriptionSnapshotSchema,
-  mobileSyncPullResponseSchema,
   mobileSyncTransactionSnapshotSchema,
   type MobileSyncChange,
   type MobileSyncPullResponse,
@@ -21,6 +21,21 @@ import { notifyLocalChanges } from "./local-workspace/change-stream";
 
 export type SyncEntityType = (typeof mobileSyncEntityTypes)[number];
 
+const MOBILE_SYNC_CURSOR_PATTERN = /^v1\.[0-9a-z]+$/;
+const PREQUERY_CHUNK_SIZE = 200;
+
+type AccountSnapshot = ReturnType<typeof mobileSyncAccountSnapshotSchema.parse>;
+type CategorySnapshot = ReturnType<typeof mobileSyncCategorySnapshotSchema.parse>;
+type TransactionSnapshot = ReturnType<typeof mobileSyncTransactionSnapshotSchema.parse>;
+type BudgetSnapshot = ReturnType<typeof mobileSyncBudgetSnapshotSchema.parse>;
+type GoalSnapshot = ReturnType<typeof mobileSyncGoalSnapshotSchema.parse>;
+type DebtSnapshot = ReturnType<typeof mobileSyncDebtSnapshotSchema.parse>;
+type SubscriptionSnapshot = ReturnType<typeof mobileSyncSubscriptionSnapshotSchema.parse>;
+type EventSnapshot = ReturnType<typeof mobileSyncEventSnapshotSchema.parse>;
+type RemittanceSnapshot = ReturnType<typeof mobileSyncRemittanceSnapshotSchema.parse>;
+
+type SyncableEntityType = MobileSyncChange["entityType"];
+
 interface CursorRow {
   server_cursor: string | null;
 }
@@ -30,17 +45,26 @@ interface CursorAcknowledgementRow extends CursorRow {
   retention_floor_cursor: string | null;
 }
 
+interface SyncSummaryRow {
+  server_cursor: string | null;
+  server_acknowledged_cursor: string | null;
+  last_successful_sync_at: string | null;
+}
+
 interface EntityStateRow {
   server_revision: number;
   sync_state: "synced" | "pending" | "failed" | "conflicted";
-}
-
-interface TombstoneRow {
-  server_revision: number;
+  transfer_group_id?: string | null;
 }
 
 interface ConflictStateRow {
   server_revision: number;
+}
+
+export interface LocalSyncSummary {
+  serverCursor: string | null;
+  serverAcknowledgedCursor: string | null;
+  lastSyncedAt: string | null;
 }
 
 export class LocalSyncApplyError extends Error {
@@ -53,44 +77,143 @@ export class LocalSyncApplyError extends Error {
   }
 }
 
-async function currentEntityState(
-  database: SQLiteDatabase,
-  change: MobileSyncChange,
-): Promise<EntityStateRow | null> {
-  return database.getFirstAsync<EntityStateRow>(
-    `SELECT server_revision, sync_state FROM ${SYNC_ENTITY_TABLES[change.entityType]} WHERE id = ?`,
-    change.entityId,
+function isValidCursor(cursor: unknown): cursor is string {
+  return (
+    typeof cursor === "string" && cursor.length <= 40 && MOBILE_SYNC_CURSOR_PATTERN.test(cursor)
   );
 }
 
-async function assertCanApply(
+function assertPullPageEnvelope(
+  expectedCursor: string | null,
+  value: MobileSyncPullResponse,
+): void {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    value.protocolVersion !== MOBILE_SYNC_PROTOCOL_VERSION ||
+    !Array.isArray(value.changes) ||
+    !isValidCursor(value.nextCursor) ||
+    typeof value.hasMore !== "boolean"
+  ) {
+    throw new LocalSyncApplyError("The pull page failed local validation.", "invalid_page");
+  }
+  if (value.changes.length === 0 && value.nextCursor !== (expectedCursor ?? "v1.0")) {
+    throw new LocalSyncApplyError("An empty pull page advanced its cursor.", "invalid_page");
+  }
+  for (const change of value.changes) {
+    if (
+      !change ||
+      typeof change !== "object" ||
+      !(change.entityType in SYNC_ENTITY_TABLES) ||
+      typeof change.entityId !== "string" ||
+      change.entityId.length === 0 ||
+      !Number.isSafeInteger(change.revision) ||
+      change.revision < 1 ||
+      typeof change.serverUpdatedAt !== "string" ||
+      change.serverUpdatedAt.length === 0
+    ) {
+      throw new LocalSyncApplyError("The pull page failed local validation.", "invalid_page");
+    }
+    if (change.operation === "delete") {
+      if (change.payload !== null) {
+        throw new LocalSyncApplyError("The pull page failed local validation.", "invalid_page");
+      }
+    } else if (
+      change.operation !== "upsert" ||
+      !change.payload ||
+      typeof change.payload !== "object" ||
+      change.payload.id !== change.entityId
+    ) {
+      throw new LocalSyncApplyError("The pull page failed local validation.", "invalid_page");
+    }
+  }
+}
+
+function chunkIds(ids: readonly string[]): string[][] {
+  const chunks: string[][] = [];
+  for (let index = 0; index < ids.length; index += PREQUERY_CHUNK_SIZE) {
+    chunks.push(ids.slice(index, index + PREQUERY_CHUNK_SIZE));
+  }
+  return chunks;
+}
+
+async function preloadPageState(
+  database: SQLiteDatabase,
+  changes: readonly MobileSyncChange[],
+): Promise<{
+  entityStates: Map<string, EntityStateRow>;
+  tombstones: Map<string, number>;
+}> {
+  const idsByType = new Map<SyncableEntityType, Set<string>>();
+  for (const change of changes) {
+    let set = idsByType.get(change.entityType);
+    if (!set) {
+      set = new Set<string>();
+      idsByType.set(change.entityType, set);
+    }
+    set.add(change.entityId);
+  }
+
+  const entityStates = new Map<string, EntityStateRow>();
+  const tombstones = new Map<string, number>();
+
+  for (const [entityType, idSet] of idsByType) {
+    const table = SYNC_ENTITY_TABLES[entityType];
+    const selectTransferGroup = entityType === "transaction" ? ", transfer_group_id" : "";
+    for (const chunk of chunkIds(Array.from(idSet))) {
+      const placeholders = chunk.map(() => "?").join(", ");
+      const rows = await database.getAllAsync<EntityStateRow & { id: string }>(
+        `SELECT id, server_revision, sync_state${selectTransferGroup}
+         FROM ${table}
+         WHERE id IN (${placeholders})`,
+        ...chunk,
+      );
+      for (const row of rows) {
+        entityStates.set(`${entityType}:${row.id}`, {
+          server_revision: row.server_revision,
+          sync_state: row.sync_state,
+          transfer_group_id: row.transfer_group_id,
+        });
+      }
+
+      if (entityType !== "budget") {
+        const tombstoneRows = await database.getAllAsync<{
+          entity_id: string;
+          server_revision: number;
+        }>(
+          `SELECT entity_id, server_revision
+           FROM sync_tombstones
+           WHERE entity_type = ? AND entity_id IN (${placeholders})`,
+          entityType,
+          ...chunk,
+        );
+        for (const row of tombstoneRows) {
+          tombstones.set(`${entityType}:${row.entity_id}`, row.server_revision);
+        }
+      }
+    }
+  }
+
+  return { entityStates, tombstones };
+}
+
+async function canApplyPreloadedChange(
   database: SQLiteDatabase,
   change: MobileSyncChange,
+  entity: EntityStateRow | undefined,
+  tombstoneRevision: number | undefined,
 ): Promise<boolean> {
-  const entity = await currentEntityState(database, change);
-  const tombstone = await database.getFirstAsync<TombstoneRow>(
-    "SELECT server_revision FROM sync_tombstones WHERE entity_type = ? AND entity_id = ?",
-    change.entityType,
-    change.entityId,
-  );
-  if (tombstone && tombstone.server_revision >= change.revision) return false;
+  if (tombstoneRevision !== undefined && tombstoneRevision >= change.revision) return false;
   if (entity && entity.server_revision > change.revision) return false;
   if (entity?.sync_state === "conflicted") {
-    const transferGroup =
-      change.entityType === "transaction"
-        ? await database.getFirstAsync<{ transfer_group_id: string | null }>(
-            "SELECT transfer_group_id FROM transactions WHERE id = ?",
-            change.entityId,
-          )
-        : null;
     const conflict = await database.getFirstAsync<ConflictStateRow>(
       `SELECT server_revision
        FROM sync_conflicts
        WHERE entity_type = ? AND entity_id = ? AND resolved_at IS NULL
        ORDER BY created_at DESC
        LIMIT 1`,
-      transferGroup?.transfer_group_id ? "transfer" : change.entityType,
-      transferGroup?.transfer_group_id ?? change.entityId,
+      entity.transfer_group_id ? "transfer" : change.entityType,
+      entity.transfer_group_id ?? change.entityId,
     );
     if (conflict && conflict.server_revision >= change.revision) return false;
   }
@@ -103,9 +226,12 @@ async function assertCanApply(
   return true;
 }
 
-async function applyAccount(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (change.entityType !== "account" || !change.payload) throw new Error("invalid_account_change");
-  const account = mobileSyncAccountSnapshotSchema.parse(change.payload);
+async function upsertAccount(
+  database: SQLiteDatabase,
+  account: AccountSnapshot,
+  revision: number,
+  serverUpdatedAt: string,
+): Promise<void> {
   await database.runAsync(
     `INSERT INTO accounts (
       id, name, type, currency, archived, system, interest_json,
@@ -129,16 +255,17 @@ async function applyAccount(database: SQLiteDatabase, change: MobileSyncChange):
     account.archived ? 1 : 0,
     account.system ? 1 : 0,
     JSON.stringify(account.interest),
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
-async function applyCategory(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (change.entityType !== "category" || !change.payload) {
-    throw new Error("invalid_category_change");
-  }
-  const category = mobileSyncCategorySnapshotSchema.parse(change.payload);
+async function upsertCategory(
+  database: SQLiteDatabase,
+  category: CategorySnapshot,
+  revision: number,
+  serverUpdatedAt: string,
+): Promise<void> {
   await database.runAsync(
     `INSERT INTO categories (
       id, name, kind, color, icon_emoji, archived, system, system_key, origin, required_plan, locked,
@@ -163,23 +290,24 @@ async function applyCategory(database: SQLiteDatabase, change: MobileSyncChange)
     category.name,
     category.kind,
     category.color,
-    category.iconEmoji,
+    category.iconEmoji ?? null,
     category.archived ? 1 : 0,
     category.system ? 1 : 0,
     category.systemKey ?? null,
     category.origin,
     category.requiredPlan,
     category.locked ? 1 : 0,
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
-async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (change.entityType !== "transaction" || !change.payload) {
-    throw new Error("invalid_transaction_change");
-  }
-  const transaction = mobileSyncTransactionSnapshotSchema.parse(change.payload);
+async function upsertTransaction(
+  database: SQLiteDatabase,
+  transaction: TransactionSnapshot,
+  revision: number,
+  serverUpdatedAt: string,
+): Promise<void> {
   await database.runAsync(
     `INSERT INTO transactions (
       id, account_id, category_id, date, description, amount_minor, currency, kind,
@@ -218,16 +346,17 @@ async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChan
     transaction.importFingerprint,
     transaction.debtId ?? null,
     transaction.authorUserId ?? null,
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
-async function applyBudget(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (change.entityType !== "budget" || !change.payload) {
-    throw new Error("invalid_budget_change");
-  }
-  const budget = mobileSyncBudgetSnapshotSchema.parse(change.payload);
+async function upsertBudget(
+  database: SQLiteDatabase,
+  budget: BudgetSnapshot,
+  revision: number,
+  serverUpdatedAt: string,
+): Promise<void> {
   await database.runAsync(
     `INSERT INTO budgets (
       id, category_id, month, occasion_id, limit_minor, server_revision, server_updated_at,
@@ -247,16 +376,17 @@ async function applyBudget(database: SQLiteDatabase, change: MobileSyncChange): 
     budget.month,
     budget.occasionId ?? null,
     budget.limitMinor,
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
-async function applyGoal(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (change.entityType !== "goal" || !change.payload) {
-    throw new Error("invalid_goal_change");
-  }
-  const goal = mobileSyncGoalSnapshotSchema.parse(change.payload);
+async function upsertGoal(
+  database: SQLiteDatabase,
+  goal: GoalSnapshot,
+  revision: number,
+  serverUpdatedAt: string,
+): Promise<void> {
   await database.runAsync(
     `INSERT INTO financial_goals (
       id, name, target_amount_minor, current_amount_minor, target_date, status,
@@ -278,16 +408,17 @@ async function applyGoal(database: SQLiteDatabase, change: MobileSyncChange): Pr
     goal.currentAmountMinor,
     goal.targetDate,
     goal.status,
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
-async function applyDebt(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (change.entityType !== "debt" || !change.payload) {
-    throw new Error("invalid_debt_change");
-  }
-  const debt = mobileSyncDebtSnapshotSchema.parse(change.payload);
+async function upsertDebt(
+  database: SQLiteDatabase,
+  debt: DebtSnapshot,
+  revision: number,
+  serverUpdatedAt: string,
+): Promise<void> {
   await database.runAsync(
     `INSERT INTO debts (
       id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
@@ -313,19 +444,17 @@ async function applyDebt(database: SQLiteDatabase, change: MobileSyncChange): Pr
     debt.minimumPaymentMinor,
     debt.balanceAsOf,
     debt.status,
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
-async function applySubscription(
+async function upsertSubscription(
   database: SQLiteDatabase,
-  change: MobileSyncChange,
+  subscription: SubscriptionSnapshot,
+  revision: number,
+  serverUpdatedAt: string,
 ): Promise<void> {
-  if (change.entityType !== "subscription" || !change.payload) {
-    throw new Error("invalid_subscription_change");
-  }
-  const subscription = mobileSyncSubscriptionSnapshotSchema.parse(change.payload);
   await database.runAsync(
     `INSERT INTO subscriptions (
       id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
@@ -353,16 +482,17 @@ async function applySubscription(
     subscription.status,
     subscription.categoryId,
     subscription.accountId,
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
-async function applyEvent(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (change.entityType !== "event" || !change.payload) {
-    throw new Error("invalid_event_change");
-  }
-  const event = mobileSyncEventSnapshotSchema.parse(change.payload);
+async function upsertEvent(
+  database: SQLiteDatabase,
+  event: EventSnapshot,
+  revision: number,
+  serverUpdatedAt: string,
+): Promise<void> {
   await database.runAsync(
     `INSERT INTO calendar_events (
       id, title, date, start_time, end_time, notes,
@@ -384,16 +514,17 @@ async function applyEvent(database: SQLiteDatabase, change: MobileSyncChange): P
     event.startTime,
     event.endTime,
     event.notes,
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
-async function applyRemittance(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (change.entityType !== "remittance" || !change.payload) {
-    throw new Error("invalid_remittance_change");
-  }
-  const remittance = mobileSyncRemittanceSnapshotSchema.parse(change.payload);
+async function upsertRemittance(
+  database: SQLiteDatabase,
+  remittance: RemittanceSnapshot,
+  revision: number,
+  serverUpdatedAt: string,
+): Promise<void> {
   await database.runAsync(
     `INSERT INTO remittances (
       id, sent_by_user_id, sent_amount_minor, sent_currency, fee_minor, provider, sent_on, note,
@@ -424,8 +555,8 @@ async function applyRemittance(database: SQLiteDatabase, change: MobileSyncChang
     remittance.note,
     remittance.transactionId,
     remittance.receivedByUserId,
-    change.revision,
-    change.serverUpdatedAt,
+    revision,
+    serverUpdatedAt,
   );
 }
 
@@ -453,48 +584,121 @@ async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange
   );
 }
 
-async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
-  if (!(await assertCanApply(database, change))) return;
-  if (change.operation === "delete") {
-    await applyTombstone(database, change);
-    return;
+/**
+ * Applies an upsert change to SQLite. Trusted internal page paths skip redundant Zod re-parsing
+ * since transport already validated the shared strict contract at the HTTP boundary.
+ */
+async function applyUpsert(
+  database: SQLiteDatabase,
+  change: MobileSyncChange,
+  validatePayload: boolean,
+): Promise<void> {
+  if (!change.payload) {
+    throw new Error(`invalid_${change.entityType}_change`);
   }
-  await database.runAsync(
-    "DELETE FROM sync_tombstones WHERE entity_type = ? AND entity_id = ?",
-    change.entityType,
-    change.entityId,
-  );
+  const payload = change.payload;
   switch (change.entityType) {
     case "account":
-      await applyAccount(database, change);
+      await upsertAccount(
+        database,
+        validatePayload
+          ? mobileSyncAccountSnapshotSchema.parse(payload)
+          : (payload as AccountSnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
     case "category":
-      await applyCategory(database, change);
+      await upsertCategory(
+        database,
+        validatePayload
+          ? mobileSyncCategorySnapshotSchema.parse(payload)
+          : (payload as CategorySnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
     case "transaction":
-      await applyTransaction(database, change);
+      await upsertTransaction(
+        database,
+        validatePayload
+          ? mobileSyncTransactionSnapshotSchema.parse(payload)
+          : (payload as TransactionSnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
     case "budget":
-      await applyBudget(database, change);
+      await upsertBudget(
+        database,
+        validatePayload
+          ? mobileSyncBudgetSnapshotSchema.parse(payload)
+          : (payload as BudgetSnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
     case "goal":
-      await applyGoal(database, change);
+      await upsertGoal(
+        database,
+        validatePayload ? mobileSyncGoalSnapshotSchema.parse(payload) : (payload as GoalSnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
     case "debt":
-      await applyDebt(database, change);
+      await upsertDebt(
+        database,
+        validatePayload ? mobileSyncDebtSnapshotSchema.parse(payload) : (payload as DebtSnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
     case "subscription":
-      await applySubscription(database, change);
+      await upsertSubscription(
+        database,
+        validatePayload
+          ? mobileSyncSubscriptionSnapshotSchema.parse(payload)
+          : (payload as SubscriptionSnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
     case "event":
-      await applyEvent(database, change);
+      await upsertEvent(
+        database,
+        validatePayload ? mobileSyncEventSnapshotSchema.parse(payload) : (payload as EventSnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
     case "remittance":
-      await applyRemittance(database, change);
+      await upsertRemittance(
+        database,
+        validatePayload
+          ? mobileSyncRemittanceSnapshotSchema.parse(payload)
+          : (payload as RemittanceSnapshot),
+        change.revision,
+        change.serverUpdatedAt,
+      );
       return;
   }
 }
 
+/**
+ * Schedules a post-commit local query refresh for entity tables touched by a committed sync page.
+ * Callers must invoke this only after the SQLite transaction commits.
+ */
+function notifyChangedEntityTables(
+  databaseName: string | undefined,
+  changes: readonly MobileSyncChange[],
+): void {
+  if (!databaseName || changes.length === 0) return;
+  const tables = [...new Set(changes.map((change) => SYNC_ENTITY_TABLES[change.entityType]))];
+  notifyLocalChanges(databaseName, tables);
+}
+
+/** Boundary helper for single unvalidated snapshot changes. */
 export async function applySnapshotChange(
   database: SQLiteDatabase,
   change: MobileSyncChange,
@@ -502,35 +706,7 @@ export async function applySnapshotChange(
   if (change.operation !== "upsert" || !change.payload) {
     throw new Error("A full snapshot must contain only live upserts.");
   }
-  switch (change.entityType) {
-    case "account":
-      await applyAccount(database, change);
-      return;
-    case "category":
-      await applyCategory(database, change);
-      return;
-    case "transaction":
-      await applyTransaction(database, change);
-      return;
-    case "budget":
-      await applyBudget(database, change);
-      return;
-    case "goal":
-      await applyGoal(database, change);
-      return;
-    case "debt":
-      await applyDebt(database, change);
-      return;
-    case "subscription":
-      await applySubscription(database, change);
-      return;
-    case "event":
-      await applyEvent(database, change);
-      return;
-    case "remittance":
-      await applyRemittance(database, change);
-      return;
-  }
+  await applyUpsert(database, change, true);
 }
 
 export class LocalSyncRepository {
@@ -545,6 +721,43 @@ export class LocalSyncRepository {
       "SELECT server_cursor FROM sync_metadata WHERE singleton = 1",
     );
     return row?.server_cursor ?? null;
+  }
+
+  async getSyncSummary(): Promise<LocalSyncSummary> {
+    const row = await this.database.getFirstAsync<SyncSummaryRow>(
+      `SELECT server_cursor, server_acknowledged_cursor, last_successful_sync_at
+       FROM sync_metadata
+       WHERE singleton = 1`,
+    );
+    return {
+      serverCursor: row?.server_cursor ?? null,
+      serverAcknowledgedCursor: row?.server_acknowledged_cursor ?? null,
+      lastSyncedAt: row?.last_successful_sync_at ?? null,
+    };
+  }
+
+  /** Whether any synchronized entity row is stored, such as from an interrupted first snapshot. */
+  async hasSyncedEntityRows(): Promise<boolean> {
+    const row = await this.database.getFirstAsync<{ has_rows: number }>(
+      `SELECT (${Object.values(SYNC_ENTITY_TABLES)
+        .map((table) => `EXISTS(SELECT 1 FROM ${table})`)
+        .join(" OR ")}) AS has_rows`,
+    );
+    return row?.has_rows === 1;
+  }
+
+  async hasPendingSyncWork(): Promise<boolean> {
+    const row = await this.database.getFirstAsync<{ has_pending: number }>(
+      `SELECT (
+         EXISTS(
+           SELECT 1 FROM sync_outbox
+           WHERE state IN ('pending', 'sending', 'retryable', 'failed', 'conflicted')
+         )
+         OR EXISTS(SELECT 1 FROM sync_conflicts WHERE resolved_at IS NULL)
+         OR EXISTS(SELECT 1 FROM receipt_uploads)
+       ) AS has_pending`,
+    );
+    return row?.has_pending === 1;
   }
 
   /** How many changes of each kind wait to upload, to tell the user what a refusal dropped. */
@@ -578,18 +791,91 @@ export class LocalSyncRepository {
     });
   }
 
+  async applySnapshotPage(changes: readonly MobileSyncChange[]): Promise<void> {
+    if (changes.length === 0) return;
+    for (const change of changes) {
+      if (
+        !change ||
+        change.operation !== "upsert" ||
+        !change.payload ||
+        change.payload.id !== change.entityId ||
+        !(change.entityType in SYNC_ENTITY_TABLES)
+      ) {
+        throw new Error("A full snapshot must contain only live upserts.");
+      }
+    }
+    await this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        for (const change of changes) {
+          await applyUpsert(this.database, change, false);
+        }
+      });
+      notifyChangedEntityTables(this.databaseName, changes);
+    });
+  }
+
+  recordSnapshotCompletion(cursor: string): Promise<void> {
+    if (!isValidCursor(cursor)) {
+      return Promise.reject(
+        new LocalSyncApplyError(
+          "The snapshot resume cursor failed local validation.",
+          "invalid_page",
+        ),
+      );
+    }
+    const syncedAt = new Date().toISOString();
+    return this.writer.run(async () => {
+      await this.database.withTransactionAsync(async () => {
+        await this.database.runAsync(
+          `UPDATE sync_metadata
+           SET server_cursor = ?,
+               last_successful_sync_at = ?,
+               consecutive_failures = 0
+           WHERE singleton = 1`,
+          cursor,
+          syncedAt,
+        );
+      });
+    });
+  }
+
   applyPullPage(expectedCursor: string | null, value: MobileSyncPullResponse): Promise<void> {
     return this.writer.run(async () => {
-      const parsed = mobileSyncPullResponseSchema.safeParse(value);
-      if (!parsed.success) {
-        throw new LocalSyncApplyError("The pull page failed local validation.", "invalid_page");
+      assertPullPageEnvelope(expectedCursor, value);
+      if (value.changes.length === 0) {
+        const meta = await this.database.getFirstAsync<{
+          server_cursor: string | null;
+          consecutive_failures: number;
+        }>("SELECT server_cursor, consecutive_failures FROM sync_metadata WHERE singleton = 1");
+        const current = meta?.server_cursor ?? null;
+        if (current !== expectedCursor) {
+          throw new LocalSyncApplyError(
+            "The local synchronization cursor changed before this page was applied.",
+            "cursor_mismatch",
+          );
+        }
+        if (current === value.nextCursor && (meta?.consecutive_failures ?? 0) === 0) {
+          return;
+        }
+        await this.database.withTransactionAsync(async () => {
+          const currentInTxn = await this.getCursor();
+          if (currentInTxn !== expectedCursor) {
+            throw new LocalSyncApplyError(
+              "The local synchronization cursor changed before this page was applied.",
+              "cursor_mismatch",
+            );
+          }
+          await this.database.runAsync(
+            `UPDATE sync_metadata
+             SET server_cursor = ?,
+                 consecutive_failures = 0
+             WHERE singleton = 1`,
+            value.nextCursor,
+          );
+        });
+        return;
       }
-      if (
-        parsed.data.changes.length === 0 &&
-        parsed.data.nextCursor !== (expectedCursor ?? "v1.0")
-      ) {
-        throw new LocalSyncApplyError("An empty pull page advanced its cursor.", "invalid_page");
-      }
+
       await this.database.withTransactionAsync(async () => {
         const current = await this.getCursor();
         if (current !== expectedCursor) {
@@ -598,24 +884,54 @@ export class LocalSyncRepository {
             "cursor_mismatch",
           );
         }
-        for (const change of parsed.data.changes) await applyChange(this.database, change);
-        const lastServerTimestamp = parsed.data.changes.at(-1)?.serverUpdatedAt ?? null;
+        const { entityStates, tombstones } = await preloadPageState(this.database, value.changes);
+        for (const change of value.changes) {
+          const key = `${change.entityType}:${change.entityId}`;
+          const entity = entityStates.get(key);
+          const tombstoneRevision = tombstones.get(key);
+          if (!(await canApplyPreloadedChange(this.database, change, entity, tombstoneRevision))) {
+            continue;
+          }
+          if (change.operation === "delete") {
+            await applyTombstone(this.database, change);
+            tombstones.set(key, change.revision);
+            entityStates.set(key, {
+              server_revision: change.revision,
+              sync_state: "synced",
+              transfer_group_id: entity?.transfer_group_id,
+            });
+            continue;
+          }
+          if (tombstoneRevision !== undefined) {
+            await this.database.runAsync(
+              "DELETE FROM sync_tombstones WHERE entity_type = ? AND entity_id = ?",
+              change.entityType,
+              change.entityId,
+            );
+            tombstones.delete(key);
+          }
+          await applyUpsert(this.database, change, false);
+          entityStates.set(key, {
+            server_revision: change.revision,
+            sync_state: "synced",
+            transfer_group_id:
+              change.entityType === "transaction"
+                ? ((change.payload as TransactionSnapshot).transferGroupId ?? null)
+                : undefined,
+          });
+        }
+        const lastServerTimestamp = value.changes.at(-1)?.serverUpdatedAt ?? null;
         await this.database.runAsync(
           `UPDATE sync_metadata
            SET server_cursor = ?,
                last_successful_sync_at = COALESCE(?, last_successful_sync_at),
                consecutive_failures = 0
            WHERE singleton = 1`,
-          parsed.data.nextCursor,
+          value.nextCursor,
           lastServerTimestamp,
         );
       });
-      if (this.databaseName && parsed.data.changes.length > 0) {
-        const tables = [
-          ...new Set(parsed.data.changes.map((change) => SYNC_ENTITY_TABLES[change.entityType])),
-        ];
-        notifyLocalChanges(this.databaseName, tables);
-      }
+      notifyChangedEntityTables(this.databaseName, value.changes);
     });
   }
 

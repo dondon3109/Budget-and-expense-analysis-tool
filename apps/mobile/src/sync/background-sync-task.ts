@@ -14,6 +14,7 @@ export type BackgroundSyncRunner = () => Promise<void>;
 
 let runner: BackgroundSyncRunner | null = null;
 let registrationPromise: Promise<void> | null = null;
+let activeRun: Promise<BackgroundTask.BackgroundTaskResult> | null = null;
 
 /**
  * The runner is owned by the mounted sync engine. When the app has been
@@ -49,14 +50,12 @@ async function reachabilityHint(): Promise<boolean> {
   }
 }
 
-/**
- * Executes one guarded background synchronization attempt. NetInfo is only a
- * hint here: the Worker's actual response decides success, and the runner's
- * own error classification handles retries.
- */
-export async function runBackgroundSync(): Promise<BackgroundTask.BackgroundTaskResult> {
+async function executeBackgroundSync(): Promise<BackgroundTask.BackgroundTaskResult> {
   if (
-    !shouldRunBackgroundSync({ hasRunner: runner !== null, reachable: await reachabilityHint() })
+    !shouldRunBackgroundSync({
+      hasRunner: runner !== null,
+      reachable: await reachabilityHint(),
+    })
   ) {
     // Nothing to run. Reporting Success avoids the OS treating an intentional
     // no-op as a failed task worth retrying.
@@ -68,6 +67,22 @@ export async function runBackgroundSync(): Promise<BackgroundTask.BackgroundTask
   } catch {
     return BackgroundTask.BackgroundTaskResult.Failed;
   }
+}
+
+/**
+ * Executes one guarded background synchronization attempt. NetInfo is only a
+ * hint here: the Worker's actual response decides success, and the runner's
+ * own error classification handles retries.
+ */
+export function runBackgroundSync(): Promise<BackgroundTask.BackgroundTaskResult> {
+  if (activeRun) return activeRun;
+  const current: Promise<BackgroundTask.BackgroundTaskResult> = executeBackgroundSync().finally(
+    () => {
+      if (activeRun === current) activeRun = null;
+    },
+  );
+  activeRun = current;
+  return current;
 }
 
 // Registered at module scope per the expo-background-task contract: the task

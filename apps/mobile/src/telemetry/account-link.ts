@@ -49,15 +49,26 @@ function parseChoice(value: string | null): AccountLinkChoice | null {
  * identified only when it already granted the link on this device.
  */
 export function setSignedInAccount(account: TelemetryAccount | null): void {
+  if (!account) {
+    if (state.account === null && state.choice === null && !state.loaded) return;
+    publish({ account: null, choice: null, loaded: false });
+    return;
+  }
+  if (state.account?.id === account.id) {
+    if ((state.account.email ?? undefined) === (account.email ?? undefined)) return;
+    publish({ ...state, account });
+    if (state.loaded && state.choice === "granted") telemetry.identify(account);
+    return;
+  }
   publish({ account, choice: null, loaded: false });
-  if (!account) return;
   void SecureStore.getItemAsync(storageKey(account.id))
     .catch(() => null)
     .then((stored) => {
-      if (state.account?.id !== account.id) return;
+      const current = state.account;
+      if (!current || current.id !== account.id) return;
       const choice = parseChoice(stored);
-      publish({ account, choice, loaded: true });
-      if (choice === "granted") telemetry.identify(account);
+      publish({ account: current, choice, loaded: true });
+      if (choice === "granted") telemetry.identify(current);
     });
 }
 

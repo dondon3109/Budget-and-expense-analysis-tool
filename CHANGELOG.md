@@ -109,6 +109,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Signing in on a new phone or switching to a large workspace syncs much faster: the first sync downloads a full snapshot instead of replaying every change, and later syncs fetch bigger pages.
 - Mobile: signing in or switching accounts on Android no longer leaves Transactions or other screens stuck on "Local data unavailable", and tapping Try again recovers if the local database connection closed.
 - Mobile: leaving first-run setup after saving starting cash (for example with Android Back) no longer leaves "Finish setting up your workspace" stuck on Home, tapping Resume setup or returning to the app reconciles setup completed elsewhere instead of failing, Home shows your saved starting cash balance above the empty-state guide, and signing in from guest mode or pulling synced records refreshes your workspace cleanly.
 - Mobile and web: dismissing the Quick start guide now syncs to your account instead of staying only on one device, existing accounts older than 7 days or with established activity skip it automatically, and Android session refreshes write atomically so an interrupted refresh does not drop your sign-in.

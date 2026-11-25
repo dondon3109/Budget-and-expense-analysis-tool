@@ -158,7 +158,7 @@ async function decodeResponse(response: Response): Promise<unknown> {
 export async function pullMobileSync({
   accessToken,
   cursor,
-  limit = 100,
+  limit = 200,
   signal,
   fetchImpl = fetch,
   workspaceId,
