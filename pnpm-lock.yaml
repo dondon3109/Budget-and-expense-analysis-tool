@@ -127,8 +127,8 @@ importers:
         specifier: ^0.45.4
         version: 0.45.4(@cloudflare/workers-types@5.20261121.1)(@opentelemetry/api@1.10.0)(expo-sqlite@57.0.4(expo@57.0.27)(react-native@0.86.3(@babel/core@7.29.13)(@react-native/jest-preset@0.86.3(@babel/core@7.29.13)(react@19.3.0))(@react-native/metro-config@0.86.3(@babel/core@7.29.13))(@types/react@19.3.0)(react@19.3.0))(react@19.3.0))
       hono:
-        specifier: ^4.13.19
-        version: 4.13.19
+        specifier: ^4.13.20
+        version: 4.13.20
       jose:
         specifier: ^6.2.18
         version: 6.2.18
@@ -6170,8 +6170,8 @@ packages:
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
 
-  hono@4.13.19:
-    resolution: {integrity: sha512-KmXvQAXwcAHV+muzbIwoJ23niEB5nMoDVr9WcRkU8mvjUECm/1+7v4Jgp7P7a+H6MLFrh+vXrGonGrGS+RQfkA==}
+  hono@4.13.20:
+    resolution: {integrity: sha512-xo6gecEJQ+CjTtOUUbcLHE8CdRKMeF4qITe+DT+OhFnSUmZR/ZBa9XavAfiGh4HlukmlaHFdaK4dz5tkTYFNmA==}
     engines: {node: '>=16.9.0'}
 
   hook-std@4.0.0:
@@ -18371,7 +18371,7 @@ snapshots:
     dependencies:
       react-is: 16.13.1
 
-  hono@4.13.19: {}
+  hono@4.13.20: {}
 
   hook-std@4.0.0: {}
 
