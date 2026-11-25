@@ -190,7 +190,11 @@ function fresh(now: Date): StoredPet {
  * is paused, so the cursor just moves on. Growth needs a paid plan as of the read, not as of the activity.
  */
 async function catchUp(env: Bindings, tenantId: string, pet: StoredPet, now: Date) {
-  const through = creditedThrough(now);
+  // Never move the cursor back: a retry of an older request would otherwise rewind past activity
+  // a newer one already credited, and the next read would credit it again.
+  const next = creditedThrough(now);
+  const through =
+    parseTimestamp(next) > parseTimestamp(pet.processedThrough) ? next : pet.processedThrough;
   if (!pet.enabled || pet.state.species === null) return { ...pet, processedThrough: through };
   const { results } = await env.DB.prepare(ACTIVITY_SINCE)
     .bind(

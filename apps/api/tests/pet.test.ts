@@ -44,10 +44,16 @@ function createHarness() {
 
 type Harness = ReturnType<typeof createHarness>;
 
-/** Creates Alice's workspace through the API and returns its tenant id. */
+/**
+ * Creates Alice's workspace through the API and returns its tenant id. The pet row that read
+ * saved is dropped, so the pet starts at the test clock instead of the real one: its credit
+ * cursor never moves back.
+ */
 async function aliceTenant({ call, database }: Harness) {
   await call("/api/app/pet", ALICE);
-  return (database.prepare("SELECT id FROM tenants").get() as { id: string }).id;
+  const { id } = database.prepare("SELECT id FROM tenants").get() as { id: string };
+  database.prepare("DELETE FROM pets WHERE tenant_id = ?").run(id);
+  return id;
 }
 
 /** Picks an egg at T0, opens the app on seven consecutive days, and taps it open on the last. */
@@ -279,6 +285,24 @@ describe("pet activity", () => {
     // Reading again credits nothing twice.
     expect(await petRepository.get(env, tenantId, new Date(at + 3 * HOUR))).toMatchObject({
       points: 30,
+    });
+  });
+
+  it("never rewinds the credit cursor when an older request writes after a newer one", async () => {
+    const harness = createHarness();
+    const { database, env } = harness;
+    const tenantId = await aliceTenant(harness);
+    const hatchedAt = await hatch(harness, tenantId);
+    const at = hatchedAt + HOUR;
+    seedTransaction(database, tenantId, at + 60_000);
+
+    expect(await petRepository.get(env, tenantId, new Date(at + 2 * HOUR))).toMatchObject({
+      points: 10,
+    });
+    // A request that started before the activity saves last, as a CAS retry can.
+    await petRepository.checkIn(env, tenantId, new Date(at + 1_000));
+    expect(await petRepository.get(env, tenantId, new Date(at + 3 * HOUR))).toMatchObject({
+      points: 10,
     });
   });
 
