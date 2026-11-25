@@ -741,8 +741,10 @@ describe("atomic encrypted pull application", () => {
   it("applies snapshot pages, records completion summary, and reports pending sync work", async () => {
     const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
     await expect(repository.hasPendingSyncWork()).resolves.toBe(false);
+    await expect(repository.hasSyncedEntityRows()).resolves.toBe(false);
 
     await repository.applySnapshotPage(bootstrapPage.changes);
+    await expect(repository.hasSyncedEntityRows()).resolves.toBe(true);
     await repository.recordSnapshotCompletion("v1.3");
     await expect(repository.getSyncSummary()).resolves.toMatchObject({
       serverCursor: "v1.3",

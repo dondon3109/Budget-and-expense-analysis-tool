@@ -73,6 +73,7 @@ interface WorkspaceOptions {
   lastSyncedAt?: string | null;
   pendingOutbox?: boolean;
   pendingSyncWork?: boolean;
+  syncedEntityRows?: boolean;
 }
 
 function makeWorkspace(options: boolean | WorkspaceOptions): LocalWorkspace {
@@ -107,6 +108,7 @@ function makeWorkspace(options: boolean | WorkspaceOptions): LocalWorkspace {
       applyPullPage: jest.fn(async (_expected, page: { nextCursor: string }) => {
         cursor = page.nextCursor;
       }),
+      hasSyncedEntityRows: jest.fn(async () => opts.syncedEntityRows ?? false),
       applySnapshotPage: jest.fn(async () => undefined),
       recordSnapshotCompletion: jest.fn(async (resumeCursor: string) => {
         cursor = resumeCursor;
@@ -254,6 +256,33 @@ describe("SyncProvider", () => {
     expect(latest.hasSynced).toBe(true);
     await waitFor(() => expect(pullMobileSync).toHaveBeenCalledTimes(1));
     expect(latest.hasSynced).toBe(true);
+  });
+
+  it("pulls from the start instead of snapshotting when an interrupted snapshot left rows", async () => {
+    const workspace = makeWorkspace({ hasSynced: false, syncedEntityRows: true });
+    jest.mocked(useLocalWorkspace).mockReturnValue({
+      status: "ready",
+      workspace,
+      message: null,
+      retry: jest.fn(),
+      reopen: jest.fn(),
+    });
+    jest.mocked(pullMobileSync).mockResolvedValue({
+      protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
+      changes: [],
+      nextCursor: "v1.1",
+      hasMore: false,
+    });
+
+    await render(
+      <SyncProvider enabled={true}>
+        <Probe />
+      </SyncProvider>,
+    );
+
+    await waitFor(() => expect(latest.status).toBe("synced"));
+    expect(snapshotMobileSync).not.toHaveBeenCalled();
+    expect(pullMobileSync).toHaveBeenCalledWith(expect.objectContaining({ cursor: null }));
   });
 
   it("falls back to incremental pull when initial sync has outbox rows and retries on acknowledgement cursor mismatch", async () => {

@@ -736,6 +736,16 @@ export class LocalSyncRepository {
     };
   }
 
+  /** Whether any synchronized entity row is stored, such as from an interrupted first snapshot. */
+  async hasSyncedEntityRows(): Promise<boolean> {
+    const row = await this.database.getFirstAsync<{ has_rows: number }>(
+      `SELECT (${Object.values(SYNC_ENTITY_TABLES)
+        .map((table) => `EXISTS(SELECT 1 FROM ${table})`)
+        .join(" OR ")}) AS has_rows`,
+    );
+    return row?.has_rows === 1;
+  }
+
   async hasPendingSyncWork(): Promise<boolean> {
     const row = await this.database.getFirstAsync<{ has_pending: number }>(
       `SELECT (

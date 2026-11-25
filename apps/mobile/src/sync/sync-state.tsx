@@ -553,9 +553,18 @@ export function SyncProvider({
         const hasOutbox = workspace.transactionMutations.hasPendingOutbox
           ? await workspace.transactionMutations.hasPendingOutbox()
           : false;
+        // Snapshot pages commit one by one and carry no deletes, so a snapshot only seeds an
+        // empty workspace. Rows left by an interrupted one pull from the start instead, which
+        // replays deletes made since then.
+        const hasSyncedRows =
+          summary.serverCursor === null &&
+          !hasOutbox &&
+          workspace.syncRepository.hasSyncedEntityRows
+            ? await workspace.syncRepository.hasSyncedEntityRows()
+            : false;
         if (stale()) return;
 
-        if (summary.serverCursor === null && !hasOutbox) {
+        if (summary.serverCursor === null && !hasOutbox && !hasSyncedRows) {
           const clientId = await workspace.transactionMutations.clientId();
           if (stale()) return;
           const snapshotResult = await fetchAndApplySnapshot({

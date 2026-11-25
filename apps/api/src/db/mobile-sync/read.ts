@@ -189,6 +189,7 @@ async function readSingleEntityBucket(
     SELECT sequence, entityId
     FROM latest
     WHERE operation = 'upsert'
+    ORDER BY entityId
     LIMIT ${limitParam}`);
   const result = hasAfter
     ? await statement
@@ -234,6 +235,7 @@ function ungroupedBucket3ArmSql(entityType: string, hasAfter: boolean): string {
           SELECT 1 FROM mobile_sync_change_groups g
           WHERE g.tenant_id = ?1 AND g.sequence = latest.sequence
         )
+      ORDER BY entityId
       LIMIT ${limitParam}
     )`;
 }

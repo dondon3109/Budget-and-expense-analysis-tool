@@ -148,12 +148,14 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
     return <View style={{ flex: 1, backgroundColor: theme.colors.canvas }} />;
   }
   const locked = lockSubject !== null && (lockState === "pin" || lockState === "password");
+  // A lock read still in flight after the app has mounted (a guest signing in, say) stays covered.
+  const covering = lockSubject !== null && lockState === "checking";
   return (
     <AppLockUnlockedContext.Provider value={lockState === "unlocked"}>
       {children}
       <Modal
         animationType="none"
-        visible={locked}
+        visible={locked || covering}
         // The lock has no dismiss: Android back must not reveal the app.
         onRequestClose={() => undefined}
       >
@@ -164,6 +166,8 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
             kind={lockState}
             onUnlock={() => setLockState("unlocked")}
           />
+        ) : covering ? (
+          <View style={{ flex: 1, backgroundColor: theme.colors.canvas }} />
         ) : null}
       </Modal>
     </AppLockUnlockedContext.Provider>
