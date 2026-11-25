@@ -250,6 +250,14 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
+          name="pet"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Back",
+            title: "Your pet",
+          }}
+        />
+        <Stack.Screen
           name="family"
           options={{
             headerShown: true,

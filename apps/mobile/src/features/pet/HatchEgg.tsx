@@ -5,18 +5,21 @@ import {
   type PetColor,
   type PetSpecies,
 } from "@zoption/shared";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Animated, Easing, StyleSheet, Text, Vibration, View } from "react-native";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 
+import { useReduceMotion } from "@/ui/reduce-motion";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 
 import { EggSprite, LayerSvg } from "./EggSprite";
+import { playPetHatch, warmUpPetVoices } from "./pet-sounds";
 
 const shineLayer = hatchShineLayer();
 
 /** Light pouring out of the shell, driven by `glow` from 0 (none) to 1 (full). */
 function HatchShine({ size, glow }: { size: number; glow: Animated.Value }) {
+  const clipId = useId().replace(/[^a-zA-Z0-9]/g, "");
   return (
     <Animated.View
       pointerEvents="none"
@@ -28,7 +31,7 @@ function HatchShine({ size, glow }: { size: number; glow: Animated.Value }) {
         },
       ]}
     >
-      <LayerSvg layer={shineLayer} size={size} clipId="hatch-shine" />
+      <LayerSvg layer={shineLayer} size={size} clipId={clipId} />
     </Animated.View>
   );
 }
@@ -57,10 +60,13 @@ interface HatchEggProps {
  */
 export function HatchEgg({ species, color, days, size, hatch }: HatchEggProps) {
   const theme = useZoptionTheme();
+  const reduceMotion = useReduceMotion();
   const [taps, setTaps] = useState(0);
   const [failed, setFailed] = useState(false);
   const shake = useRef(new Animated.Value(0)).current;
   const burst = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => warmUpPetVoices(species), [species]);
 
   const tap = () => {
     // The last tap is in flight.
@@ -68,26 +74,29 @@ export function HatchEgg({ species, color, days, size, hatch }: HatchEggProps) {
     const next = taps + 1;
     setTaps(next);
     setFailed(false);
-    Vibration.vibrate(next === PET_HATCH_TAPS ? 80 : 12);
-    shake.setValue(0);
-    void play(
-      Animated.sequence([
-        Animated.timing(shake, { toValue: 1, duration: 50, useNativeDriver: true }),
-        Animated.timing(shake, { toValue: -1, duration: 80, useNativeDriver: true }),
-        Animated.spring(shake, { toValue: 0, friction: 3, tension: 120, useNativeDriver: true }),
-      ]),
-    );
+    if (reduceMotion === false) {
+      shake.setValue(0);
+      void play(
+        Animated.sequence([
+          Animated.timing(shake, { toValue: 1, duration: 50, useNativeDriver: true }),
+          Animated.timing(shake, { toValue: -1, duration: 80, useNativeDriver: true }),
+          Animated.spring(shake, { toValue: 0, friction: 3, tension: 120, useNativeDriver: true }),
+        ]),
+      );
+    }
     if (next < PET_HATCH_TAPS) return;
-    void hatch(() =>
-      play(
+    void hatch(async () => {
+      playPetHatch(species);
+      if (reduceMotion !== false) return;
+      await play(
         Animated.timing(burst, {
           toValue: 1,
           duration: 280,
           easing: Easing.out(Easing.quad),
           useNativeDriver: true,
         }),
-      ),
-    ).then((hatched) => {
+      );
+    }).then((hatched) => {
       if (hatched) return;
       setTaps(0);
       setFailed(true);
@@ -121,7 +130,7 @@ export function HatchEgg({ species, color, days, size, hatch }: HatchEggProps) {
             onPress={tap}
           />
         </Animated.View>
-        <HatchShine size={size} glow={burst} />
+        {reduceMotion === false ? <HatchShine size={size} glow={burst} /> : null}
       </View>
       <Text
         accessibilityRole={failed ? "alert" : undefined}
@@ -138,17 +147,27 @@ export function HatchEgg({ species, color, days, size, hatch }: HatchEggProps) {
 
 /** Springs a just-hatched Baby out of where the egg burst, as the shell's light fades behind it. */
 export function HatchPop({ size, children }: { size: number; children: ReactNode }) {
-  const pop = useRef(new Animated.Value(0.3)).current;
-  const glow = useRef(new Animated.Value(1)).current;
+  const reduceMotion = useReduceMotion();
+  const pop = useRef(new Animated.Value(reduceMotion === false ? 0.3 : 1)).current;
+  const glow = useRef(new Animated.Value(reduceMotion === false ? 1 : 0)).current;
   useEffect(() => {
-    Animated.parallel([
+    if (reduceMotion !== false) {
+      pop.setValue(1);
+      glow.setValue(0);
+      return;
+    }
+    pop.setValue(0.3);
+    glow.setValue(1);
+    const anim = Animated.parallel([
       Animated.spring(pop, { toValue: 1, friction: 4, tension: 90, useNativeDriver: true }),
       Animated.timing(glow, { toValue: 0, duration: 700, useNativeDriver: true }),
-    ]).start();
-  }, [glow, pop]);
+    ]);
+    anim.start();
+    return () => anim.stop();
+  }, [glow, pop, reduceMotion]);
   return (
     <View style={{ width: size, height: size }}>
-      <HatchShine size={size} glow={glow} />
+      {reduceMotion === false ? <HatchShine size={size} glow={glow} /> : null}
       <Animated.View style={{ transform: [{ scale: pop }] }}>{children}</Animated.View>
     </View>
   );

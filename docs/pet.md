@@ -15,10 +15,10 @@ the web it has its own page (`/app/pet`) in the sidebar. The rules live in
   the last one calls the Worker, so leaving the page forgets a partial count. The health clock
   starts at that tap. Eggs never get sick or die.
 - The user also picks the pet's color with the egg (`petColors`: Original, Pink, Mint, Sky,
-  Lilac, Peach) and can change it any time: on the web pet page, or in the mobile Settings pet
-  card. It belongs to that pet and clears when it dies. A pet stored before colors existed has
-  `color: null`; the pet page (web and mobile) asks its owner once to pick one, and "Keep original"
-  saves `original` so the question never returns. All colors are free.
+  Lilac, Peach) and can change it or turn off their pet any time: on the web or mobile pet page,
+  or in the mobile Settings pet card. It belongs to that pet and clears when it dies. A pet stored
+  before colors existed has `color: null`; the pet page (web and mobile) asks its owner once to pick
+  one, and "Keep original" saves `original` so the question never returns. All colors are free.
 - Points per action and daily counts: check-in 10 ×1, transaction 10 ×3, subscription 15 ×2, debt
   payment 20 ×2, assistant reply 5 ×3, plus a +10 bonus on the third distinct action type. No day
   earns more than 100.
@@ -47,8 +47,11 @@ each read it replays rows created since `pets.processed_through`.
   still count, so deleting never refunds.
 - Subscriptions with a positive amount and a name not used before.
 - Completed assistant replies to a user message of at least 15 characters.
-- `POST /api/app/pet/check-in`, sent by the phone app when it opens or returns to the foreground,
-  and by the web app when it loads the pet and on returning to the tab after five minutes.
+- `POST /api/app/pet/check-in`, sent by the phone app when it opens, returns to the foreground,
+  or reconnects after being offline, and by the web app when it loads the pet and on returning to
+  the tab after five minutes. Both apps also refresh a loaded pet right after personal
+  transaction, subscription, debt-payment, or AI assistant activity (plus a short follow-up past
+  the Worker's one-second `creditedThrough` boundary).
 
 Activity is credited through the last whole second only, because `datetime('now')` rounds down.
 
@@ -63,9 +66,10 @@ pet is alive), `POST /api/app/pet/hatch` (409 `egg_not_ready` unless a ready egg
 
 Web `pages/PetPage.tsx` and mobile `features/pet/PetScreen.tsx` (playful parts in
 `PetPlayground.tsx`) show the same pieces: the pet in a spotlight (a flat disc, ground shadow, and
-drifting sparkles), status chips (egg streak, or points, health, and today's points), chunky
-meters, the Egg to Legend growth path (`petStageEmoji`), and the earning rules as tiles
-(`petEarningRows`).
+drifting sparkles) with a tap-to-pet hint, status chips (egg streak, or points, health, and today's
+points), chunky meters, health and heal-cost hints (`petHealthHint`), a tombstone memorial card
+after a pet passes away (`diedAt`), the Egg to Legend growth path (`petStageEmoji`), and the
+earning rules as tiles (`petEarningRows`).
 
 Clicking or tapping a hatched pet answers by mood (`petReaction.ts` in `@zoption/shared`): a
 healthy pet hops and sends up hearts in its species' happy voice, and five taps within two seconds
@@ -86,11 +90,12 @@ picker (on mobile, the next setup step, which can be skipped); a no turns the pe
 
 ## Pop-up
 
-Mobile Home and every web workspace page open a pop-up with the pet's picture when its egg became
-ready, it grew a stage, got sick, or died since
-the device last showed it, or else on the day's first open (Manila date). One open shows at most one.
-On mobile it decides only while Home is on screen, so a change seen on the pet page is announced on
-returning to Home rather than over the pet page. It also waits behind the thank-you card and the
+Mobile Home and every web workspace page outside `/app/pet` (including family workspaces,
+whose "See my pet" link opens `/app/pet` for the personal companion) open a pop-up with the pet's
+picture when its egg became ready, it grew a stage, got sick, or died since the device last showed
+it, or else on the day's first open (Manila date). One open shows at most one. On mobile it decides
+only while Home is on screen, so a change seen on the pet page is announced on returning to Home
+rather than over the pet page. It also waits behind the thank-you card and the
 usage-analytics prompt ("Help improve Zoption"), so only one dialog is ever on screen.
 The rule is `petMoment` in `packages/shared/src/petMoment.ts` and the wording is `petCopy.ts`; each
 device keeps what it last showed: mobile in SecureStore (`zoption-mobile-pet-seen-v1`, cleared on
@@ -101,9 +106,9 @@ every identity change, and only after first-run setup), the web in local storage
 
 Eggs are SVG shape data (`packages/shared/src/petArt/eggs.ts`, drawn by mobile `EggSprite.tsx`
 and web `components/pet/PetSvg.tsx`), so cracks can spread with the streak and with each tap on a
-ready egg. Every pair of taps adds a crack and every tap shakes it harder; the shell bursts in a
-shared light (`hatchShineLayer`) only once the Worker accepts the hatch, and a failed hatch settles
-the egg back to zero taps.
+ready egg. Every pair of taps adds a crack and every tap shakes it harder; once the Worker accepts the hatch, the shell bursts in a
+shared light (`hatchShineLayer`) alongside `playPetHatch` (sparkle plus baby happy chirp), and a
+failed hatch settles the egg back to zero taps.
 
 Hatched pets and the pop-up use pictures (mobile `PetPicture.tsx`, web `components/pet/PetPicture.tsx`):
 

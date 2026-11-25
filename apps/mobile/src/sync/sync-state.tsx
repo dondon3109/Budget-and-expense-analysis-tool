@@ -21,6 +21,7 @@ import {
   type WorkspaceAccessCode,
 } from "@/api/mobile-sync";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { refreshPetAfterActivity } from "@/auth/pet-sync";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
 import { LocalSyncApplyError } from "@/db/sync-repository";
@@ -145,10 +146,11 @@ async function pushOutbox(
   auth: SyncAuth,
   signal: AbortSignal,
   stale: () => boolean,
-): Promise<boolean> {
+): Promise<{ completed: boolean; pushed: boolean }> {
+  let pushed = false;
   for (let batchNumber = 0; batchNumber < 100; batchNumber += 1) {
     const request = await workspace.transactionMutations.getPushBatch();
-    if (!request) return true;
+    if (!request) return { completed: true, pushed };
     let response;
     try {
       response = await withSessionRetry(auth, (accessToken) =>
@@ -179,8 +181,9 @@ async function pushOutbox(
       }
       throw error;
     }
-    if (stale()) return false;
+    if (stale()) return { completed: false, pushed };
     await workspace.transactionMutations.applyPushResponse(request, response);
+    pushed = true;
     const limit = response.results.find(
       (result) => result.status === "rejected" && result.code === "plan_limit",
     );
@@ -282,8 +285,16 @@ export function SyncProvider({
         if (stale()) return;
         try {
           await withDetachedWorkspace(target.subject, async (other) => {
-            if (!(await pushOutbox(other, target.workspaceId, auth, controller.signal, stale))) {
-              return;
+            const drained = await pushOutbox(
+              other,
+              target.workspaceId,
+              auth,
+              controller.signal,
+              stale,
+            );
+            if (!drained.completed) return;
+            if (!target.workspaceId && drained.pushed) {
+              refreshPetAfterActivity(session.getAccessToken);
             }
             if (target.workspaceId) {
               await uploadQueuedReceipts(other, {
@@ -309,7 +320,9 @@ export function SyncProvider({
           refreshed: false,
           getAccessToken: session.getAccessToken,
         };
-        if (!(await pushOutbox(workspace, familyId, auth, controller.signal, stale))) return;
+        const pushedResult = await pushOutbox(workspace, familyId, auth, controller.signal, stale);
+        if (!pushedResult.completed) return;
+        const pushedPersonal = !familyId && pushedResult.pushed;
         for (let pageNumber = 0; pageNumber < 250; pageNumber += 1) {
           const cursor = await workspace.syncRepository.getCursor();
           const page = await withRateLimitWait(controller.signal, () =>
@@ -375,6 +388,7 @@ export function SyncProvider({
             } else {
               // Subscription ROI taps wait for a personal sync, after any new bill has synced.
               await uploadSubscriptionUsage(workspace, auth.token).catch(() => undefined);
+              if (pushedPersonal) refreshPetAfterActivity(session.getAccessToken);
             }
             if (requestRef.current === requestId) {
               const schedule = await scheduleOutstandingRetry();

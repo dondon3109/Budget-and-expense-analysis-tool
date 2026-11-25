@@ -18,6 +18,7 @@ import { SubscriptionForm } from "../subscriptions/SubscriptionForm";
 import { createSubscription } from "../../lib/api";
 import { formatMoney } from "../../lib/formatters";
 import { queryKeys } from "../../lib/queryKeys";
+import { invalidatePet } from "../../queries/pet";
 import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import "./ImportSubscriptionSuggestions.css";
@@ -75,6 +76,7 @@ export function ImportSubscriptionSuggestions({
     mutationFn: (input: SubscriptionInput) => createSubscription(workspace, input),
     onSuccess: (created) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.allSubscriptions(workspace) });
+      void invalidatePet(queryClient, workspace);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.subscriptions(
           workspace,

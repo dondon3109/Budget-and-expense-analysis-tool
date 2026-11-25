@@ -77,6 +77,8 @@ export interface EggSpriteProps {
   onPress?: () => void;
   /** A still picture: no sway and no tap target, for the picker. */
   still?: boolean;
+  /** Disables the inner tap target and hides duplicate a11y semantics inside an outer radio card. */
+  interactive?: boolean;
 }
 
 /** Draws an egg that sways gently and hops when tapped. Reduce Motion stops the sway. */
@@ -86,6 +88,7 @@ export function EggSprite({
   accessibilityLabel,
   onPress,
   still = false,
+  interactive = true,
 }: EggSpriteProps) {
   const reduceMotion = useReduceMotion();
   const sway = useRef(new Animated.Value(0)).current;
@@ -95,7 +98,7 @@ export function EggSprite({
 
   useEffect(() => {
     sway.setValue(0);
-    if (reduceMotion || still) return;
+    if (reduceMotion !== false || still) return;
     const loop = Animated.loop(Animated.sequence([timing(sway, 1, 1400), timing(sway, 0, 1400)]));
     loop.start();
     return () => loop.stop();
@@ -110,6 +113,39 @@ export function EggSprite({
     onPress?.();
   };
 
+  const layers = (
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          transform: [
+            { rotate: sway.interpolate({ inputRange: [0, 1], outputRange: ["-3deg", "3deg"] }) },
+            { translateY: tap.interpolate({ inputRange: [0, 1], outputRange: [0, -10 * k] }) },
+          ],
+          transformOrigin: [size / 2, size * 0.95, 0],
+        },
+      ]}
+    >
+      {art.map((layer, index) => (
+        <View key={index} style={StyleSheet.absoluteFill}>
+          <LayerSvg layer={layer} size={size} clipId={`${clipBase}c${index}`} />
+        </View>
+      ))}
+    </Animated.View>
+  );
+
+  if (!interactive) {
+    return (
+      <View
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+        style={{ width: size, height: size }}
+      >
+        {layers}
+      </View>
+    );
+  }
+
   // One element either way, so toggling `still` never remounts the animated view mid-loop.
   return (
     <Pressable
@@ -119,24 +155,7 @@ export function EggSprite({
       onPress={withTapSound(hop)}
       style={{ width: size, height: size }}
     >
-      <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            transform: [
-              { rotate: sway.interpolate({ inputRange: [0, 1], outputRange: ["-3deg", "3deg"] }) },
-              { translateY: tap.interpolate({ inputRange: [0, 1], outputRange: [0, -10 * k] }) },
-            ],
-            transformOrigin: [size / 2, size * 0.95, 0],
-          },
-        ]}
-      >
-        {art.map((layer, index) => (
-          <View key={index} style={StyleSheet.absoluteFill}>
-            <LayerSvg layer={layer} size={size} clipId={`${clipBase}c${index}`} />
-          </View>
-        ))}
-      </Animated.View>
+      {layers}
     </Pressable>
   );
 }

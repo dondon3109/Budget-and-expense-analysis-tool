@@ -1,6 +1,10 @@
 import {
   PET_ACTION_RULES,
+  PET_DEAD_AFTER_HOURS,
+  PET_FADING_AFTER_HOURS,
   PET_HATCH_TAPS,
+  PET_SICK_AFTER_HOURS,
+  petHealCost,
   petStageForPoints,
   type PetColor,
   type PetSpecies,
@@ -84,10 +88,16 @@ export function petGrowthLockedLine(view: PetView): string | null {
 /** The pet pop-up's title and message. */
 export function petMomentCopy(moment: PetMoment, view: PetView): { title: string; body: string } {
   if (view.species === null) {
-    return moment === "died"
+    if (moment === "died") {
+      return {
+        title: `${view.name ?? "Your pet"} passed away`,
+        body: "Three days went by with nothing logged. Pick a new egg to start again.",
+      };
+    }
+    return view.diedAt
       ? {
-          title: `${view.name ?? "Your pet"} passed away`,
-          body: "Three days went by with nothing logged. Pick a new egg to start again.",
+          title: "Ready for a new egg",
+          body: `${view.name ?? "Your last pet"} passed away. Pick a new egg whenever you're ready.`,
         }
       : { title: "A new egg is waiting", body: petStatusLine(view) };
   }
@@ -117,4 +127,48 @@ export function petMomentCopy(moment: PetMoment, view: PetView): { title: string
       : { title: `${name} is sick`, body: "Log something today and it heals." };
   }
   return { title: `${name} · ${stage}`, body: petStatusLine(view) };
+}
+
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Concise streak guidance for an egg that is not ready to hatch yet. */
+export function petEggProgressLine(view: PetView): string | null {
+  if (view.species === null || view.stage !== "egg") return null;
+  if (view.eggStreakDays >= view.eggHatchDays) return "Ready to hatch.";
+  if (view.eggStreakDays === 0) {
+    return `Open Zoption today to start your ${view.eggHatchDays}-day streak. Missing a day starts over.`;
+  }
+  const left = view.eggHatchDays - view.eggStreakDays;
+  return `${view.eggStreakDays}-day streak active. Open Zoption ${left === 1 ? "tomorrow" : `for ${left} more days`} to hatch it. Missing a day starts over.`;
+}
+
+/**
+ * How long a hatched pet's health stays full, or what it needs to heal right now (cost and time
+ * left before fading or passing away).
+ */
+export function petHealthHint(view: PetView, nowMs = Date.now()): string | null {
+  if (view.species === null || view.stage === "egg" || view.health === null) return null;
+  const elapsedHours =
+    view.lastActivityAt === null
+      ? null
+      : Math.max(0, nowMs - Date.parse(view.lastActivityAt)) / HOUR_MS;
+  if (view.healthState === "healthy") {
+    if (elapsedHours === null || !Number.isFinite(elapsedHours)) {
+      return "Stays full for 24h after each activity.";
+    }
+    const left = Math.max(1, Math.ceil(PET_SICK_AFTER_HOURS - elapsedHours));
+    return `Full for 24h after activity · drops in ~${left}h.`;
+  }
+  const cost = petHealCost(view.health, view.points);
+  const heal =
+    cost > 0
+      ? `Costs ${cost} pts to heal on your next activity (never drops below your stage).`
+      : "Heals free on your next activity.";
+  if (elapsedHours === null || !Number.isFinite(elapsedHours)) return heal;
+  if (view.healthState === "sick") {
+    const left = Math.max(1, Math.ceil(PET_FADING_AFTER_HOURS - elapsedHours));
+    return `${heal} Fading starts in ~${left}h.`;
+  }
+  const left = Math.max(1, Math.ceil(PET_DEAD_AFTER_HOURS - elapsedHours));
+  return `${heal} Log something within ~${left}h or it passes away.`;
 }

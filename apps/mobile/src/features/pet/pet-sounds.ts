@@ -62,3 +62,11 @@ export function playPetReaction(
   if (cue.sparkle) playClip(sparkle);
   playHaptic(reaction === "combo" ? "success" : "tap");
 }
+
+/** Celebrates an egg hatching with the sparkle jingle, the Baby's happy voice, and a success buzz. */
+export function playPetHatch(species: PetSpecies): void {
+  const cue = petSoundCue("baby", "happy");
+  playClip(sparkle);
+  playClip(VOICES[petVoiceClip(species, cue.voice)], { rate: cue.rate, volume: cue.volume });
+  playHaptic("success");
+}

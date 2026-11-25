@@ -46,6 +46,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import { useAccounts } from "../queries/accounts";
 import { useCategories } from "../queries/categories";
+import { invalidatePet } from "../queries/pet";
 import { useSubscriptions, useSubscriptionUsage } from "../queries/subscriptions";
 import "./SubscriptionsPage.css";
 
@@ -156,6 +157,7 @@ export function SubscriptionsPage() {
             ),
           ),
       );
+      void invalidatePet(queryClient, workspace);
     },
     onSettled: () => {
       void refreshSubscriptions();
