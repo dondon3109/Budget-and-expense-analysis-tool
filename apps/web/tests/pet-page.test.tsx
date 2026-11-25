@@ -29,12 +29,13 @@ vi.mock("../src/lib/api", async () =>
 vi.mock("../src/lib/petSounds", () => ({
   playPetHatch: vi.fn(),
   playPetReaction: vi.fn(),
+  unlockPetHatchAudio: vi.fn(),
   warmUpPetVoices: vi.fn(),
 }));
 
 import { PetMomentDialog } from "../src/components/pet/PetMomentDialog";
 import { checkInPet, choosePetEgg, getBillingSummary, hatchPet, setPetColor } from "../src/lib/api";
-import { playPetHatch, playPetReaction } from "../src/lib/petSounds";
+import { playPetHatch, playPetReaction, unlockPetHatchAudio } from "../src/lib/petSounds";
 import { PetPage } from "../src/pages/PetPage";
 import { renderWithProviders } from "./helpers/render";
 
@@ -159,6 +160,7 @@ describe("pet on the web", () => {
 
     expect(await screen.findByRole("heading", { name: "Bao" })).toBeInTheDocument();
     expect(hatchPet).toHaveBeenCalledTimes(1);
+    expect(unlockPetHatchAudio).toHaveBeenCalledWith("panda");
     expect(playPetHatch).toHaveBeenCalledWith("panda");
   });
 

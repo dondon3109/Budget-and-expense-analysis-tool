@@ -66,7 +66,7 @@ export function HatchEgg({ species, color, days, size, hatch }: HatchEggProps) {
   const shake = useRef(new Animated.Value(0)).current;
   const burst = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => warmUpPetVoices(species), [species]);
+  useEffect(() => warmUpPetVoices(species, "baby"), [species]);
 
   const tap = () => {
     // The last tap is in flight.

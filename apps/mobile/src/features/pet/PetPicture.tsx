@@ -62,7 +62,9 @@ export function PetPicture({ pet, size, accessibilityLabel }: PetPictureProps) {
   // `id` remounts the burst and restarts the motion on every tap.
   const [tap, setTap] = useState<{ reaction: PetReaction; id: number } | null>(null);
 
-  useEffect(() => warmUpPetVoices(pet.species), [pet.species]);
+  useEffect(() => {
+    if (pet.stage !== "egg") warmUpPetVoices(pet.species, pet.stage);
+  }, [pet.species, pet.stage]);
 
   useEffect(() => {
     idle.setValue(0);

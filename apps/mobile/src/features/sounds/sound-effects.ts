@@ -22,6 +22,8 @@ type ClipSource = number;
 
 // Keyed by asset, so the UI sounds and the pet voices share one player each.
 const players = new Map<ClipSource, AudioPlayer>();
+// Deduplicates rapid overlapping seekTo(0) calls on the same player.
+const playTokens = new Map<ClipSource, number>();
 let audioModeSet = false;
 
 // Set the mode explicitly instead of relying on the library default, so a muted
@@ -47,9 +49,11 @@ export function warmUpSounds(): void {
   }
 }
 
-/** Builds the players for clips a screen is about to play, so its first play is not late. */
+/** Builds the players for clips a screen is about to play, only while sounds are enabled. */
 export function warmUpClips(clips: readonly ClipSource[]): void {
+  if (!useSoundEffectsStore.getState().enabled) return;
   try {
+    ensureAudioMode();
     for (const source of clips) playerFor(source);
   } catch {
     // Sound is decoration; ignore.
@@ -138,8 +142,13 @@ export function playClip(
     if (options.volume !== undefined) player.volume = options.volume;
     // A finished clip ignores play() until it is rewound, and seekTo is asynchronous: playing
     // straight after it left every tap after the first silent, because the clips are ~50 ms.
+    const token = (playTokens.get(source) ?? 0) + 1;
+    playTokens.set(source, token);
     void Promise.resolve(player.seekTo(0))
-      .then(() => player.play())
+      .then(() => {
+        if (playTokens.get(source) !== token) return;
+        player.play();
+      })
       .catch(() => {
         // Sound is decoration; ignore.
       });

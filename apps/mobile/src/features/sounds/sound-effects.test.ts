@@ -1,14 +1,18 @@
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
 
-import { playSound, warmUpSounds, withTapSound } from "./sound-effects";
+import { playClip, playSound, warmUpClips, warmUpSounds, withTapSound } from "./sound-effects";
 import { useSoundEffectsStore } from "@/stores/sound-effects-store";
 
 const mockPlay = jest.fn();
 const mockSeekTo = jest.fn();
+const mockSetPlaybackRate = jest.fn();
 const mockCreateAudioPlayer = jest.fn((_source: unknown) => ({
   play: mockPlay,
   seekTo: mockSeekTo,
+  setPlaybackRate: mockSetPlaybackRate,
+  shouldCorrectPitch: true,
+  volume: 1,
 }));
 
 const flush = () => new Promise((resolve) => setImmediate(resolve));
@@ -47,6 +51,7 @@ describe("playSound", () => {
   beforeEach(() => {
     mockPlay.mockClear();
     mockSeekTo.mockClear();
+    mockSetPlaybackRate.mockClear();
     useSoundEffectsStore.setState({ enabled: true });
   });
 
@@ -138,5 +143,46 @@ describe("playSound", () => {
     expect(handler).toHaveBeenCalledTimes(1);
     expect(Haptics.performAndroidHapticsAsync).toHaveBeenLastCalledWith("clock-tick");
     expect(withTapSound(undefined)).toBeUndefined();
+  });
+
+  it("skips warming up clips while sounds are off", () => {
+    const before = mockCreateAudioPlayer.mock.calls.length;
+    useSoundEffectsStore.setState({ enabled: false });
+    warmUpClips([999]);
+    expect(mockCreateAudioPlayer).toHaveBeenCalledTimes(before);
+  });
+
+  it("disables pitch correction and applies rate and volume in playClip", async () => {
+    playClip(888, { rate: 1.06, volume: 0.9 });
+    await flush();
+    const created = mockCreateAudioPlayer.mock.results.at(-1)?.value as {
+      shouldCorrectPitch: boolean;
+      volume: number;
+    };
+    expect(created.shouldCorrectPitch).toBe(false);
+    expect(mockSetPlaybackRate).toHaveBeenLastCalledWith(1.06);
+    expect(created.volume).toBe(0.9);
+    expect(mockPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it("drops stale plays when rapid taps overlap seekTo(0)", async () => {
+    const resolvers: Array<() => void> = [];
+    mockSeekTo.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+
+    playClip(777, { rate: 1, volume: 1 });
+    playClip(777, { rate: 1.06, volume: 0.9 });
+    resolvers[0]?.();
+    await flush();
+    expect(mockPlay).not.toHaveBeenCalled();
+
+    resolvers[1]?.();
+    await flush();
+    expect(mockPlay).toHaveBeenCalledTimes(1);
+    mockSeekTo.mockReset();
   });
 });

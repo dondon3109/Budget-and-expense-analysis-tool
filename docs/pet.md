@@ -72,17 +72,21 @@ after a pet passes away (`diedAt`), the Egg to Legend growth path (`petStageEmoj
 earning rules as tiles (`petEarningRows`).
 
 Clicking or tapping a hatched pet answers by mood (`petReaction.ts` in `@zoption/shared`): a
-healthy pet hops and sends up hearts in its species' happy voice, and five taps within two seconds
-make it dance with a shower of hearts, a higher voice, and a sparkle jingle (then three seconds
-before the next dance). A sick pet wobbles with a 🤒 and a fading one barely stirs with a 💤, both
-in the species' sad voice, quieter when fading. Each species has its own happy and sad clip, pitched
-up for a baby and down for a legend; `scripts/generate-pet-sounds.mjs` synthesizes them from a
-seeded model of each species' real call into `apps/mobile/assets/sounds/pet/` and
-`apps/web/public/pet/sounds/`. The phone also buzzes, lightly or with a success pattern on a dance;
-the web does not. The voice follows the Sound effects switch (mobile Preferences, or web Account
-Settings for that browser). Reduced motion, from the system or the in-app switch, stills the motion
-and the burst but keeps the voice. Petting is local only: it never reaches the Worker and
-earns nothing.
+healthy pet hops and sends up hearts in its species' and stage's happy voice, and five taps within
+two seconds make it dance with a shower of hearts, a slight celebratory pitch lift, and a staggered
+sparkle jingle (then three seconds before the next dance). A sick pet wobbles with a 🤒 and a
+fading one barely stirs with a 💤, both in that stage's sad voice, quieter and slightly slower when
+fading. Every species and hatched stage (Baby, Juvenile, Adult, Legend) has its own happy and sad clip,
+growing from baby peeps and yips to full adult calls (like a hippo bellow-roar or emperor penguin
+trumpet) and resonant Legend calls with a subtle chime flourish.
+`scripts/generate-pet-sounds.mjs` (backed by `scripts/pet-sounds/`) synthesizes all 49 loudness-matched
+clips into `apps/mobile/assets/sounds/pet/` and `apps/web/public/pet/sounds/` and writes the mobile
+static asset map (`apps/mobile/src/features/pet/pet-sound-assets.ts`). The phone also buzzes,
+lightly or with a success pattern on a dance; the web does not. The voice follows the Sound effects
+switch (mobile Preferences, or web Account Settings for that browser), and neither platform preloads
+pet clips while Sound effects are off. Reduced motion, from the system or the in-app switch, stills
+the motion and the burst but keeps the voice. Petting is local only: it never reaches the Worker
+and earns nothing.
 
 New accounts are asked during first-run setup whether they want a pet. A yes opens the egg
 picker (on mobile, the next setup step, which can be skipped); a no turns the pet off
