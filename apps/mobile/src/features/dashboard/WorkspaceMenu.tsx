@@ -27,12 +27,14 @@ export function WorkspaceMenu({
   onSelect,
   onOpenFamilies,
   onOpenFamilySettings,
+  onOpenBudgetCalculator,
   onOpenPet,
 }: {
   selected: HomeMenuView;
   onSelect: (view: HomeMenuView) => void;
   onOpenFamilies: () => void;
   onOpenFamilySettings: () => void;
+  onOpenBudgetCalculator: () => void;
   onOpenPet: () => void;
 }) {
   const theme = useZoptionTheme();
@@ -170,6 +172,14 @@ export function WorkspaceMenu({
                 onSelect("remittance");
               }}
               selected={selected === "remittance"}
+            />
+            <MenuItem
+              icon="calculator-variant-outline"
+              label="50/30/20 calculator"
+              onPress={() => {
+                close();
+                onOpenBudgetCalculator();
+              }}
             />
             <MenuItem
               icon="paw"

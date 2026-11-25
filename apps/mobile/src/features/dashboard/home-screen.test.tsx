@@ -119,6 +119,7 @@ describe("HomeScreen", () => {
       "Family settings",
       "Start or join a family",
       "Remittance calculator",
+      "50/30/20 calculator",
       "Pet",
     ]);
     await fireEvent.press(screen.getByRole("menuitem", { name: "Family settings" }));

@@ -1,4 +1,4 @@
-/* The 50/30/20 calculator below the Budgets plan. The income field reuses `.budget-amount-input`. */
+/* The 50/30/20 calculator below the Budgets plan or on its own page. Reuses `.budget-amount-input`. */
 
 .budget-rule {
   margin-top: 32px;
@@ -8,6 +8,13 @@
   border-top: 1px solid var(--line);
 }
 
+.budget-rule.standalone {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.budget-rule-heading h1,
 .budget-rule-heading h2 {
   margin: 0;
   color: var(--ink);
@@ -17,18 +24,56 @@
   letter-spacing: -0.015em;
 }
 
+.budget-rule-heading h1 {
+  font-size: clamp(26px, 3vw, 32px);
+}
+
 .budget-rule-heading p {
   margin: 4px 0 0;
-  max-width: 640px;
+  max-width: 660px;
   color: var(--muted);
   font-size: 14px;
 }
 
 .budget-rule-inputs {
-  display: grid;
-  grid-template-columns: minmax(200px, 280px) 1fr;
+  display: flex;
+  flex-wrap: wrap;
   align-items: end;
-  gap: 18px 28px;
+  gap: 18px 24px;
+}
+
+.budget-rule-inputs > .budget-amount-input {
+  min-width: 200px;
+  flex: 0 1 260px;
+}
+
+.budget-rule-source {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  flex: 0 1 280px;
+}
+
+.budget-rule-source span,
+.budget-rule-split legend,
+.budget-rule-split label span,
+.budget-rule-results span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 580;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.budget-rule-source select {
+  height: var(--control-height);
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
 }
 
 .budget-rule-split {
@@ -39,17 +84,6 @@
   align-items: end;
   gap: 12px;
   border: 0;
-}
-
-.budget-rule-split legend,
-.budget-rule-split label span,
-.budget-rule-results span {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 580;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .budget-rule-split legend {
@@ -106,8 +140,132 @@
   font-size: 13px;
 }
 
+.budget-rule-comparison {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-rule-comparison strong {
+  color: var(--ink);
+}
+
+.budget-rule-apply {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+}
+
+.budget-rule-apply-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: start;
+  gap: 12px;
+}
+
+.budget-rule-apply-header h3 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.budget-rule-apply-header p {
+  margin: 4px 0 0;
+  max-width: 680px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.budget-rule-category-list {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.budget-rule-category-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) auto minmax(100px, 130px);
+  align-items: center;
+  gap: 12px 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.budget-rule-category-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.budget-rule-category-name i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.budget-rule-category-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-rule-bucket-group {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.budget-rule-bucket-group button {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.budget-rule-bucket-group button:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.budget-rule-bucket-group button.active {
+  border-color: var(--solid-bg);
+  background: var(--solid-bg);
+  color: var(--solid-text);
+}
+
+.budget-rule-category-preview {
+  text-align: right;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-rule-apply-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 16px;
+}
+
 @media (max-width: 720px) {
-  .budget-rule-inputs,
+  .budget-rule-inputs {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
   .budget-rule-results {
     grid-template-columns: 1fr;
   }
@@ -120,5 +278,13 @@
   .budget-rule-results article + article {
     border-top: 1px solid var(--line);
     border-left: 0;
+  }
+
+  .budget-rule-category-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .budget-rule-bucket-group {
+    grid-column: 1 / -1;
   }
 }

@@ -242,6 +242,14 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
+          name="budget-calculator"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Back",
+            title: "50/30/20 calculator",
+          }}
+        />
+        <Stack.Screen
           name="pet"
           options={{
             headerShown: true,

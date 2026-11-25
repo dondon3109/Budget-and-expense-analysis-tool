@@ -282,6 +282,21 @@ export function BudgetsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) {
     <Screen
       action={
         <View style={styles.headerActions}>
+          {!inOccasion && (tab === "month" || tab === "every-month") ? (
+            <Button
+              accessibilityLabel="50/30/20 calculator"
+              disabled={!local.workspace}
+              icon="calculator-variant-outline"
+              onPress={() =>
+                router.push({
+                  pathname: "/(app)/budget-calculator",
+                  params: { scope: tab, month },
+                })
+              }
+              size="compact"
+              variant="secondary"
+            />
+          ) : null}
           {/* Hidden, not disabled, with nothing to share: a disabled icon button reads as tappable. */}
           {showsMonthPlan && (view?.rows.length ?? 0) > 0 ? (
             <Button
