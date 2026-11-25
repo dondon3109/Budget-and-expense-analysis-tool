@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   PET_COMBO_COOLDOWN_MS,
   PET_TAP_HISTORY_START,
+  petHatchSoundCue,
   petSoundCue,
   petTapReaction,
   type PetReaction,
@@ -47,17 +48,41 @@ describe("petTapReaction", () => {
 });
 
 describe("petSoundCue", () => {
-  it("pitches a baby above a legend", () => {
-    expect(petSoundCue("baby", "happy").rate).toBeGreaterThan(petSoundCue("legend", "happy").rate);
+  it("picks each stage's own clip instead of relying on large speed shifts", () => {
+    const baby = petSoundCue("hippo", "baby", "happy");
+    const adult = petSoundCue("hippo", "adult", "happy");
+    const legend = petSoundCue("hippo", "legend", "happy");
+    expect(baby.clip).toBe("hippo-baby-happy");
+    expect(adult.clip).toBe("hippo-adult-happy");
+    expect(legend.clip).toBe("hippo-legend-happy");
+    expect(baby.rate).toBe(1);
+    expect(adult.rate).toBe(1);
+    expect(legend.rate).toBe(1);
   });
 
-  it("uses the sad voice, quieter, for an unwell pet", () => {
-    expect(petSoundCue("adult", "sick")).toMatchObject({ voice: "sad", sparkle: false });
-    expect(petSoundCue("adult", "fading").volume).toBeLessThan(petSoundCue("adult", "sick").volume);
+  it("uses the stage's sad clip, quieter and slightly slower when fading", () => {
+    const sick = petSoundCue("panda", "adult", "sick");
+    const fading = petSoundCue("panda", "adult", "fading");
+    expect(sick).toMatchObject({ clip: "panda-adult-sad", voice: "sad", sparkle: null });
+    expect(fading.clip).toBe("panda-adult-sad");
+    expect(fading.volume).toBeLessThan(sick.volume);
+    expect(fading.rate).toBeLessThan(sick.rate);
   });
 
-  it("adds the sparkle only to a dance", () => {
-    expect(petSoundCue("adult", "combo").sparkle).toBe(true);
-    expect(petSoundCue("adult", "happy").sparkle).toBe(false);
+  it("staggers a slightly quieter sparkle onto a combo dance", () => {
+    const combo = petSoundCue("pig", "juvenile", "combo");
+    expect(combo.clip).toBe("pig-juvenile-happy");
+    expect(combo.rate).toBeGreaterThan(1);
+    expect(combo.sparkle).not.toBeNull();
+    expect(combo.sparkle?.delayMs).toBeGreaterThan(0);
+    expect(combo.sparkle?.volume).toBeLessThan(1);
+    expect(petSoundCue("pig", "juvenile", "happy").sparkle).toBeNull();
+  });
+
+  it("leads a hatch with sparkle before the baby's happy voice", () => {
+    const hatch = petHatchSoundCue("hedgehog");
+    expect(hatch.voiceClip).toBe("hedgehog-baby-happy");
+    expect(hatch.voiceDelayMs).toBeGreaterThan(0);
+    expect(hatch.sparkleVolume).toBeLessThan(1);
   });
 });

@@ -8,7 +8,7 @@ import {
   type PetSpecies,
 } from "@zoption/shared";
 
-import { playPetHatch, warmUpPetVoices } from "../../lib/petSounds";
+import { playPetHatch, unlockPetHatchAudio, warmUpPetVoices } from "../../lib/petSounds";
 import { PetSvg } from "./PetSvg";
 import "./HatchEgg.css";
 
@@ -47,7 +47,7 @@ export function HatchEgg({
   const [failed, setFailed] = useState(false);
   const left = PET_HATCH_TAPS - taps;
 
-  useEffect(() => warmUpPetVoices(species), [species]);
+  useEffect(() => warmUpPetVoices(species, "baby"), [species]);
 
   const tap = () => {
     // The last click is in flight.
@@ -56,6 +56,7 @@ export function HatchEgg({
     setTaps(next);
     setFailed(false);
     if (next < PET_HATCH_TAPS) return;
+    unlockPetHatchAudio(species);
     hatch(async () => {
       playPetHatch(species);
       setBursting(true);

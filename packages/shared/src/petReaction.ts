@@ -112,37 +112,88 @@ export const PET_REACTION_MOTION: Record<
   },
 };
 
-/** Each species has a happy and a sad clip; see `scripts/generate-pet-sounds.mjs`. */
+/** Hatched stages, each with its own happy and sad voice clip per species. */
+export type PetHatchedStage = Exclude<PetStage, "egg">;
+
+/** Each species and hatched stage has a happy and a sad clip; see `scripts/generate-pet-sounds.mjs`. */
 export type PetVoice = "happy" | "sad";
 
+export type PetVoiceClip = `${PetSpecies}-${PetHatchedStage}-${PetVoice}`;
+
 /** The clip's file name without its extension, the same on mobile and web. */
-export function petVoiceClip(species: PetSpecies, voice: PetVoice): `${PetSpecies}-${PetVoice}` {
-  return `${species}-${voice}`;
+export function petVoiceClip(
+  species: PetSpecies,
+  stage: PetHatchedStage,
+  voice: PetVoice,
+): PetVoiceClip {
+  return `${species}-${stage}-${voice}`;
 }
 
 export interface PetSoundCue {
+  clip: PetVoiceClip;
   voice: PetVoice;
-  /** Playback rate with pitch following it, so a faster clip also sounds higher. */
+  /** Subtle playback rate nudge with pitch following it, for a dance lift or fading droop. */
   rate: number;
   volume: number;
-  /** Also play the shared sparkle jingle. */
-  sparkle: boolean;
+  /** Shared sparkle layer for a dance, slightly delayed so it does not clip or mask the voice. */
+  sparkle: { delayMs: number; volume: number } | null;
 }
 
-// A baby squeaks highest and a legend sounds deepest; the species' voice stays recognisable.
-const STAGE_RATE: Record<Exclude<PetStage, "egg">, number> = {
-  baby: 1.25,
-  juvenile: 1.12,
-  adult: 1,
-  legend: 0.88,
-};
+/** How to play a reaction for a pet of this species and stage. */
+export function petSoundCue(
+  species: PetSpecies,
+  stage: PetHatchedStage,
+  reaction: PetReaction,
+): PetSoundCue {
+  if (reaction === "combo") {
+    return {
+      clip: petVoiceClip(species, stage, "happy"),
+      voice: "happy",
+      rate: 1.06,
+      volume: 0.9,
+      sparkle: { delayMs: 90, volume: 0.72 },
+    };
+  }
+  if (reaction === "sick") {
+    return {
+      clip: petVoiceClip(species, stage, "sad"),
+      voice: "sad",
+      rate: 1,
+      volume: 0.85,
+      sparkle: null,
+    };
+  }
+  if (reaction === "fading") {
+    return {
+      clip: petVoiceClip(species, stage, "sad"),
+      voice: "sad",
+      rate: 0.93,
+      volume: 0.62,
+      sparkle: null,
+    };
+  }
+  return {
+    clip: petVoiceClip(species, stage, "happy"),
+    voice: "happy",
+    rate: 1,
+    volume: 1,
+    sparkle: null,
+  };
+}
 
-/** How to play a reaction for a pet at this stage. */
-export function petSoundCue(stage: Exclude<PetStage, "egg">, reaction: PetReaction): PetSoundCue {
-  const rate = STAGE_RATE[stage];
-  if (reaction === "combo") return { voice: "happy", rate: rate * 1.15, volume: 1, sparkle: true };
-  if (reaction === "sick") return { voice: "sad", rate, volume: 0.8, sparkle: false };
-  if (reaction === "fading")
-    return { voice: "sad", rate: rate * 0.85, volume: 0.5, sparkle: false };
-  return { voice: "happy", rate, volume: 1, sparkle: false };
+export interface PetHatchSoundCue {
+  sparkleVolume: number;
+  voiceClip: PetVoiceClip;
+  voiceDelayMs: number;
+  voiceVolume: number;
+}
+
+/** Sparkle as the shell bursts, followed by the newly hatched Baby's happy voice. */
+export function petHatchSoundCue(species: PetSpecies): PetHatchSoundCue {
+  return {
+    sparkleVolume: 0.82,
+    voiceClip: petVoiceClip(species, "baby", "happy"),
+    voiceDelayMs: 160,
+    voiceVolume: 0.95,
+  };
 }

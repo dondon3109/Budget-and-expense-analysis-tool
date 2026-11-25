@@ -1,43 +1,67 @@
-import { playClip, playHaptic } from "@/features/sounds/sound-effects";
-import { playPetHatch, playPetReaction } from "./pet-sounds";
+import { playClip, playHaptic, warmUpClips } from "@/features/sounds/sound-effects";
+import { playPetHatch, playPetReaction, warmUpPetVoices } from "./pet-sounds";
 
 jest.mock("@/features/sounds/sound-effects", () => ({
   playClip: jest.fn(),
   playHaptic: jest.fn(),
   warmUpClips: jest.fn(),
 }));
-// Each clip resolves to its file name, so the test can see which one played.
-jest.mock("../../../assets/sounds/pet/panda-happy.wav", () => "panda-happy");
-jest.mock("../../../assets/sounds/pet/panda-sad.wav", () => "panda-sad");
-jest.mock("../../../assets/sounds/pet/pig-happy.wav", () => "pig-happy");
-jest.mock("../../../assets/sounds/pet/sparkle.wav", () => "sparkle");
+
+jest.mock("./pet-sound-assets", () => ({
+  petVoiceAssets: new Proxy(
+    {},
+    {
+      get: (_target, prop) => String(prop),
+    },
+  ),
+  sparkleAsset: "sparkle",
+}));
 
 const played = () => jest.mocked(playClip).mock.calls.map(([source]) => source as unknown);
 
-describe("playPetReaction", () => {
-  beforeEach(() => jest.clearAllMocks());
+describe("pet-sounds", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.clearAllMocks();
+  });
 
-  it("plays the pet's own species voice", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("warms up only the current stage's happy, sad, and sparkle clips", () => {
+    warmUpPetVoices("hippo", "adult");
+    expect(warmUpClips).toHaveBeenCalledWith(["hippo-adult-happy", "hippo-adult-sad", "sparkle"]);
+  });
+
+  it("plays each species and stage's own voice", () => {
     playPetReaction("panda", "baby", "happy");
-    playPetReaction("pig", "baby", "happy");
-    expect(played()).toEqual(["panda-happy", "pig-happy"]);
-    expect(jest.mocked(playHaptic).mock.calls).toEqual([["tap"], ["tap"]]);
+    playPetReaction("hippo", "adult", "happy");
+    playPetReaction("pig", "legend", "happy");
+    expect(played()).toEqual(["panda-baby-happy", "hippo-adult-happy", "pig-legend-happy"]);
+    expect(jest.mocked(playHaptic).mock.calls).toEqual([["tap"], ["tap"], ["tap"]]);
   });
 
-  it("uses the sad voice for an unwell pet", () => {
+  it("uses the stage's sad voice for an unwell pet", () => {
     playPetReaction("panda", "adult", "fading");
-    expect(played()).toEqual(["panda-sad"]);
+    expect(played()).toEqual(["panda-adult-sad"]);
   });
 
-  it("adds the sparkle and a success buzz to a dance", () => {
+  it("staggers the sparkle and plays a success buzz on a dance", () => {
     playPetReaction("panda", "adult", "combo");
-    expect(played()).toEqual(["panda-happy", "sparkle"]);
+    expect(played()).toEqual(["panda-adult-happy"]);
     expect(jest.mocked(playHaptic).mock.calls).toEqual([["success"]]);
+
+    jest.advanceTimersByTime(90);
+    expect(played()).toEqual(["panda-adult-happy", "sparkle"]);
   });
 
-  it("celebrates an egg hatch with sparkle, baby voice, and success buzz", () => {
+  it("celebrates an egg hatch with sparkle, delayed baby voice, and success buzz", () => {
     playPetHatch("panda");
-    expect(played()).toEqual(["sparkle", "panda-happy"]);
+    expect(played()).toEqual(["sparkle"]);
     expect(jest.mocked(playHaptic).mock.calls).toEqual([["success"]]);
+
+    jest.advanceTimersByTime(160);
+    expect(played()).toEqual(["sparkle", "panda-baby-happy"]);
   });
 });

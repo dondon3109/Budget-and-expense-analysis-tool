@@ -184,7 +184,9 @@ function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; na
   // `id` restarts the burst and the motion on every click.
   const [tap, setTap] = useState<{ reaction: PetReaction; id: number } | null>(null);
 
-  useEffect(() => warmUpPetVoices(pet.species), [pet.species]);
+  useEffect(() => {
+    if (pet.stage !== "egg") warmUpPetVoices(pet.species, pet.stage);
+  }, [pet.species, pet.stage]);
 
   const petIt = () => {
     const mood = petMood(pet);

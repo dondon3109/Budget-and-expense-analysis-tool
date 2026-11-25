@@ -2,5 +2,12 @@
 // import without the native audio module, and Button reaches it through the
 // sound effects. Suites that assert on audio mock it explicitly.
 module.exports = {
-  createAudioPlayer: jest.fn(() => ({ play: jest.fn(), seekTo: jest.fn(async () => undefined) })),
+  createAudioPlayer: jest.fn(() => ({
+    play: jest.fn(),
+    seekTo: jest.fn(async () => undefined),
+    setPlaybackRate: jest.fn(),
+    shouldCorrectPitch: true,
+    volume: 1,
+  })),
+  setAudioModeAsync: jest.fn(async () => undefined),
 };

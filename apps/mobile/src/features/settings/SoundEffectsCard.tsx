@@ -20,7 +20,8 @@ export function SoundEffectsCard() {
   return (
     <CollapsibleCard title="Sound effects" summary={enabled ? "On" : "Off"} icon="volume-high">
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-        Play short sounds for taps, saved entries, and errors. Follows your device volume.
+        Play short sounds for taps, saved entries, errors, and your pet's voice. Follows your device
+        volume.
       </Text>
       <View style={styles.option}>
         <Text style={[typography.headline, { color: theme.colors.text }]}>Play sounds</Text>
