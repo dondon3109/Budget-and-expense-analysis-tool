@@ -25,16 +25,45 @@ export function pigPalette(body: string): Palette {
   };
 }
 
+/**
+ * A fine, soft grain shared by every clay part: blurred noise used as a bump and roughness map, so
+ * light breaks up across the surface like a soft-touch vinyl toy instead of sliding off plastic.
+ */
+let grain: THREE.CanvasTexture | null = null;
+function clayGrain() {
+  if (grain) return grain;
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const image = ctx.createImageData(size, size);
+  for (let i = 0; i < image.data.length; i += 4) {
+    const v = 118 + Math.random() * 20;
+    image.data[i] = image.data[i + 1] = image.data[i + 2] = v;
+    image.data[i + 3] = 255;
+  }
+  ctx.putImageData(image, 0, 0);
+  // Soften the speckle into a gentle grain.
+  ctx.filter = "blur(1.2px)";
+  ctx.drawImage(canvas, 0, 0);
+  grain = new THREE.CanvasTexture(canvas);
+  grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
+  grain.repeat.set(3, 2);
+  return grain;
+}
+
+/** Soft matte clay: no clearcoat shine, a velvety sheen at the edges, and a fine grain. */
 function clay(color: string, extra: Partial<THREE.MeshPhysicalMaterialParameters> = {}) {
   return new THREE.MeshPhysicalMaterial({
     color,
-    roughness: 0.58,
+    roughness: 0.82,
+    roughnessMap: clayGrain(),
+    bumpMap: clayGrain(),
+    bumpScale: 0.12,
     metalness: 0,
-    sheen: 0.25,
-    sheenRoughness: 0.7,
-    sheenColor: new THREE.Color("#ffffff"),
-    clearcoat: 0.08,
-    clearcoatRoughness: 0.6,
+    sheen: 0.7,
+    sheenRoughness: 0.55,
+    sheenColor: new THREE.Color(mix(color, "#FFFFFF", 0.55)),
     ...extra,
   });
 }
@@ -78,7 +107,7 @@ function contactShadow() {
 }
 
 function buildPig(o: Palette) {
-  const root = new THREE.Group(); // squash and stretch around the feet
+  const root = new THREE.Group();
   const bodyMat = clay(o.body);
   const bellyMat = clay(o.belly, { roughness: 0.7 });
   const snoutMat = clay(o.snout, { roughness: 0.55 });
@@ -202,18 +231,18 @@ export function mountPigScene(
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.45;
+  scene.environmentIntensity = 0.7;
 
   const camera = new THREE.PerspectiveCamera(26, canvas.clientWidth / canvas.clientHeight, 0.1, 50);
   camera.position.set(0, 1.5, 7.2);
   camera.lookAt(0, 1.08, 0);
 
   // Studio lighting: a big soft key from the upper left, a cool fill, and a rim from behind.
-  const key = new THREE.DirectionalLight("#fff6ee", 2.2);
+  const key = new THREE.DirectionalLight("#fff6ee", 1.7);
   key.position.set(-1.2, 5, 2.4);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
-  key.shadow.radius = 8;
+  key.shadow.radius = 14;
   key.shadow.camera.left = -2;
   key.shadow.camera.right = 2;
   key.shadow.camera.top = 3;
@@ -244,41 +273,19 @@ export function mountPigScene(
   const pet = buildPig(pigPalette(body));
   scene.add(pet.root);
 
-  const HOP = 2.6;
+  // The pet stays put: it breathes, sways its head, and lets its ears drift, but never hops.
+  const BREATH = 3.6;
   const BLINK = 3.4;
   function pose(t: number) {
-    // Hop: squash, stretch up, land squash, settle — like the 2D keyframes.
-    const p = (t % HOP) / HOP;
-    let lift = 0;
-    let sy = 1;
-    if (p < 0.14) sy = 1 - 0.06 * Math.sin((p / 0.14) * Math.PI * 0.5);
-    else if (p < 0.42) {
-      const q = (p - 0.14) / 0.28;
-      lift = Math.sin(q * Math.PI * 0.5) * 0.28;
-      sy = 0.94 + 0.12 * Math.sin(q * Math.PI * 0.5) - 0.04 * q;
-    } else if (p < 0.54) {
-      const q = (p - 0.42) / 0.12;
-      lift = Math.cos(q * Math.PI * 0.5) * 0.28;
-      sy = 1.02 - 0.02 * q;
-    } else if (p < 0.64) {
-      const q = (p - 0.54) / 0.1;
-      sy = 1 - 0.08 * Math.sin(q * Math.PI);
-    } else if (p < 0.8) {
-      const q = (p - 0.64) / 0.16;
-      sy = 1 + 0.025 * Math.sin(q * Math.PI);
-    }
-    pet.root.position.y = lift;
-    pet.root.scale.set(1 / Math.sqrt(sy), sy, 1 / Math.sqrt(sy));
-    // The shadow shrinks while the pet is up.
-    const s = 1 - lift * 0.9;
-    shadow.scale.set(s, s, s);
-    shadow.material.opacity = 0.5 + 0.5 * s;
-    // Head tilts gently and the ears trail the motion.
-    pet.head.rotation.z = Math.sin(t * 1.3) * 0.07;
-    pet.head.rotation.x = Math.sin(t * 0.9) * 0.04;
+    const breath = Math.sin((t / BREATH) * Math.PI * 2);
+    // A slow, small rise and fall of the body; the head rides along a touch later.
+    pet.body.scale.set(1 + breath * 0.012, 1 + breath * 0.02, 1 + breath * 0.012);
+    pet.head.position.y = 1.28 + Math.sin((t / BREATH) * Math.PI * 2 - 0.5) * 0.012;
+    pet.head.rotation.z = Math.sin(t * 0.7) * 0.05;
+    pet.head.rotation.x = Math.sin(t * 0.5) * 0.03;
     pet.ears.forEach((ear, i) => {
       const side = i === 0 ? -1 : 1;
-      ear.rotation.z = side * -1.05 + Math.sin(t * 3 + i) * 0.06 - lift * side * 0.5;
+      ear.rotation.z = side * -1.05 + Math.sin(t * 1.4 + i * 1.7) * 0.05;
     });
     // Blink: a quick squeeze of the eyes.
     const b = t % BLINK;
@@ -297,6 +304,8 @@ export function mountPigScene(
         material.dispose();
       }
     });
+    grain?.dispose();
+    grain = null;
     scene.environment?.dispose();
     pmrem.dispose();
     renderer.dispose();
