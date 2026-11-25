@@ -1,8 +1,22 @@
-import type { AccountRecord, CategoryRecord, TransactionKind } from "@zoption/shared";
+import {
+  transactionKinds,
+  type AccountRecord,
+  type CategoryRecord,
+  type TransactionKind,
+} from "@zoption/shared";
 import { CalendarDays, Filter, Search, X } from "lucide-react";
 import { useMemo, type FormEvent, type RefObject } from "react";
+import {
+  isAgentSubmit,
+  respondToAgent,
+  webMcpFormProps,
+  webMcpParamProps,
+} from "@zoption/web-common/webmcp";
 
+import type { TransactionFilterState } from "../../hooks/useTransactionFilters";
 import { localIsoDate } from "../../lib/calendar";
+
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 interface TransactionFiltersProps {
   search: string;
@@ -24,6 +38,7 @@ interface TransactionFiltersProps {
   onToChange: (value?: string) => void;
   onDatePreset: (range: { from: string; to: string }) => void;
   onClear: () => void;
+  onAgentFilter?: (filters: TransactionFilterState) => Promise<unknown>;
 }
 
 interface DatePreset {
@@ -42,6 +57,13 @@ function buildDatePresets(): DatePreset[] {
     { id: "last-30-days", label: "Last 30 days", from: localIsoDate(last30Start), to: today },
     { id: "year-to-date", label: "Year to date", from: `${today.slice(0, 4)}-01-01`, to: today },
   ];
+}
+
+function readStringField(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key);
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed || undefined;
 }
 
 export function TransactionFilters({
@@ -64,17 +86,95 @@ export function TransactionFilters({
   onToChange,
   onDatePreset,
   onClear,
+  onAgentFilter,
 }: TransactionFiltersProps) {
   const datePresets = useMemo(buildDatePresets, []);
 
-  function handleSubmit(event: FormEvent) {
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isAgentSubmit(event)) {
+      onSearch();
+      return;
+    }
+
+    const formData = new FormData(event.currentTarget);
+    const nextSearch = readStringField(formData, "search");
+    const rawKind = readStringField(formData, "kind");
+    const nextAccountId = readStringField(formData, "accountId");
+    const nextCategoryId = readStringField(formData, "categoryId");
+    const nextFrom = readStringField(formData, "from");
+    const nextTo = readStringField(formData, "to");
+
+    if (rawKind && !(transactionKinds as readonly string[]).includes(rawKind)) {
+      respondToAgent(event, { error: `Unsupported transaction type "${rawKind}".` });
+      return;
+    }
+    if (
+      (nextFrom && !ISO_DATE_PATTERN.test(nextFrom)) ||
+      (nextTo && !ISO_DATE_PATTERN.test(nextTo))
+    ) {
+      respondToAgent(event, { error: "Dates must use YYYY-MM-DD format." });
+      return;
+    }
+    if (nextFrom && nextTo && nextFrom > nextTo) {
+      respondToAgent(event, { error: "Start date must be on or before end date." });
+      return;
+    }
+    if (nextAccountId && accounts.length > 0 && !accounts.some((a) => a.id === nextAccountId)) {
+      respondToAgent(event, { error: `Unknown account "${nextAccountId}".` });
+      return;
+    }
+    if (
+      nextCategoryId &&
+      categories.length > 0 &&
+      !categories.some((c) => c.id === nextCategoryId)
+    ) {
+      respondToAgent(event, { error: `Unknown category "${nextCategoryId}".` });
+      return;
+    }
+
+    const nextFilters: TransactionFilterState = {
+      search: nextSearch,
+      kind: rawKind as TransactionKind | undefined,
+      accountId: nextAccountId,
+      categoryId: nextCategoryId,
+      from: nextFrom,
+      to: nextTo,
+    };
+
+    if (onAgentFilter) {
+      respondToAgent(
+        event,
+        onAgentFilter(nextFilters).catch((error: unknown) => ({
+          error: error instanceof Error ? error.message : "Could not filter transactions.",
+        })),
+      );
+      return;
+    }
+
+    onSearchChange(nextSearch ?? "");
+    onKindChange(nextFilters.kind);
+    onAccountChange(nextAccountId);
+    onFromChange(nextFrom);
+    onToChange(nextTo);
+    onCategoryChange(nextCategoryId);
     onSearch();
+    respondToAgent(event, { filters: nextFilters });
   }
 
   return (
-    <section className="transaction-filters" aria-label="Transaction filters">
-      <form className="search-form" onSubmit={handleSubmit}>
+    <form
+      className="transaction-filters"
+      aria-label="Transaction filters"
+      onSubmit={handleSubmit}
+      {...webMcpFormProps({
+        name: "filter-transactions",
+        description:
+          "Filter transactions in the active workspace by search text, type, account, date range, and category. Use when the user wants to find or narrow ledger activity.",
+        autoSubmit: true,
+      })}
+    >
+      <div className="search-form">
         <Search size={17} aria-hidden="true" />
         <label className="sr-only" htmlFor="transaction-search">
           Search transactions by description, notes, account, or category
@@ -82,13 +182,17 @@ export function TransactionFilters({
         <input
           ref={searchInputRef}
           id="transaction-search"
+          name="search"
           type="search"
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder="Search transactions"
           autoComplete="off"
+          {...webMcpParamProps(
+            "Keywords to match against transaction description, notes, account, or category.",
+          )}
         />
-      </form>
+      </div>
       <div className="filter-select-wrap">
         <Filter size={15} aria-hidden="true" />
         <label className="sr-only" htmlFor="kind-filter">
@@ -96,6 +200,7 @@ export function TransactionFilters({
         </label>
         <select
           id="kind-filter"
+          name="kind"
           value={kind ?? ""}
           onChange={(event) =>
             onKindChange((event.target.value || undefined) as TransactionKind | undefined)
@@ -113,6 +218,7 @@ export function TransactionFilters({
         </label>
         <select
           id="account-filter"
+          name="accountId"
           value={accountId ?? ""}
           onChange={(event) => onAccountChange(event.target.value || undefined)}
         >
@@ -128,19 +234,23 @@ export function TransactionFilters({
       <label className="filter-date-wrap">
         <span>From</span>
         <input
+          name="from"
           type="date"
           value={from ?? ""}
           max={to}
           onChange={(event) => onFromChange(event.target.value || undefined)}
+          {...webMcpParamProps("Start date (inclusive) in YYYY-MM-DD format.")}
         />
       </label>
       <label className="filter-date-wrap">
         <span>To</span>
         <input
+          name="to"
           type="date"
           value={to ?? ""}
           min={from}
           onChange={(event) => onToChange(event.target.value || undefined)}
+          {...webMcpParamProps("End date (inclusive) in YYYY-MM-DD format.")}
         />
       </label>
       <div className="filter-presets" role="group" aria-label="Date presets">
@@ -166,6 +276,7 @@ export function TransactionFilters({
         </label>
         <select
           id="category-filter"
+          name="categoryId"
           value={categoryId ?? ""}
           onChange={(event) => onCategoryChange(event.target.value || undefined)}
         >
@@ -186,6 +297,6 @@ export function TransactionFilters({
           <X size={14} /> Clear
         </button>
       )}
-    </section>
+    </form>
   );
 }

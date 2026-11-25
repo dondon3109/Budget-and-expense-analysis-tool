@@ -6,6 +6,13 @@ import {
 import { CalendarClock, X } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import {
+  isAgentSubmit,
+  readFormText,
+  respondToAgent,
+  webMcpFormProps,
+  webMcpParamProps,
+} from "@zoption/web-common/webmcp";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
@@ -53,27 +60,62 @@ export function CalendarEventForm({
     },
   });
 
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function runSubmit(formData?: FormData) {
     setClientError(undefined);
 
-    if (!allDay && !startTime) {
-      setClientError("Choose a start time or mark the event as all day.");
-      return;
+    const nextTitle = formData ? readFormText(formData, "title") : title;
+    const nextDate = formData ? readFormText(formData, "date", initialDate) : date;
+    const nextAllDay = formData ? formData.has("allDay") : allDay;
+    const nextStartTime = formData ? readFormText(formData, "startTime") : startTime;
+    const nextEndTime = formData ? readFormText(formData, "endTime") : endTime;
+    const nextNotes = formData ? readFormText(formData, "notes") : notes;
+
+    if (formData) {
+      setTitle(nextTitle);
+      setDate(nextDate);
+      setAllDay(nextAllDay);
+      setStartTime(nextAllDay ? "" : nextStartTime);
+      setEndTime(nextAllDay ? "" : nextEndTime);
+      setNotes(nextNotes);
+    }
+
+    if (!nextAllDay && !nextStartTime) {
+      const message = "Choose a start time or mark the event as all day.";
+      setClientError(message);
+      return { error: message };
     }
 
     const parsed = calendarEventInputSchema.safeParse({
-      title,
-      date,
-      startTime: allDay ? null : startTime,
-      endTime: allDay || !endTime ? null : endTime,
-      notes: notes || null,
+      title: nextTitle,
+      date: nextDate,
+      startTime: nextAllDay ? null : nextStartTime,
+      endTime: nextAllDay || !nextEndTime ? null : nextEndTime,
+      notes: nextNotes || null,
     });
     if (!parsed.success) {
-      setClientError(parsed.error.issues[0]?.message ?? "Check the event details.");
+      const message = parsed.error.issues[0]?.message ?? "Check the event details.";
+      setClientError(message);
+      return { error: message };
+    }
+
+    try {
+      await onSubmit(parsed.data);
+      return { saved: true, event: parsed.data };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "Could not save calendar event.",
+      };
+    }
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isAgentSubmit(event)) {
+      const formData = new FormData(event.currentTarget);
+      respondToAgent(event, runSubmit(formData));
       return;
     }
-    await onSubmit(parsed.data);
+    void runSubmit();
   }
 
   // Portalled so the inert application root from useRootLock does not disable the dialog.
@@ -114,11 +156,19 @@ export function CalendarEventForm({
           </button>
         </header>
 
-        <form className="transaction-form calendar-event-form" onSubmit={handleSubmit}>
+        <form
+          className="transaction-form calendar-event-form"
+          onSubmit={handleSubmit}
+          {...webMcpFormProps({
+            name: "save-calendar-event",
+            description: "Prepare or update a calendar event for user confirmation.",
+          })}
+        >
           <label>
             <span>Event title</span>
             <input
               ref={titleInputRef}
+              name="title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
               placeholder="e.g. Dentist appointment"
@@ -131,14 +181,17 @@ export function CalendarEventForm({
             <label>
               <span>Date</span>
               <input
+                name="date"
                 type="date"
                 value={date}
                 onChange={(event) => setDate(event.target.value)}
                 required
+                {...webMcpParamProps("Event date in YYYY-MM-DD format.")}
               />
             </label>
             <label className="calendar-event-all-day">
               <input
+                name="allDay"
                 type="checkbox"
                 checked={allDay}
                 onChange={(event) => {
@@ -162,10 +215,12 @@ export function CalendarEventForm({
               <label>
                 <span>Starts</span>
                 <input
+                  name="startTime"
                   type="time"
                   value={startTime}
                   onChange={(event) => setStartTime(event.target.value)}
                   required
+                  {...webMcpParamProps("24-hour HH:MM start time when All day is unchecked.")}
                 />
               </label>
               <label>
@@ -173,9 +228,11 @@ export function CalendarEventForm({
                   Ends <small>(optional)</small>
                 </span>
                 <input
+                  name="endTime"
                   type="time"
                   value={endTime}
                   onChange={(event) => setEndTime(event.target.value)}
+                  {...webMcpParamProps("24-hour HH:MM end time when All day is unchecked.")}
                 />
               </label>
             </div>
@@ -186,6 +243,7 @@ export function CalendarEventForm({
               Notes <small>(optional)</small>
             </span>
             <textarea
+              name="notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               placeholder="Add details that will help you prepare."

@@ -9,7 +9,13 @@ import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 /** Only published guides are built, so an unknown slug is the site 404, not a page state. */
 export function GuideDetailPage({ guide }: { guide: FinanceGuide }) {
-  const relatedGuides = FINANCE_GUIDES.filter((g) => g.slug !== guide.slug).slice(0, 2);
+  const sameCategory = FINANCE_GUIDES.filter(
+    (g) => g.slug !== guide.slug && g.category === guide.category,
+  );
+  const otherGuides = FINANCE_GUIDES.filter(
+    (g) => g.slug !== guide.slug && g.category !== guide.category,
+  );
+  const relatedGuides = [...sameCategory, ...otherGuides].slice(0, 2);
 
   return (
     <div className="legal-page">

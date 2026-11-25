@@ -1,5 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { MoneyParseError, parseAmountToMinor } from "@zoption/shared/money";
+import {
+  isAgentSubmit,
+  respondToAgent,
+  webMcpFormProps,
+  webMcpParamProps,
+} from "@zoption/web-common/webmcp";
 
 import { appUrl, NEW_TAB } from "../../lib/appUrl";
 import { formatPeso } from "../../lib/formatters";
@@ -189,9 +195,79 @@ export function BudgetCalculator() {
     }
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!isAgentSubmit(event)) return;
+
+    const formData = new FormData(event.currentTarget);
+    const rawIncome = formData.get("income");
+    const nextIncomeInput = typeof rawIncome === "string" ? rawIncome : incomeInput;
+    const parsePercent = (key: BudgetRuleBucket) => {
+      const raw = formData.get(key);
+      if (typeof raw !== "string" || !raw.trim()) return percentages[key];
+      const parsedPercent = Number.parseInt(raw, 10);
+      return Number.isNaN(parsedPercent)
+        ? percentages[key]
+        : Math.min(100, Math.max(0, parsedPercent));
+    };
+    const nextPercentages: BudgetRulePercentages = {
+      needs: parsePercent("needs"),
+      wants: parsePercent("wants"),
+      savings: parsePercent("savings"),
+    };
+
+    markUsed();
+    setCopied(false);
+    setIncomeInput(nextIncomeInput);
+    setPercentages(nextPercentages);
+
+    let incomeMinor: number;
+    try {
+      incomeMinor = parseAmountToMinor(nextIncomeInput);
+    } catch (error) {
+      respondToAgent(event, {
+        error: error instanceof MoneyParseError ? error.message : "Enter a valid amount.",
+      });
+      return;
+    }
+
+    const totalPercent = nextPercentages.needs + nextPercentages.wants + nextPercentages.savings;
+    if (totalPercent !== 100) {
+      respondToAgent(event, {
+        error: `Needs, wants, and savings must add up to 100% (got ${totalPercent}%).`,
+      });
+      return;
+    }
+
+    const nextAllocation = allocateBudget(incomeMinor, nextPercentages);
+    respondToAgent(event, {
+      monthlyTakeHomeMinor: nextAllocation.total,
+      percentages: nextPercentages,
+      allocationMinor: {
+        needs: nextAllocation.needs,
+        wants: nextAllocation.wants,
+        savings: nextAllocation.savings,
+      },
+      paydayEstimateMinor: {
+        needs: Math.floor(nextAllocation.needs / 2),
+        wants: Math.floor(nextAllocation.wants / 2),
+        savings: Math.floor(nextAllocation.savings / 2),
+      },
+    });
+  }
+
   return (
     <>
-      <section className="calc-panel calc-panel-guided">
+      <form
+        className="calc-panel calc-panel-guided"
+        onSubmit={handleSubmit}
+        {...webMcpFormProps({
+          name: "calculate-budget-split",
+          description:
+            "Calculate monthly and per-payday Philippine peso amounts across Needs, Wants, and Savings buckets. Use when a visitor wants to split take-home pay using the 50/30/20 or a custom rule.",
+          autoSubmit: true,
+        })}
+      >
         <div className="calc-step">
           <div className="calc-step-head">
             <span className="calc-step-badge" aria-hidden="true">
@@ -205,12 +281,16 @@ export function BudgetCalculator() {
             <span className="calc-currency">₱</span>
             <input
               id="calc-income"
+              name="income"
               className="calc-input"
               type="text"
               inputMode="decimal"
               value={incomeInput}
               onChange={(event) => setIncome(event.target.value)}
               aria-describedby="calc-income-hint"
+              {...webMcpParamProps(
+                "Monthly take-home pay in Philippine pesos, e.g. 30000 or 30,000.00.",
+              )}
             />
           </div>
           <div className="calc-presets" role="group" aria-label="Sample monthly salaries">
@@ -243,7 +323,12 @@ export function BudgetCalculator() {
           ) : null}
         </div>
 
-        <fieldset className="calc-step calc-splits-step">
+        <fieldset
+          className="calc-step calc-splits-step"
+          {...webMcpParamProps(
+            "Percentage shares for needs, wants, and savings; all three must add up to 100.",
+          )}
+        >
           <div className="calc-step-head calc-step-head-spread">
             <div className="calc-step-head">
               <span className="calc-step-badge" aria-hidden="true">
@@ -296,6 +381,7 @@ export function BudgetCalculator() {
                   <div className="calc-split-number">
                     <input
                       id={`calc-split-${bucket.key}`}
+                      name={bucket.key}
                       className="calc-split-input"
                       type="number"
                       min={0}
@@ -341,7 +427,7 @@ export function BudgetCalculator() {
             </div>
           )}
         </fieldset>
-      </section>
+      </form>
 
       {allocation ? (
         <div

@@ -40,23 +40,23 @@ describe("GuidesIndexPage", () => {
     }
   });
 
-  it("filters guides by category and allows returning to all guides", () => {
+  it("filters guides by category, keyword search, and empty state reset", () => {
     render(<GuidesIndexPage />);
 
     setupFilters();
 
-    const categoryNav = screen.getByRole("navigation", { name: "Filter guides by category" });
-    const budgetingButton = within(categoryNav).getByRole("button", { name: "Budgeting" });
-    const subscriptionsButton = within(categoryNav).getByRole("button", { name: "Subscriptions" });
-    const allButton = within(categoryNav).getByRole("button", { name: "All Guides" });
+    const categoryGroup = screen.getByRole("group", { name: "Filter guides by category" });
+    const budgetingRadio = within(categoryGroup).getByRole("radio", { name: "Budgeting" });
+    const subscriptionsRadio = within(categoryGroup).getByRole("radio", { name: "Subscriptions" });
+    const allRadio = within(categoryGroup).getByRole("radio", { name: "All Guides" });
 
-    expect(allButton).toHaveAttribute("aria-pressed", "true");
-    expect(allButton).toHaveClass("active");
+    expect(allRadio).toBeChecked();
+    expect(allRadio.closest("label")).toHaveClass("active");
 
     // Filter by Subscriptions
-    fireEvent.click(subscriptionsButton);
-    expect(subscriptionsButton).toHaveAttribute("aria-pressed", "true");
-    expect(allButton).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(subscriptionsRadio);
+    expect(subscriptionsRadio).toBeChecked();
+    expect(allRadio).not.toBeChecked();
 
     const subscriptionGuides = FINANCE_GUIDES.filter((g) => g.category === "subscriptions");
     const nonSubscriptionGuides = FINANCE_GUIDES.filter((g) => g.category !== "subscriptions");
@@ -71,16 +71,29 @@ describe("GuidesIndexPage", () => {
     }
 
     // Filter by Budgeting
-    fireEvent.click(budgetingButton);
-    expect(budgetingButton).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(budgetingRadio);
+    expect(budgetingRadio).toBeChecked();
     const budgetingGuides = FINANCE_GUIDES.filter((g) => g.category === "budgeting");
     for (const guide of budgetingGuides) {
       expect(screen.getByRole("heading", { level: 2, name: guide.title })).toBeInTheDocument();
     }
 
-    // Return to All Guides
-    fireEvent.click(allButton);
-    expect(allButton).toHaveAttribute("aria-pressed", "true");
+    // Filter by keyword inside guide metadata and then hit empty state
+    const search = screen.getByRole("searchbox", { name: "Search guides" });
+    fireEvent.input(search, { target: { value: "gcash" } });
+    expect(
+      screen.getByRole("heading", {
+        level: 2,
+        name: "How to Track GCash & Maya Expenses Without Bank Linking",
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.input(search, { target: { value: "zzzz-no-match" } });
+    expect(screen.getByRole("heading", { level: 2, name: "No guides found" })).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+    expect(allRadio).toBeChecked();
+    expect(search).toHaveValue("");
     for (const guide of FINANCE_GUIDES) {
       expect(screen.getByRole("heading", { level: 2, name: guide.title })).toBeInTheDocument();
     }
@@ -175,8 +188,14 @@ describe("GuideDetailPage", () => {
       }
     }
 
-    // Related guides
-    const relatedGuides = FINANCE_GUIDES.filter((g) => g.slug !== firstGuide.slug).slice(0, 2);
+    // Related guides prefer the same category first
+    const sameCategory = FINANCE_GUIDES.filter(
+      (g) => g.slug !== firstGuide.slug && g.category === firstGuide.category,
+    );
+    const otherGuides = FINANCE_GUIDES.filter(
+      (g) => g.slug !== firstGuide.slug && g.category !== firstGuide.category,
+    );
+    const relatedGuides = [...sameCategory, ...otherGuides].slice(0, 2);
     if (relatedGuides.length > 0) {
       expect(
         screen.getByRole("heading", { level: 2, name: "More financial guides" }),

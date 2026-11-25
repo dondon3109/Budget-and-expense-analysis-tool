@@ -3,6 +3,7 @@ import {
   preferredTransactionAccount,
   type TransactionInput,
   type TransactionListItem,
+  type TransactionListQuery,
 } from "@zoption/shared";
 import {
   keepPreviousData,
@@ -45,7 +46,11 @@ import { useActiveWorkspace } from "../components/layout/ActiveWorkspaceProvider
 import { useTransactionSharing } from "../hooks/useTransactionSharing";
 import { AppShell } from "../components/layout/AppShell";
 import { useBulkTransactionActions } from "../hooks/useBulkTransactionActions";
-import { SORT_OPTIONS, useTransactionFilters } from "../hooks/useTransactionFilters";
+import {
+  SORT_OPTIONS,
+  type TransactionFilterState,
+  useTransactionFilters,
+} from "../hooks/useTransactionFilters";
 import { useTransactionExport } from "../hooks/useTransactionExport";
 import { localIsoDate } from "../lib/calendar";
 import {
@@ -381,6 +386,40 @@ export function TransactionsPage() {
     setFormOpen(true);
   }
 
+  async function applyAgentFilters(nextFilters: TransactionFilterState) {
+    applySavedFilters(nextFilters);
+    const nextQuery: TransactionListQuery = {
+      ...query,
+      page: 1,
+      search: nextFilters.search,
+      kind: nextFilters.kind,
+      accountId: nextFilters.accountId,
+      categoryId: nextFilters.categoryId,
+      from: nextFilters.from,
+      to: nextFilters.to,
+    };
+    const result = await queryClient.fetchInfiniteQuery({
+      queryKey: queryKeys.transactionFeed(workspace, nextQuery),
+      queryFn: ({ pageParam }) => getTransactions(workspace, { ...nextQuery, page: pageParam }),
+      initialPageParam: 1,
+    });
+    const firstPage = result.pages[0];
+    return {
+      filters: nextFilters,
+      total: firstPage?.total ?? 0,
+      transactions: (firstPage?.items ?? []).slice(0, 10).map((item) => ({
+        id: item.id,
+        date: item.date,
+        kind: item.kind,
+        description: item.description,
+        amountMinor: item.amountMinor,
+        currency: item.currency,
+        categoryName: item.categoryName,
+        accountName: item.accountName,
+      })),
+    };
+  }
+
   return (
     <AppShell>
       <div className="dashboard-page transactions-page">
@@ -443,6 +482,7 @@ export function TransactionsPage() {
           onToChange={(to) => updateFilters({ to })}
           onDatePreset={({ from, to }) => updateFilters({ from, to })}
           onClear={clearFilters}
+          onAgentFilter={applyAgentFilters}
         />
 
         {/* The panel is deliberately not a live region: the pagination status below (or the empty

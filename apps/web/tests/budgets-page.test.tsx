@@ -689,5 +689,36 @@ describe("BudgetsPage", () => {
         await screen.findByRole("button", { name: "Save occasion budget" }),
       ).toBeInTheDocument();
     });
+
+    it("exposes create-budget-occasion via WebMCP without toolautosubmit", async () => {
+      vi.mocked(getBudgetOccasions).mockResolvedValue({ occasions: [] });
+      vi.mocked(createCalendarEvent).mockResolvedValue({ id: "trip-1" } as never);
+      vi.mocked(getBudgets).mockResolvedValue(budgetPlan);
+      renderAt("/app/budgets?month=2026-07&scope=occasions");
+
+      const titleInput = await screen.findByLabelText("Occasion");
+      const form = titleInput.closest("form")!;
+      expect(form).toHaveAttribute("toolname", "create-budget-occasion");
+      expect(form).not.toHaveAttribute("toolautosubmit");
+
+      titleInput.setAttribute("value", "Baguio trip");
+      (titleInput as HTMLInputElement).value = "Baguio trip";
+
+      let responsePromise: Promise<unknown> | undefined;
+      form.dispatchEvent(
+        Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+          agentInvoked: true,
+          respondWith: (promise: Promise<unknown>) => {
+            responsePromise = promise;
+          },
+        }),
+      );
+
+      await expect(responsePromise).resolves.toEqual({
+        id: "trip-1",
+        title: "Baguio trip",
+        date: "2026-07-01",
+      });
+    });
   });
 });

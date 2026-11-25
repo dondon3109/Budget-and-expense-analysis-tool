@@ -78,7 +78,7 @@ describe("TutorialsPage", () => {
   it("filters tutorials by category pill", () => {
     renderPage();
 
-    const budgetingPill = screen.getByRole("button", { name: "Budgeting" });
+    const budgetingPill = screen.getByRole("radio", { name: "Budgeting" });
     fireEvent.click(budgetingPill);
 
     expect(
@@ -87,6 +87,40 @@ describe("TutorialsPage", () => {
     expect(
       screen.queryByRole("heading", { name: "Tracking Monthly Bills & Subscriptions" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("uses the up-to-date shared tutorials copy and supports declarative WebMCP", async () => {
+    renderPage();
+
+    expect(
+      screen.getByRole("heading", { name: "Importing Bank Statements (PDF, CSV & Excel)" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Offline Use & Data Protection" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Zero-Knowledge Encryption/i)).not.toBeInTheDocument();
+
+    const form = document.querySelector<HTMLFormElement>('form[toolname="filter-tutorials"]')!;
+    expect(form).toHaveAttribute("toolautosubmit", "");
+    const input = form.querySelector<HTMLInputElement>('input[name="query"]')!;
+    fireEvent.change(input, { target: { value: "MariBank" } });
+
+    let responsePromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          responsePromise = promise;
+        },
+      }),
+    );
+
+    await expect(responsePromise).resolves.toMatchObject({
+      query: "MariBank",
+      category: "All",
+      matchCount: 1,
+      matches: [expect.objectContaining({ id: "bank-csv-imports" })],
+    });
   });
 
   it("renders inside AppShell for AppTutorialsPage", () => {

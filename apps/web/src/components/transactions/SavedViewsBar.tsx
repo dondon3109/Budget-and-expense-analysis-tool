@@ -1,5 +1,11 @@
 import { Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import {
+  isAgentSubmit,
+  readFormText,
+  respondToAgent,
+  webMcpFormProps,
+} from "@zoption/web-common/webmcp";
 
 import { sameFilters } from "../../hooks/useTransactionFilters";
 import {
@@ -46,8 +52,13 @@ export function SavedViewsBar({ filters, onApply }: SavedViewsBarProps) {
 
   function saveCurrentView(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const name = viewName.trim().slice(0, SAVED_VIEW_NAME_MAX);
-    if (!name) return;
+    const agent = isAgentSubmit(event);
+    const rawName = agent ? readFormText(new FormData(event.currentTarget), "viewName") : viewName;
+    const name = rawName.trim().slice(0, SAVED_VIEW_NAME_MAX);
+    if (!name) {
+      if (agent) respondToAgent(event, { error: "Enter a view name." });
+      return;
+    }
     const view: SavedTransactionView = { id: savedViewId(), name, filters };
     // Saving under an existing name replaces that view instead of stacking duplicates.
     const next = [...views.filter((candidate) => candidate.name !== name), view];
@@ -56,6 +67,7 @@ export function SavedViewsBar({ filters, onApply }: SavedViewsBarProps) {
     setActiveViewId(view.id);
     setViewName("");
     setSaveViewOpen(false);
+    if (agent) respondToAgent(event, { saved: true, id: view.id, name: view.name });
   }
 
   function deleteSavedView(view: SavedTransactionView) {
@@ -83,10 +95,19 @@ export function SavedViewsBar({ filters, onApply }: SavedViewsBarProps) {
         </select>
       </label>
       {saveViewOpen ? (
-        <form className="transaction-view-save" onSubmit={saveCurrentView}>
+        <form
+          className="transaction-view-save"
+          onSubmit={saveCurrentView}
+          {...webMcpFormProps({
+            name: "save-transaction-view",
+            description:
+              "Save the currently active transaction filters under a named view in this browser.",
+          })}
+        >
           <label className="transaction-view-name">
             <span className="sr-only">View name</span>
             <input
+              name="viewName"
               value={viewName}
               maxLength={SAVED_VIEW_NAME_MAX}
               placeholder="Name this view"

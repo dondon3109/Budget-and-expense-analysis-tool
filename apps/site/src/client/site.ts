@@ -12,6 +12,7 @@ import {
 } from "@zoption/web-common/consent";
 import { registerOptionalIntegration, updateConsentGate } from "@zoption/web-common/consent-gate";
 import { persistConsentRecord, readConsentRecord } from "@zoption/web-common/consent-storage";
+import { isAgentSubmit, respondToAgent } from "@zoption/web-common/webmcp";
 
 const THEMES = ["light", "dark", "coffee"] as const;
 type Theme = (typeof THEMES)[number];
@@ -134,46 +135,133 @@ export function setupDrawer() {
 /**
  * A pill group (`data-filter-controls`) and an optional search box
  * (`data-filter-search`) narrow the items in the matching `data-filter-items`.
+ * Also handles declarative WebMCP `<form data-filter-form>` submissions.
  */
 export function setupFilters() {
   for (const list of document.querySelectorAll<HTMLElement>("[data-filter-items]")) {
     const name = list.dataset.filterItems;
     const controls = document.querySelector<HTMLElement>(`[data-filter-controls="${name}"]`);
     const search = document.querySelector<HTMLInputElement>(`[data-filter-search="${name}"]`);
-    const pills = [...(controls?.querySelectorAll<HTMLButtonElement>("[data-filter-value]") ?? [])];
+    const clearButton = document.querySelector<HTMLButtonElement>(`[data-filter-clear="${name}"]`);
+    const status = document.querySelector<HTMLElement>(`[data-filter-status="${name}"]`);
+    const form =
+      document.querySelector<HTMLFormElement>(`[data-filter-form="${name}"]`) ??
+      search?.closest<HTMLFormElement>("form") ??
+      controls?.closest<HTMLFormElement>("form");
+    const radioInputs = [
+      ...(controls?.querySelectorAll<HTMLInputElement>('input[type="radio"][data-filter-value]') ??
+        []),
+    ];
+    const buttonPills = [
+      ...(controls?.querySelectorAll<HTMLButtonElement>("button[data-filter-value]") ?? []),
+    ];
+    const validCategories = new Set([
+      ...radioInputs.map((input) => input.value || input.dataset.filterValue || "all"),
+      ...buttonPills.map((pill) => pill.dataset.filterValue ?? "all"),
+    ]);
     const items = [...list.querySelectorAll<HTMLElement>(":scope > [data-filter-value]")];
     const empty = list.querySelector<HTMLElement>("[data-filter-empty]");
-    let category = "all";
+    let category = radioInputs.find((input) => input.checked)?.value || "all";
+
+    function syncControls() {
+      for (const radio of radioInputs) {
+        const value = radio.value || radio.dataset.filterValue || "all";
+        const active = value === category;
+        radio.checked = active;
+        radio.closest("label")?.classList.toggle("active", active);
+      }
+      for (const pill of buttonPills) {
+        const active = pill.dataset.filterValue === category;
+        pill.classList.toggle("active", active);
+        pill.setAttribute("aria-pressed", String(active));
+      }
+      if (clearButton) {
+        clearButton.hidden = (search?.value.length ?? 0) === 0;
+      }
+    }
 
     function apply() {
       const query = search?.value.trim().toLowerCase() ?? "";
-      let shown = 0;
+      const matches: Array<{ title: string; category: string; href?: string; id?: string }> = [];
       for (const item of items) {
         const visible =
           (category === "all" || item.dataset.filterValue === category) &&
           (!query ||
             (item.dataset.filterText ?? item.textContent ?? "").toLowerCase().includes(query));
         item.hidden = !visible;
-        if (visible) shown += 1;
+        if (visible) {
+          const title = item.querySelector("h2")?.textContent?.trim() ?? "";
+          const href =
+            item instanceof HTMLAnchorElement
+              ? (item.getAttribute("href") ?? undefined)
+              : (item.querySelector<HTMLAnchorElement>("a[href]")?.getAttribute("href") ??
+                undefined);
+          matches.push({
+            title,
+            category: item.dataset.filterValue ?? "",
+            ...(href ? { href } : {}),
+            ...(item.id ? { id: item.id } : {}),
+          });
+        }
       }
-      if (empty) empty.hidden = shown > 0;
-      for (const pill of pills) {
-        const active = pill.dataset.filterValue === category;
-        pill.classList.toggle("active", active);
-        pill.setAttribute("aria-pressed", String(active));
+      if (empty) empty.hidden = matches.length > 0;
+      if (status) {
+        const filtered = category !== "all" || query.length > 0;
+        status.hidden = !filtered;
+        status.textContent = filtered ? `Showing ${matches.length} of ${items.length}` : "";
       }
+      syncControls();
+      return matches;
     }
 
-    for (const pill of pills) {
+    for (const radio of radioInputs) {
+      radio.addEventListener("change", () => {
+        if (!radio.checked) return;
+        category = radio.value || radio.dataset.filterValue || "all";
+        apply();
+      });
+    }
+    for (const pill of buttonPills) {
       pill.addEventListener("click", () => {
         category = pill.dataset.filterValue ?? "all";
         apply();
       });
     }
     search?.addEventListener("input", apply);
+    clearButton?.addEventListener("click", () => {
+      if (search) {
+        search.value = "";
+        search.focus();
+      }
+      apply();
+    });
     list.querySelector("[data-filter-reset]")?.addEventListener("click", () => {
       category = "all";
       if (search) search.value = "";
+      apply();
+    });
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (isAgentSubmit(event)) {
+        const formData = new FormData(form);
+        const submittedQuery = formData.get("query");
+        if (typeof submittedQuery === "string" && search) {
+          search.value = submittedQuery;
+        }
+        const submittedCategory = formData.get("category");
+        if (typeof submittedCategory === "string" && validCategories.has(submittedCategory)) {
+          category = submittedCategory;
+        }
+        const matches = apply();
+        respondToAgent(event, {
+          query: search?.value.trim() ?? "",
+          category,
+          totalCount: items.length,
+          matchCount: matches.length,
+          matches,
+        });
+        return;
+      }
       apply();
     });
   }

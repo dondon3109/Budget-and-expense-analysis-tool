@@ -23,6 +23,13 @@
   text-wrap: balance;
 }
 
+.tutorials-filter-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
 .tutorials-search-bar {
   width: 100%;
   max-width: 540px;
@@ -41,7 +48,7 @@
 
 .tutorials-search-bar input {
   width: 100%;
-  padding: 0.75rem 2.5rem 0.75rem 2.75rem;
+  padding: 0.75rem 3.25rem 0.75rem 2.75rem;
   font-size: 0.9375rem;
   border: 1px solid var(--line);
   border-radius: 9999px;
@@ -63,12 +70,17 @@
 }
 
 .tutorials-categories {
+  border: 0;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
 .tutorials-category-pill {
+  display: inline-flex;
+  align-items: center;
   border: 1px solid var(--line);
   background-color: var(--surface);
   color: var(--muted);
@@ -84,14 +96,26 @@
     color 0.15s ease;
 }
 
+.tutorials-category-pill:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .tutorials-category-pill:hover {
   background-color: var(--surface-muted);
 }
 
-.tutorials-category-pill.active {
+.tutorials-category-pill.active,
+.tutorials-category-pill:has(input:checked) {
   background-color: var(--brand-soft);
   color: var(--brand-strong);
   border-color: var(--brand);
+}
+
+.tutorials-filter-status {
+  margin: 0.875rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
 }
 
 .tutorial-card {

@@ -59,4 +59,55 @@ describe("BudgetCalculator UI", () => {
     expect(screen.getByLabelText("Wants")).toHaveValue(25);
     expect(screen.getByLabelText("Savings")).toHaveValue(20);
   });
+
+  it("handles declarative WebMCP budget split submissions and rejects bad totals", async () => {
+    render(<BudgetCalculator />);
+
+    const form = document.querySelector<HTMLFormElement>(
+      'form[toolname="calculate-budget-split"]',
+    )!;
+    expect(form).toHaveAttribute("toolautosubmit", "");
+
+    const income = form.querySelector<HTMLInputElement>('input[name="income"]')!;
+    const needs = form.querySelector<HTMLInputElement>('input[name="needs"]')!;
+    const wants = form.querySelector<HTMLInputElement>('input[name="wants"]')!;
+    const savings = form.querySelector<HTMLInputElement>('input[name="savings"]')!;
+
+    fireEvent.change(income, { target: { value: "40000" } });
+    fireEvent.change(needs, { target: { value: "60" } });
+    fireEvent.change(wants, { target: { value: "20" } });
+    fireEvent.change(savings, { target: { value: "20" } });
+
+    let responsePromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          responsePromise = promise;
+        },
+      }),
+    );
+
+    await expect(responsePromise).resolves.toEqual({
+      monthlyTakeHomeMinor: 4_000_000,
+      percentages: { needs: 60, wants: 20, savings: 20 },
+      allocationMinor: { needs: 2_400_000, wants: 800_000, savings: 800_000 },
+      paydayEstimateMinor: { needs: 1_200_000, wants: 400_000, savings: 400_000 },
+    });
+
+    fireEvent.change(savings, { target: { value: "30" } });
+    let errorPromise: Promise<unknown> | undefined;
+    form.dispatchEvent(
+      Object.assign(new Event("submit", { bubbles: true, cancelable: true }), {
+        agentInvoked: true,
+        respondWith: (promise: Promise<unknown>) => {
+          errorPromise = promise;
+        },
+      }),
+    );
+
+    await expect(errorPromise).resolves.toEqual({
+      error: "Needs, wants, and savings must add up to 100% (got 110%).",
+    });
+  });
 });
