@@ -9,7 +9,7 @@ import {
 import { useEffect, useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { PetModel } from "./PetModel";
+import { hasFigure3D, PetModel } from "./PetModel";
 import "./PetPicture.css";
 
 /**
@@ -30,11 +30,15 @@ export function PetPicture({
 }) {
   const reduceMotion = useReducedMotion();
   const reacting = useRef<HTMLSpanElement>(null);
+  const health = pet.stage === "egg" ? null : petFigureHealth(pet);
+  // The 3D figure plays reactions inside its scene; moving its canvas too would look rigid.
+  const figure3D =
+    health !== null && pet.stage !== "egg" && hasFigure3D(pet.species, pet.stage, health);
 
   useEffect(() => {
     const element = reacting.current;
     // jsdom has no Web Animations API.
-    if (!tap || reduceMotion || typeof element?.animate !== "function") return;
+    if (!tap || figure3D || reduceMotion || typeof element?.animate !== "function") return;
     const motion = PET_REACTION_MOTION[tap.reaction];
     const frames = motion.at.map((offset, index) => ({
       offset,
@@ -42,9 +46,9 @@ export function PetPicture({
     }));
     const animation = element.animate(frames, { duration: motion.ms, easing: "linear" });
     return () => animation.cancel();
-  }, [reduceMotion, tap]);
+  }, [figure3D, reduceMotion, tap]);
 
-  if (pet.stage === "egg") return null;
+  if (pet.stage === "egg" || health === null) return null;
   return (
     <span
       className={className ? `pet-live ${className}` : "pet-live"}
@@ -55,10 +59,11 @@ export function PetPicture({
         <PetModel
           species={pet.species}
           stage={pet.stage}
-          health={petFigureHealth(pet)}
+          health={health}
           color={pet.color}
           size={size}
           live
+          tap={tap}
         />
       </span>
     </span>

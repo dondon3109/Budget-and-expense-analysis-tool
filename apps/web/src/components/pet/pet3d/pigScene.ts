@@ -1,3 +1,4 @@
+import { PET_REACTION_MOTION, type PetReaction } from "@zoption/shared";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
@@ -117,11 +118,20 @@ function buildPig(o: Palette) {
   root.add(body);
   body.add(blob(bodyMat, [0.62, 0.5, 0.55], [0, 0.48, 0]));
   body.add(blob(bellyMat, [0.42, 0.34, 0.3], [0, 0.44, 0.3]));
-  // Stubby front legs.
+  // Stubby front legs and back haunches, each on a joint at its top so it can swing and kick.
+  const legs: THREE.Group[] = [];
+  const haunches: THREE.Group[] = [];
   for (const side of [-1, 1]) {
-    body.add(blob(bodyMat, [0.17, 0.24, 0.18], [side * 0.26, 0.2, 0.3]));
-    // Back haunches peeking out at the sides.
-    body.add(blob(bodyMat, [0.22, 0.2, 0.26], [side * 0.46, 0.2, -0.05]));
+    const leg = new THREE.Group();
+    leg.position.set(side * 0.26, 0.4, 0.3);
+    leg.add(blob(bodyMat, [0.17, 0.24, 0.18], [0, -0.2, 0]));
+    body.add(leg);
+    legs.push(leg);
+    const haunch = new THREE.Group();
+    haunch.position.set(side * 0.4, 0.34, -0.05);
+    haunch.add(blob(bodyMat, [0.22, 0.2, 0.26], [side * 0.06, -0.14, 0]));
+    body.add(haunch);
+    haunches.push(haunch);
   }
 
   // Head: big and round, most of the figure.
@@ -130,17 +140,15 @@ function buildPig(o: Palette) {
   root.add(head);
   head.add(blob(bodyMat, [1.04, 0.86, 0.9], [0, 0, 0], [0, 0, 0], 96));
 
-  // Snout: a flattened rounded disc on the front of the face.
-  const snout = blob(snoutMat, [0.3, 0.22, 0.16], [0, -0.2, 0.8]);
+  // Snout: a flattened rounded disc on the front of the face, its nostrils riding along when it
+  // twitches or squishes.
+  const snout = new THREE.Group();
+  snout.position.set(0, -0.2, 0.8);
   head.add(snout);
-  for (const side of [-1, 1]) {
-    const nostril = blob(
-      new THREE.MeshStandardMaterial({ color: o.nostril, roughness: 0.6 }),
-      [0.05, 0.085, 0.04],
-      [side * 0.1, -0.2, 0.935],
-    );
-    head.add(nostril);
-  }
+  snout.add(blob(snoutMat, [0.3, 0.22, 0.16], [0, 0, 0]));
+  const nostrilMat = new THREE.MeshStandardMaterial({ color: o.nostril, roughness: 0.6 });
+  for (const side of [-1, 1])
+    snout.add(blob(nostrilMat, [0.05, 0.085, 0.04], [side * 0.1, 0, 0.135]));
 
   // Floppy ears that tip out and forward.
   const ears: THREE.Group[] = [];
@@ -194,32 +202,92 @@ function buildPig(o: Palette) {
     head.add(cheek);
   }
 
-  // Mouth: a small "w" tube under the snout.
+  // Mouth: a small "w" smile that gives way to an open, happy mouth (with a tongue) on a tap.
   const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.12, -0.44, 0.76),
-    new THREE.Vector3(-0.06, -0.5, 0.77),
-    new THREE.Vector3(0, -0.46, 0.78),
-    new THREE.Vector3(0.06, -0.5, 0.77),
-    new THREE.Vector3(0.12, -0.44, 0.76),
+    new THREE.Vector3(-0.12, 0.02, -0.02),
+    new THREE.Vector3(-0.06, -0.04, -0.01),
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(0.06, -0.04, -0.01),
+    new THREE.Vector3(0.12, 0.02, -0.02),
   ]);
-  head.add(
-    new THREE.Mesh(
-      new THREE.TubeGeometry(curve, 32, 0.012, 8, false),
-      new THREE.MeshStandardMaterial({ color: "#3a1f25", roughness: 0.6 }),
+  const smile = new THREE.Mesh(
+    new THREE.TubeGeometry(curve, 32, 0.012, 8, false),
+    new THREE.MeshStandardMaterial({ color: "#3a1f25", roughness: 0.6 }),
+  );
+  smile.position.set(0, -0.46, 0.78);
+  head.add(smile);
+  const open = new THREE.Group();
+  open.position.set(0, -0.5, 0.74);
+  open.add(
+    blob(
+      new THREE.MeshStandardMaterial({ color: "#5a1f2b", roughness: 0.7 }),
+      [0.1, 0.08, 0.06],
+      [0, 0, 0],
+      [0, 0, 0],
+      32,
+    ),
+    blob(
+      new THREE.MeshStandardMaterial({ color: "#f07c90", roughness: 0.6 }),
+      [0.065, 0.04, 0.04],
+      [0, -0.035, 0.03],
+      [0, 0, 0],
+      24,
     ),
   );
+  open.scale.setScalar(0.001);
+  head.add(open);
 
-  return { root, body, head, ears, eyes };
+  return { root, body, head, ears, eyes, legs, haunches, snout, smile, open };
+}
+
+/** A running pig scene: `react` plays a tap's reaction, `dispose` frees the GPU resources. */
+export interface PigScene {
+  react(reaction: PetReaction): void;
+  dispose(): void;
 }
 
 /**
- * Renders the pig into `canvas` and animates it unless `still`. Returns a cleanup that stops the
- * loop and frees the GPU resources.
+ * A damped spring chasing a moving target. Parts on springs (ears, legs, snout, head) follow the
+ * body a beat late and settle with a small wobble, which is what makes the motion read as alive
+ * rather than a rigid toy being moved.
+ */
+class Spring {
+  value = 0;
+  velocity = 0;
+  constructor(
+    private stiffness: number,
+    private damping: number,
+  ) {}
+  step(target: number, dt: number) {
+    this.velocity += (this.stiffness * (target - this.value) - this.damping * this.velocity) * dt;
+    this.value += this.velocity * dt;
+    return this.value;
+  }
+}
+
+/** A reaction's keyed value at progress `p`, eased between keys so the motion has no corners. */
+function keyed(at: number[], values: number[], p: number) {
+  for (let i = 1; i < at.length; i += 1) {
+    if (p > at[i]!) continue;
+    const q = (p - at[i - 1]!) / (at[i]! - at[i - 1]! || 1);
+    const eased = q * q * (3 - 2 * q);
+    return values[i - 1]! + (values[i]! - values[i - 1]!) * eased;
+  }
+  return values[values.length - 1]!;
+}
+
+// A reaction's hop is a fraction of the figure's height, as in the SVG figure's CSS.
+const FIGURE_HEIGHT = 2.6;
+
+/**
+ * Renders the pig into `canvas` and animates it unless `still`: an idle life (breathing, a head
+ * that wanders, ears that sway and now and then flick, a nose that twitches, a blink), and each
+ * tap's reaction played inside the scene so the whole body follows through.
  */
 export function mountPigScene(
   canvas: HTMLCanvasElement,
   { body, still }: { body: string; still: boolean },
-): () => void {
+): PigScene {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(canvas.clientWidth, canvas.clientHeight, false);
@@ -273,24 +341,106 @@ export function mountPigScene(
   const pet = buildPig(pigPalette(body));
   scene.add(pet.root);
 
-  // The pet stays put: it breathes, sways its head, and lets its ears drift, but never hops.
+  // Springs for the parts that follow the body. Ears are loose and wobbly, legs a little firmer.
+  const earSprings = [new Spring(140, 6), new Spring(140, 6)];
+  const legSpring = new Spring(160, 12);
+  const haunchSpring = new Spring(160, 12);
+  const snoutSpring = new Spring(260, 9);
+  const nodSpring = new Spring(90, 9);
+
   const BREATH = 3.6;
   const BLINK = 3.4;
+  let reaction: { kind: PetReaction; start: number } | null = null;
+  let lastLift = 0;
+  let lastTime = 0;
+  // Idle moments, each scheduled a few seconds apart so the pet never loops like a machine.
+  let twitchAt = 1.5;
+  let flickAt = 3;
+
   function pose(t: number) {
+    const dt = Math.min(Math.max(t - lastTime, 0), 1 / 30);
+    lastTime = t;
+
+    // A tap's reaction: the hop, tilt, and squash keys the SVG figure uses, plus a joy curve that
+    // opens the mouth and squints the eyes for a happy one.
+    let lift = 0;
+    let tilt = 0;
+    let squash = 0;
+    let joy = 0;
+    if (reaction) {
+      const motion = PET_REACTION_MOTION[reaction.kind];
+      const p = (t - reaction.start) / (motion.ms / 1000);
+      if (p >= 1) reaction = null;
+      else {
+        lift = -keyed(motion.at, motion.hop, p) * FIGURE_HEIGHT;
+        tilt = (keyed(motion.at, motion.tilt, p) * Math.PI) / 180;
+        squash = keyed(motion.at, motion.squash, p);
+        if (reaction.kind === "happy" || reaction.kind === "combo") joy = Math.sin(Math.PI * p);
+      }
+    }
+    const rise = dt > 0 ? (lift - lastLift) / dt : 0;
+    lastLift = lift;
+
     const breath = Math.sin((t / BREATH) * Math.PI * 2);
-    // A slow, small rise and fall of the body; the head rides along a touch later.
+    pet.root.position.y = lift;
+    pet.root.rotation.z = tilt;
+    const sy = 1 + squash;
+    pet.root.scale.set(1 / Math.sqrt(sy), sy, 1 / Math.sqrt(sy));
     pet.body.scale.set(1 + breath * 0.012, 1 + breath * 0.02, 1 + breath * 0.012);
+
+    // The head rides a touch behind the breath, wanders slowly, and nods as the body moves.
+    const nod = nodSpring.step(-rise * 0.05, dt);
     pet.head.position.y = 1.28 + Math.sin((t / BREATH) * Math.PI * 2 - 0.5) * 0.012;
-    pet.head.rotation.z = Math.sin(t * 0.7) * 0.05;
-    pet.head.rotation.x = Math.sin(t * 0.5) * 0.03;
+    pet.head.rotation.x = Math.sin(t * 0.5) * 0.03 + nod;
+    pet.head.rotation.z = Math.sin(t * 0.7) * 0.05 + Math.sin(t * 0.23) * 0.03;
+    pet.head.rotation.y = Math.sin(t * 0.31) * 0.08;
+
+    // Ears trail the body: rising swings them down, falling flicks them up, then they wobble.
+    if (t > flickAt) {
+      const ear = earSprings[Math.random() < 0.5 ? 0 : 1]!;
+      ear.velocity -= 3.5;
+      flickAt = t + 4 + Math.random() * 5;
+    }
     pet.ears.forEach((ear, i) => {
       const side = i === 0 ? -1 : 1;
-      ear.rotation.z = side * -1.05 + Math.sin(t * 1.4 + i * 1.7) * 0.05;
+      const droop = earSprings[i]!.step(rise * 0.09, dt);
+      ear.rotation.z = side * -(1.05 + droop) + Math.sin(t * 1.4 + i * 1.7) * 0.04;
+      ear.rotation.x = 0.75 + droop * 0.4;
     });
-    // Blink: a quick squeeze of the eyes.
-    const b = t % BLINK;
-    const closed = b > BLINK - 0.14;
-    for (const eye of pet.eyes) eye.scale.y = closed ? 0.02 : 0.19;
+
+    // Legs swing forward and the haunches splay while airborne, with a paddle during a dance.
+    const tuck = legSpring.step(lift * 1.4, dt);
+    const splay = haunchSpring.step(lift * 1.1, dt);
+    const paddle = reaction?.kind === "combo" ? Math.sin(t * 22) * 0.25 * Math.min(lift * 4, 1) : 0;
+    pet.legs.forEach((leg, i) => {
+      leg.rotation.x = -tuck + (i === 0 ? paddle : -paddle) + Math.sin(t * 0.8 + i) * 0.02;
+    });
+    pet.haunches.forEach((haunch, i) => {
+      haunch.rotation.z = (i === 0 ? -1 : 1) * splay * 0.6;
+    });
+
+    // The snout squishes on landing and twitches on its own every few seconds.
+    if (t > twitchAt + 0.45) twitchAt = t + 2.5 + Math.random() * 4;
+    const twitching = t > twitchAt ? Math.sin(((t - twitchAt) / 0.45) * Math.PI * 4) : 0;
+    const squish = snoutSpring.step(-rise * 0.03, dt);
+    pet.snout.scale.set(1 - squish * 0.5 + twitching * 0.04, 1 + squish - twitching * 0.05, 1);
+    pet.snout.position.y = -0.2 + twitching * 0.012;
+    pet.snout.rotation.z = twitching * 0.05;
+
+    // The mouth opens into a happy smile with the joy curve.
+    const openness = Math.max(joy, 0);
+    pet.open.scale.set(openness, openness, openness || 0.001);
+    pet.smile.scale.setScalar(1 - openness * 0.9);
+
+    // The shadow shrinks while the pet is up.
+    const s = 1 - lift * 0.9;
+    shadow.scale.set(s, s, s);
+    shadow.material.opacity = 0.5 + 0.5 * s;
+
+    // Eyes squint shut with joy; otherwise a quick blink every few seconds.
+    const blinking = t % BLINK > BLINK - 0.14;
+    const eyeOpen = blinking ? 0.02 : 0.19 * (1 - joy * 0.75);
+    for (const eye of pet.eyes) eye.scale.y = eyeOpen;
   }
 
   const dispose = () => {
@@ -313,12 +463,17 @@ export function mountPigScene(
   if (still) {
     pose(0);
     renderer.render(scene, camera);
-    return dispose;
+    return { react: () => {}, dispose };
   }
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     pose(clock.getElapsedTime());
     renderer.render(scene, camera);
   });
-  return dispose;
+  return {
+    react(kind) {
+      reaction = { kind, start: clock.getElapsedTime() };
+    },
+    dispose,
+  };
 }

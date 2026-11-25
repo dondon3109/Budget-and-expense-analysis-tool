@@ -151,8 +151,13 @@ the figure, or the tombstone.
 - Prototype, web only: a healthy Baby pig draws as a live 3D figure instead
   (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is built from
   rounded primitives with a soft matte clay material (a velvety sheen over a fine grain, no
-  clearcoat), studio lights, glossy bead eyes, and a contact shadow. It stays put: it breathes,
-  sways its head, lets its ears drift, and blinks, and only a tap's reaction moves it. `PetModel`
+  clearcoat), studio lights, glossy bead eyes, and a contact shadow. It is rigged so it reads as
+  alive: legs and haunches on hip joints, ears, snout, and head on damped springs that follow the
+  body a beat late and wobble as they settle, and a mouth that opens. It stays put when idle
+  (breathing, a wandering head, swaying ears with an occasional flick, a nose twitch, a blink). A
+  tap's reaction plays inside the scene from the same `PET_REACTION_MOTION` keys: the body hops
+  and tilts while the legs swing (and paddle in a dance), the ears trail, the snout squishes on
+  landing, and a happy tap opens the mouth and squints the eyes. The canvas itself never moves. `PetModel`
   picks the 3D or SVG figure for both the pet page and the pet pop-up, so the look never switches
   between them; while three.js loads the space stays empty instead of flashing the SVG. three.js
   loads lazily only for that pet, the pop-up and reduced motion render one still frame, and a
