@@ -9,7 +9,7 @@ import { usePetMoment } from "../../hooks/usePetMoment";
 import { useRootLock } from "../../hooks/useRootLock";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { usePet } from "../../queries/pet";
-import { PetFigure } from "./PetFigure";
+import { PetModel } from "./PetModel";
 import { PetSvg } from "./PetSvg";
 import "./PetMomentDialog.css";
 
@@ -66,7 +66,7 @@ function PetMomentContent({
             still
           />
         ) : (
-          <PetFigure
+          <PetModel
             className="pet-moment-picture"
             species={pet.species}
             stage={pet.stage}

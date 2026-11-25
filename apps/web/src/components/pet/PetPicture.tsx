@@ -6,15 +6,11 @@ import {
   type PetSpecies,
   type PetView,
 } from "@zoption/shared";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { PetFigure } from "./PetFigure";
-import { canDraw3D } from "./pet3d/canDraw3D";
+import { PetModel } from "./PetModel";
 import "./PetPicture.css";
-
-// PROTOTYPE: a healthy Baby pig draws as a live 3D figure; three.js loads only when it does.
-const PetFigure3D = lazy(() => import("./PetFigure3D"));
 
 /**
  * A hatched pet as its live vinyl figure in its pet color, like the phone app's: it bounces and
@@ -34,7 +30,6 @@ export function PetPicture({
 }) {
   const reduceMotion = useReducedMotion();
   const reacting = useRef<HTMLSpanElement>(null);
-  const [webgl] = useState(canDraw3D);
 
   useEffect(() => {
     const element = reacting.current;
@@ -50,18 +45,6 @@ export function PetPicture({
   }, [reduceMotion, tap]);
 
   if (pet.stage === "egg") return null;
-  const health = petFigureHealth(pet);
-  const figure3D = webgl && pet.species === "pig" && pet.stage === "baby" && health === "healthy";
-  const svg = (
-    <PetFigure
-      species={pet.species}
-      stage={pet.stage}
-      health={health}
-      color={pet.color}
-      size={size}
-      live
-    />
-  );
   return (
     <span
       className={className ? `pet-live ${className}` : "pet-live"}
@@ -69,13 +52,14 @@ export function PetPicture({
       style={{ width: size, height: size }}
     >
       <span ref={reacting} className="pet-live-react">
-        {figure3D ? (
-          <Suspense fallback={svg}>
-            <PetFigure3D color={pet.color} size={size} />
-          </Suspense>
-        ) : (
-          svg
-        )}
+        <PetModel
+          species={pet.species}
+          stage={pet.stage}
+          health={petFigureHealth(pet)}
+          color={pet.color}
+          size={size}
+          live
+        />
       </span>
     </span>
   );
