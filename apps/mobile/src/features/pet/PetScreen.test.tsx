@@ -7,8 +7,15 @@ import { babyPet, noPet } from "./pet-test-fixtures";
 
 const mockBack = jest.fn();
 const mockPush = jest.fn();
+const mockStackTitle = jest.fn();
 jest.mock("expo-router", () => ({
   router: { back: () => mockBack(), push: (path: string) => mockPush(path) },
+  Stack: {
+    Screen: ({ options }: { options?: { title?: string } }) => {
+      mockStackTitle(options?.title);
+      return null;
+    },
+  },
   useFocusEffect: (effect: () => void) => {
     const { useEffect } = jest.requireActual<{
       useEffect: (effect: () => void, deps: unknown[]) => void;
@@ -37,6 +44,7 @@ describe("PetScreen", () => {
     jest.mocked(setPetColor).mockReset();
     mockBack.mockReset();
     mockPush.mockReset();
+    mockStackTitle.mockReset();
     mockPlan = { plan: "zoption_pro", status: "ready" };
   });
 
@@ -46,7 +54,7 @@ describe("PetScreen", () => {
     jest.mocked(choosePetEgg).mockResolvedValue({ ...noPet, species: "hippo" });
     await render(<PetScreen />);
 
-    expect(screen.getByText("Meet your pet")).toBeTruthy();
+    expect(mockStackTitle).toHaveBeenLastCalledWith("Meet your pet");
     await fireEvent.press(screen.getByRole("radio", { name: "Hippo egg" }));
     await fireEvent.press(screen.getByRole("radio", { name: "Pink" }));
     expect(screen.getByRole("button", { name: "Give it a name" })).toBeDisabled();
@@ -135,7 +143,33 @@ describe("PetScreen", () => {
     jest.mocked(getPet).mockResolvedValue(sick);
     await render(<PetScreen />);
 
-    expect(screen.getByRole("alert").props.children).toMatch(/eat points to heal/);
+    expect(screen.getByRole("alert").props.children).toMatch(/Costs 25 pts to heal/);
+  });
+
+  it("lets the user recolor or turn off a pet right on the pet screen", async () => {
+    usePetStore.setState({ pet: babyPet });
+    jest.mocked(getPet).mockResolvedValue(babyPet);
+    jest.mocked(setPetColor).mockResolvedValue({ ...babyPet, color: "pink" });
+    jest.mocked(setPetEnabled).mockResolvedValue({ ...babyPet, enabled: false });
+    await render(<PetScreen />);
+
+    await fireEvent.press(screen.getByRole("radio", { name: "Pink" }));
+    await waitFor(() => expect(usePetStore.getState().pet?.color).toBe("pink"));
+    expect(setPetColor).toHaveBeenCalledWith({ accessToken: "token" }, "pink");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Turn off my pet" }));
+    await waitFor(() => expect(usePetStore.getState().pet?.enabled).toBe(false));
+  });
+
+  it("shows a memorial when the previous pet passed away", async () => {
+    const memorial = { ...noPet, name: "Bao", diedAt: "2026-10-06T01:00:00.000Z" };
+    usePetStore.setState({ pet: memorial });
+    jest.mocked(getPet).mockResolvedValue(memorial);
+    await render(<PetScreen />);
+
+    expect(mockStackTitle).toHaveBeenLastCalledWith("Pick a new egg");
+    expect(screen.getByText("Bao passed away")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Not now" })).toBeNull();
   });
 
   describe("a ready egg", () => {

@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { assistantActionSchema } from "@zoption/shared";
 import { confirmAssistantAction, type AssistantWireMessage } from "@/api/assistant";
 import { ApiTransportError } from "@/api/authenticated";
+import { refreshPetAfterActivity } from "@/auth/pet-sync";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useSyncState } from "@/sync/sync-state";
 import { Button } from "@/ui/components/Button";
@@ -68,6 +69,7 @@ export function AssistantActionCard({
       onDone(result);
       // The server applied the change, so pull it into the local workspace now.
       sync.retry();
+      refreshPetAfterActivity(session.getAccessToken);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "The change could not be applied.");
     } finally {

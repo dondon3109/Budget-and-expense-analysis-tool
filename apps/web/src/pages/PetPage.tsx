@@ -7,7 +7,9 @@ import {
   PET_STAGE_THRESHOLDS,
   eggArt,
   petEarningRows,
+  petEggProgressLine,
   petGrowthLockedLine,
+  petHealthHint,
   petMood,
   petReactionBurst,
   petSpecies,
@@ -31,6 +33,7 @@ import { PetPicture } from "../components/pet/PetPicture";
 import { PetSvg } from "../components/pet/PetSvg";
 import { TintedPicture } from "../components/pet/TintedPicture";
 import { useBillingSummary } from "../hooks/useBillingSummary";
+import { petImageUrl } from "../lib/petImages";
 import { playPetReaction, warmUpPetVoices } from "../lib/petSounds";
 import { userWorkspace } from "../lib/workspace";
 import {
@@ -225,10 +228,12 @@ function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; na
 function PetColorCatchUp({
   pet,
   busy,
+  error,
   onPick,
 }: {
   pet: PetView & { species: PetSpecies };
   busy: boolean;
+  error?: string;
   onPick: (color: PetColor) => void;
 }) {
   const name = pet.name ?? petSpeciesLabels[pet.species];
@@ -263,6 +268,11 @@ function PetColorCatchUp({
       >
         Keep original
       </button>
+      {error ? (
+        <p className="page-error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -301,14 +311,14 @@ function PetStats({ pet, isFree }: { pet: PetView; isFree: boolean }) {
           max={pet.eggHatchDays}
           tone="sun"
         />
-        <p className="pet-note">
-          Open Zoption every day until it is ready to hatch. Missing a day starts the count over.
-        </p>
+        <p className="pet-note">{petEggProgressLine(pet)}</p>
       </>
     );
   }
   const stageStart = PET_STAGE_THRESHOLDS[pet.stage];
   const lockedLine = isFree ? petGrowthLockedLine(pet) : null;
+  const healthHint = petHealthHint(pet);
+  const unwell = pet.healthState === "sick" || pet.healthState === "fading";
   return (
     <>
       {pet.nextStagePoints === null ? (
@@ -324,7 +334,7 @@ function PetStats({ pet, isFree }: { pet: PetView; isFree: boolean }) {
       )}
       {lockedLine ? (
         <p className="pet-note">
-          {lockedLine} <Link to="/app/settings#plan-and-billing">See Zoption Pro</Link>
+          {lockedLine} <Link to="/app/settings#plan-and-billing">See paid plans</Link>
         </p>
       ) : null}
       <Meter
@@ -334,6 +344,11 @@ function PetStats({ pet, isFree }: { pet: PetView; isFree: boolean }) {
         max={100}
         tone={healthTone(pet.healthState)}
       />
+      {healthHint ? (
+        <p className={unwell ? "pet-warning" : "pet-note"} role={unwell ? "alert" : undefined}>
+          {healthHint}
+        </p>
+      ) : null}
       <Meter
         label={`Today ${pet.pointsToday} of ${PET_DAILY_POINT_CEILING} points`}
         icon="☀️"
@@ -341,13 +356,6 @@ function PetStats({ pet, isFree }: { pet: PetView; isFree: boolean }) {
         max={PET_DAILY_POINT_CEILING}
         tone="sun"
       />
-      {pet.healthState === "sick" || pet.healthState === "fading" ? (
-        <p className="pet-warning" role="alert">
-          {pet.healthState === "sick"
-            ? "Your pet is sick. Log something today and it will eat points to heal."
-            : "Your pet is fading. If nothing is logged within 72 hours of the last activity, it passes away."}
-        </p>
-      ) : null}
     </>
   );
 }
@@ -384,6 +392,7 @@ export function PetPage() {
           <PetColorCatchUp
             pet={{ ...pet.data, species: pet.data.species }}
             busy={busy}
+            error={setColor.error?.message}
             onPick={(color) => setColor.mutate(color)}
           />
         ) : null}
@@ -416,16 +425,43 @@ export function PetPage() {
           </div>
         ) : pet.data.species === null ? (
           <div className="pet-panel">
+            {pet.data.diedAt ? (
+              <div className="pet-memorial">
+                <img
+                  src={petImageUrl(null, "egg")}
+                  alt=""
+                  width={72}
+                  height={72}
+                  aria-hidden="true"
+                />
+                <div>
+                  <strong>{pet.data.name ?? "Your last pet"} passed away</strong>
+                  <p className="pet-note">
+                    {new Date(pet.data.diedAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}{" "}
+                    · Three days went by with nothing logged.
+                  </p>
+                </div>
+              </div>
+            ) : null}
             <h2>{pet.data.diedAt ? "Pick a new egg" : "Meet your pet"}</h2>
             <p className="pet-note">
               {pet.data.diedAt
-                ? "Your last pet passed away after three days with nothing logged. Every egg starts fresh."
+                ? "Every egg starts fresh. Open Zoption seven days in a row to hatch your next companion."
                 : "Pick an egg. Open Zoption seven days in a row and it is ready to hatch, then it grows as you log money."}
             </p>
             <EggPicker
               busy={busy}
               onChoose={(species, name, color) => chooseEgg.mutate({ species, name, color })}
             />
+            {fromOnboarding ? (
+              <Link className="button secondary" to="/app">
+                Pick one later
+              </Link>
+            ) : null}
           </div>
         ) : (
           <div className="pet-panel pet-hero">
@@ -442,8 +478,10 @@ export function PetPage() {
                   color={pet.data.color}
                   days={pet.data.eggStreakDays}
                   hatch={async (beforeShow) => {
-                    await hatch.mutateAsync(beforeShow);
-                    setJustHatched(true);
+                    await hatch.mutateAsync(async () => {
+                      await beforeShow();
+                      setJustHatched(true);
+                    });
                   }}
                 />
               ) : (
@@ -476,6 +514,9 @@ export function PetPage() {
               <p className="pet-note">
                 {petSpeciesLabels[pet.data.species]} · {petStageLabels[pet.data.stage]}
               </p>
+              {pet.data.stage !== "egg" ? (
+                <p className="pet-hint">Click your pet to say hi · 5 quick clicks to dance</p>
+              ) : null}
             </div>
             <PetChips pet={pet.data} />
             <div className="pet-stats">
@@ -498,7 +539,7 @@ export function PetPage() {
           </div>
         )}
 
-        {writeError ? (
+        {writeError && (pet.data?.color !== null || writeError !== setColor.error) ? (
           <p className="page-error" role="alert">
             {writeError.message}
           </p>
@@ -520,8 +561,9 @@ export function PetPage() {
             ))}
           </ul>
           <p className="pet-note">
-            Doing three different things in a day adds a 10 point bonus. A day earns at most{" "}
-            {PET_DAILY_POINT_CEILING} points.
+            Manual entries dated within a day, new subscriptions, and AI messages of 15+ characters
+            count. Doing three different things in a day adds a 10 point bonus (
+            {PET_DAILY_POINT_CEILING} points max per day).
           </p>
         </section>
 

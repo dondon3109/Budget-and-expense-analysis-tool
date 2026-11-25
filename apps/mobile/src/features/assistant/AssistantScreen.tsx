@@ -46,6 +46,7 @@ import {
 } from "@/api/assistant";
 import { getAssistantVoicePreferences, grantAssistantVoiceConsent } from "@/api/assistant-voice";
 import { useNetInfo } from "@react-native-community/netinfo";
+import { refreshPetAfterActivity } from "@/auth/pet-sync";
 import { useSessionSnapshot } from "@/auth/session-state";
 import {
   BottomSheet,
@@ -381,6 +382,7 @@ export function AssistantScreen() {
           ...previous.filter((item) => item.id !== turn.thread.id),
         ]);
         void loadThreads();
+        refreshPetAfterActivity(session.getAccessToken);
         requestAnimationFrame(() => listRef.current?.scrollToEnd({ animated: true }));
       } catch (error) {
         if (!mounted.current) return;
@@ -401,7 +403,7 @@ export function AssistantScreen() {
         if (mounted.current) setSending(false);
       }
     },
-    [activeThreadId, draft, loadThreads, sending, withToken],
+    [activeThreadId, draft, loadThreads, sending, session.getAccessToken, withToken],
   );
 
   const recorder = useAssistantRecorder({

@@ -39,6 +39,7 @@ export function PersonalizeStep({
   const setEnabled = useSetPetEnabled(workspace);
   const [wantsPet, setWantsPet] = useState(true);
   const petEnabled = pet.data?.enabled ?? true;
+  const hasPet = Boolean(pet.data && pet.data.species !== null);
 
   function finish() {
     if (wantsPet === petEnabled) {
@@ -110,7 +111,13 @@ export function PersonalizeStep({
         disabled={setEnabled.isPending}
         onClick={finish}
       >
-        {setEnabled.isPending ? "Saving…" : wantsPet ? "Pick my egg" : "Go to dashboard"}
+        {setEnabled.isPending
+          ? "Saving…"
+          : wantsPet
+            ? hasPet
+              ? "See my pet"
+              : "Pick my egg"
+            : "Go to dashboard"}
       </button>
     </div>
   );

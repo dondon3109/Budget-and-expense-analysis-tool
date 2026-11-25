@@ -19,6 +19,10 @@ import { AuthenticatedGate } from "./authenticated-layout";
 // widget's widget-intent link) arrives before the stored session resolves, and
 // a redirect at that moment discards the route and its params.
 
+jest.mock("@react-native-community/netinfo", () => ({
+  useNetInfo: () => ({ isInternetReachable: true, isConnected: true }),
+}));
+
 jest.mock("expo-router", () => ({
   Redirect: () => null,
   Stack: Object.assign(() => null, { Screen: () => null }),

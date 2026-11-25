@@ -27,13 +27,14 @@ vi.mock("../src/lib/api", async () =>
 );
 
 vi.mock("../src/lib/petSounds", () => ({
+  playPetHatch: vi.fn(),
   playPetReaction: vi.fn(),
   warmUpPetVoices: vi.fn(),
 }));
 
 import { PetMomentDialog } from "../src/components/pet/PetMomentDialog";
 import { checkInPet, choosePetEgg, getBillingSummary, hatchPet, setPetColor } from "../src/lib/api";
-import { playPetReaction } from "../src/lib/petSounds";
+import { playPetHatch, playPetReaction } from "../src/lib/petSounds";
 import { PetPage } from "../src/pages/PetPage";
 import { renderWithProviders } from "./helpers/render";
 
@@ -158,6 +159,7 @@ describe("pet on the web", () => {
 
     expect(await screen.findByRole("heading", { name: "Bao" })).toBeInTheDocument();
     expect(hatchPet).toHaveBeenCalledTimes(1);
+    expect(playPetHatch).toHaveBeenCalledWith("panda");
   });
 
   it("settles a ready egg back when the hatch fails", async () => {
@@ -197,7 +199,7 @@ describe("pet on the web", () => {
     expect(playPetReaction).toHaveBeenLastCalledWith("panda", "baby", "sick");
   });
 
-  it("tells a free user their pet needs Pro to grow", async () => {
+  it("tells a free user their pet needs a paid plan to grow", async () => {
     vi.mocked(checkInPet).mockResolvedValue(babyPet);
     vi.mocked(getBillingSummary).mockResolvedValue(billingSummary("free"));
     renderWithProviders(<PetPage />);
@@ -205,10 +207,22 @@ describe("pet on the web", () => {
     expect(
       await screen.findByText(/Growing into a Juvenile needs a paid plan\./),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "See Zoption Pro" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "See paid plans" })).toHaveAttribute(
       "href",
       "/app/settings#plan-and-billing",
     );
+  });
+
+  it("shows a memorial for a passed pet and lets onboarding visitors pick later", async () => {
+    vi.mocked(checkInPet).mockResolvedValue({
+      ...noPet,
+      name: "Bao",
+      diedAt: "2026-10-06T01:00:00.000Z",
+    });
+    renderWithProviders(<PetPage />, { route: "/app/pet?from=onboarding" });
+
+    expect(await screen.findByText("Bao passed away")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Pick one later" })).toHaveAttribute("href", "/app");
   });
 
   it("shows the pet pop-up once per day", async () => {

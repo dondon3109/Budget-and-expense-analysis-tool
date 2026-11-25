@@ -198,6 +198,7 @@
   gap: 4px;
   color: var(--muted);
   font-size: 12px;
+  text-align: center;
 }
 
 /* The track between badges, drawn from each badge back to the previous one. */
@@ -423,6 +424,26 @@
 .pet-title {
   display: grid;
   gap: 2px;
+}
+
+.pet-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.pet-memorial {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.pet-memorial strong {
+  display: block;
+  font-size: 15px;
 }
 
 .pet-name-field {

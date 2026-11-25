@@ -12,7 +12,11 @@ import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { useUnsavedChangesWarning } from "../src/hooks/useUnsavedChangesWarning";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
-const mocks = vi.hoisted(() => ({ canManageSponsoredSeats: false, signOut: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  canManageSponsoredSeats: false,
+  showPetMoment: false,
+  signOut: vi.fn(),
+}));
 
 vi.mock("../src/hooks/useBillingSummary", () => ({
   useBillingSummary: () => ({ data: { canManageSponsoredSeats: mocks.canManageSponsoredSeats } }),
@@ -23,7 +27,7 @@ vi.mock("../src/components/reviews/CustomerReviewPrompt", () => ({
 }));
 
 vi.mock("../src/components/pet/PetMomentDialog", () => ({
-  PetMomentDialog: () => null,
+  PetMomentDialog: () => (mocks.showPetMoment ? <div>Pet moment dialog</div> : null),
 }));
 
 vi.mock("../src/auth/AuthProvider", () => ({
@@ -70,6 +74,7 @@ function renderShell(initialEntry: string, page?: ReactNode) {
 describe("AppShell", () => {
   beforeEach(() => {
     mocks.canManageSponsoredSeats = false;
+    mocks.showPetMoment = false;
     mocks.signOut.mockReset();
     mocks.signOut.mockResolvedValue(undefined);
   });
@@ -445,5 +450,16 @@ describe("AppShell", () => {
 
     expect(screen.getByTestId("current-location")).toHaveTextContent("/app/transactions");
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("hides PetMomentDialog on /app/pet while rendering it on other workspace routes", () => {
+    mocks.showPetMoment = true;
+
+    const { unmount } = renderShell("/app/budgets");
+    expect(screen.getByText("Pet moment dialog")).toBeInTheDocument();
+    unmount();
+
+    renderShell("/app/pet");
+    expect(screen.queryByText("Pet moment dialog")).not.toBeInTheDocument();
   });
 });

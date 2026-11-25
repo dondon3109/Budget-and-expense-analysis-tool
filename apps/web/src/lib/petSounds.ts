@@ -57,3 +57,11 @@ export function playPetReaction(
   playClip(petVoiceClip(species, cue.voice), cue.rate, cue.volume);
   if (cue.sparkle) playClip("sparkle", 1, 1);
 }
+
+/** Celebrates an egg hatching with the sparkle jingle and the newly hatched Baby's happy voice. */
+export function playPetHatch(species: PetSpecies): void {
+  if (!soundEffectsPreference.get() || typeof Audio === "undefined") return;
+  const cue = petSoundCue("baby", "happy");
+  playClip("sparkle", 1, 1);
+  playClip(petVoiceClip(species, cue.voice), cue.rate, cue.volume);
+}

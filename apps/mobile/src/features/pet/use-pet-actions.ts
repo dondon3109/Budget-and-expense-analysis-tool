@@ -9,27 +9,40 @@ import { usePetStore } from "@/stores/pet-store";
 export function usePetActions() {
   const { getAccessToken } = useSessionSnapshot();
   const [busy, setBusy] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const run = useCallback(
     async (
       request: (api: PetApi) => Promise<PetView>,
-      // Runs between the answer and the store update, so an animation can finish on the old pet.
-      beforeShow?: () => Promise<void>,
+      options: {
+        // Runs between the answer and the store update, so an animation can finish on the old pet.
+        beforeShow?: () => Promise<void>;
+        background?: boolean;
+      } = {},
     ): Promise<boolean> => {
-      setBusy(true);
-      setError(null);
+      if (options.background) setRefreshing(true);
+      else {
+        setBusy(true);
+        setError(null);
+      }
       try {
         const accessToken = await getAccessToken(false);
         const pet = await request({ accessToken });
-        await beforeShow?.();
+        await options.beforeShow?.();
         usePetStore.getState().setPet(pet);
+        if (options.background) setError(null);
         return true;
       } catch (failure) {
-        setError(failure instanceof Error ? failure.message : "Zoption could not reach your pet.");
+        if (!options.background || usePetStore.getState().pet === null) {
+          setError(
+            failure instanceof Error ? failure.message : "Zoption could not reach your pet.",
+          );
+        }
         return false;
       } finally {
-        setBusy(false);
+        if (options.background) setRefreshing(false);
+        else setBusy(false);
       }
     },
     [getAccessToken],
@@ -37,8 +50,9 @@ export function usePetActions() {
 
   return {
     busy,
+    refreshing,
     error,
-    refresh: useCallback(() => run(getPet), [run]),
+    refresh: useCallback(() => run(getPet, { background: true }), [run]),
     chooseEgg: useCallback(
       (species: PetSpecies, name: string, color: PetColor) =>
         run((api) => choosePetEgg(api, species, name, color)),
@@ -46,6 +60,6 @@ export function usePetActions() {
     ),
     setColor: useCallback((color: PetColor) => run((api) => setPetColor(api, color)), [run]),
     setEnabled: useCallback((enabled: boolean) => run((api) => setPetEnabled(api, enabled)), [run]),
-    hatch: useCallback((beforeShow: () => Promise<void>) => run(hatchPet, beforeShow), [run]),
+    hatch: useCallback((beforeShow: () => Promise<void>) => run(hatchPet, { beforeShow }), [run]),
   };
 }
