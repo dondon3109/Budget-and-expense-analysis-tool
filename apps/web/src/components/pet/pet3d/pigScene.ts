@@ -8,7 +8,7 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 
 // PROTOTYPE: the Baby pig as a real 3D figure, modeled on a soft clay toy: a big round head on a
 // chubby pear-shaped sitting body, ears that fold forward at the tips, little arms resting on the
-// belly with two-toed hoof tips, stubby legs stretched forward showing two-toed hoof soles,
+// belly with slit hoof tips, stubby legs stretched forward showing round slit hoof soles,
 // wide-set dark eyes with one highlight, a small oval snout, a thin smile, and soft blush, all in
 // matte peach clay lit like a white studio product shot. The other species, stages, and health
 // looks still draw the SVG figure (PetFigure.tsx) until this is approved and rolled out.
@@ -37,7 +37,7 @@ export function pigPalette(body: string): Palette {
     body,
     snout: mix(body, "#D4544A", 0.7),
     nostril: mix(body, "#9A3328", 0.6),
-    hoof: mix(body, "#9A4034", 0.55),
+    hoof: mix(body, "#7E2E22", 0.72),
     blush: mix(body, "#D24A42", 0.6),
   };
 }
@@ -197,19 +197,59 @@ class ColorPass extends RenderPass {
 }
 
 /**
- * A cloven hoof: two rounded toes side by side with a groove between them, each splayed a little
- * outward. `width` is the whole hoof across, `height` its thickness along the limb.
+ * A hoof cap over the round end of a limb of `limbRadius`: a dark, gently domed disc (a lathe, so it
+ * shades smoothly) with a slit cut in from its rim, which reads as a pig's cloven hoof. `slit` is
+ * how far the cut reaches toward the center (1 reaches it). The slit turns to face `toward` (a
+ * world direction), so it shows on the visible side of each limb.
  */
-function clovenHoof(material: THREE.Material, width: number, height: number, depth: number) {
-  const hoof = new THREE.Group();
-  for (const side of [-1, 1]) {
-    const toe = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), material));
-    toe.scale.set(width * 0.27, height, depth);
-    toe.position.x = side * width * 0.26;
-    toe.rotation.z = side * -0.12;
-    hoof.add(toe);
+function hoofCap(
+  material: THREE.Material,
+  slitMaterial: THREE.Material,
+  aim: THREE.Object3D,
+  limbRadius: number,
+  slit: number,
+  toward: THREE.Vector3,
+) {
+  // The cap's back sits where the limb's rounded end is still 89% of its full width, inset a little so
+  // a rim of the limb shows around it; its front follows that rounded end, a little flatter, as a
+  // sole is, and just proud of it.
+  const back = 0.45 * limbRadius;
+  const radius = Math.sqrt(limbRadius ** 2 - back ** 2) * 0.92;
+  const rim = limbRadius * 0.1;
+  const height = (rho: number) =>
+    rim + Math.max(Math.sqrt(Math.max(limbRadius ** 2 - rho ** 2, 0)) - back, 0) * 0.85;
+  const profile = [new THREE.Vector2(0, 0), new THREE.Vector2(radius * 0.97, 0)];
+  for (let i = 0; i <= 6; i += 1) {
+    const a = (i / 6) * (Math.PI / 2);
+    profile.push(
+      new THREE.Vector2(
+        radius - rim + Math.cos(a - Math.PI / 2) * rim,
+        rim + Math.sin(a - Math.PI / 2) * rim,
+      ),
+    );
   }
-  return hoof;
+  for (let i = 1; i <= 16; i += 1) {
+    const rho = (radius - rim) * (1 - i / 16);
+    profile.push(new THREE.Vector2(rho, height(rho)));
+  }
+  const cap = new THREE.Group();
+  cap.add(shaded(new THREE.Mesh(new THREE.LatheGeometry(profile, 64), material)));
+
+  // The slit: a fine dark groove laid into the dome from the rim, along the cap's -z.
+  const points: THREE.Vector3[] = [];
+  for (let i = 0; i <= 8; i += 1) {
+    const rho = (radius - rim * 0.4) * (1 - (slit * i) / 8);
+    points.push(new THREE.Vector3(0, height(rho) - limbRadius * 0.01, -rho));
+  }
+  const groove = new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 16, limbRadius * 0.045, 8, false),
+    slitMaterial,
+  );
+  cap.add(groove);
+
+  const local = toward.clone().applyQuaternion(aim.quaternion.clone().invert());
+  cap.rotation.y = Math.atan2(-local.x, -local.z);
+  return { cap, back };
 }
 
 // Where the head sits; the idle breath bobs it around this height.
@@ -220,6 +260,7 @@ function buildPig(o: Palette) {
   const bodyMat = clay(o.body);
   const snoutMat = clay(o.snout, { roughness: 0.85 });
   const hoofMat = clay(o.hoof, { roughness: 0.8, sheen: 0.3 });
+  const slitMat = clay(mix(o.hoof, "#2A0E08", 0.5), { roughness: 0.9 });
 
   // Body: one smooth pear, wide at the seat and narrowing up to the neck.
   const body = new THREE.Group();
@@ -240,7 +281,7 @@ function buildPig(o: Palette) {
   torso.scale.z = 0.94;
   body.add(torso);
 
-  // Little arms resting on the belly, each ending in a two-toed hoof.
+  // Little arms resting on the belly, each ending in a slit hoof cap.
   const arms: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const arm = limb(
@@ -249,14 +290,14 @@ function buildPig(o: Palette) {
       new THREE.Vector3(side * 0.3, 0.64, 0.8),
       0.15,
     );
-    const hoof = clovenHoof(hoofMat, 0.27, 0.085, 0.12);
-    hoof.position.y = arm.length - 0.05;
-    arm.aim.add(hoof);
+    const hoof = hoofCap(hoofMat, slitMat, arm.aim, 0.15, 1, new THREE.Vector3(0, 0.4, 1));
+    hoof.cap.position.y = arm.length - hoof.back;
+    arm.aim.add(hoof.cap);
     body.add(arm.pivot);
     arms.push(arm.pivot);
   }
 
-  // Stubby legs stretched forward, showing two-toed hoof soles to the front.
+  // Stubby legs stretched forward, showing round hoof soles to the front.
   const legs: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const leg = limb(
@@ -265,9 +306,9 @@ function buildPig(o: Palette) {
       new THREE.Vector3(side * 0.68, 0.27, 0.9),
       0.26,
     );
-    const pad = clovenHoof(hoofMat, 0.44, 0.06, 0.17);
-    pad.position.y = leg.length - 0.04;
-    leg.aim.add(pad);
+    const sole = hoofCap(hoofMat, slitMat, leg.aim, 0.26, 0.3, new THREE.Vector3(0, 1, 0));
+    sole.cap.position.y = leg.length - sole.back;
+    leg.aim.add(sole.cap);
     body.add(leg.pivot);
     legs.push(leg.pivot);
   }

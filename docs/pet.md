@@ -152,8 +152,9 @@ the figure, or the tombstone.
 - Prototype, web only: a healthy Baby pig draws as a live 3D figure instead
   (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is modeled on a
   soft clay toy: a big round head on a chubby, pear-shaped sitting body (a lathe), ears whose tips fold
-  forward, little arms resting on the belly with two-toed (cloven) hoof tips, stubby legs
-  stretched forward showing two-toed hoof soles in a rose-brown a shade deeper than the body, wide-set dark eyes with one highlight, a small oval snout, a thin
+  forward, little arms resting on the belly with slit hoof caps, stubby legs stretched
+  forward showing round domed hoof soles (inset in a rim of the leg, with a short slit at the top)
+  in a rose-brown, wide-set dark eyes with one highlight, a small oval snout, a thin
   smile, and soft blush, in matte peach clay (`PIG_BODY`, tinted by the pet color; neutral tone mapping keeps its
   saturation) under a strong upper-left key light with little fill, so the shading reads as round, ambient occlusion
   (`GTAOPass`) darkening the creases under the chin and around the ears, arms, and legs, and a
