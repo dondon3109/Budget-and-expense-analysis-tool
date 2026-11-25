@@ -155,7 +155,8 @@ the figure, or the tombstone.
   forward, little arms resting on the belly with dark hoof tips, stubby legs stretched forward
   showing round hoof pads, wide-set dark eyes with one highlight, a small oval snout, a thin
   smile, and soft blush, in matte peach clay (`PIG_BODY`, tinted by the pet color; neutral tone mapping keeps its
-  saturation) under a strong upper-left key light with little fill, so the shading reads as round, and a
+  saturation) under a strong upper-left key light with little fill, so the shading reads as round, ambient occlusion
+  (`GTAOPass`) darkening the creases under the chin and around the ears, arms, and legs, and a
   contact shadow. It is rigged so it reads as alive: arms and legs on joints, ears, snout, and head on damped springs that follow the
   body a beat late and wobble as they settle, and a mouth that opens. It stays put when idle
   (breathing, a wandering head, swaying ears with an occasional flick, a nose twitch, a blink). A
