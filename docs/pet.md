@@ -151,11 +151,12 @@ the figure, or the tombstone.
   top. Reduced motion stills all of it.
 - Prototype, web only: a healthy Baby pig draws as a live 3D figure instead
   (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is modeled on a
-  soft clay toy: a wide round head on a pear-shaped sitting body (a lathe), ears whose tips fold
+  soft clay toy: a big round head on a chubby, pear-shaped sitting body (a lathe), ears whose tips fold
   forward, little arms resting on the belly with dark hoof tips, stubby legs stretched forward
   showing round hoof pads, wide-set dark eyes with one highlight, a small oval snout, a thin
   smile, and soft blush, in matte peach clay (`PIG_BODY`, tinted by the pet color; neutral tone mapping keeps its
-  saturation) under white studio light with a contact shadow. It is rigged so it reads as alive: arms and legs on joints, ears, snout, and head on damped springs that follow the
+  saturation) under a strong upper-left key light with little fill, so the shading reads as round, and a
+  contact shadow. It is rigged so it reads as alive: arms and legs on joints, ears, snout, and head on damped springs that follow the
   body a beat late and wobble as they settle, and a mouth that opens. It stays put when idle
   (breathing, a wandering head, swaying ears with an occasional flick, a nose twitch, a blink). A
   tap's reaction plays inside the scene from the same `PET_REACTION_MOTION` keys: the body hops

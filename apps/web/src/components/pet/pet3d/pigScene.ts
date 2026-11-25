@@ -98,7 +98,7 @@ function contactShadow() {
   ctx.fillRect(0, 0, size, size);
   const texture = new THREE.CanvasTexture(canvas);
   const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(2.6, 1.3),
+    new THREE.PlaneGeometry(3.1, 1.5),
     new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
   );
   mesh.rotation.x = -Math.PI / 2;
@@ -190,17 +190,17 @@ function buildPig(o: Palette) {
   const profile = new THREE.SplineCurve(
     [
       [0, 0.04],
-      [0.5, 0.06],
-      [0.74, 0.22],
-      [0.8, 0.48],
-      [0.74, 0.78],
-      [0.6, 1.04],
-      [0.42, 1.22],
-      [0, 1.3],
+      [0.6, 0.06],
+      [0.88, 0.24],
+      [0.96, 0.5],
+      [0.9, 0.8],
+      [0.74, 1.06],
+      [0.5, 1.24],
+      [0, 1.32],
     ].map(([r, y]) => new THREE.Vector2(r, y)),
   ).getPoints(40);
   const torso = shaded(new THREE.Mesh(new THREE.LatheGeometry(profile, 72), bodyMat));
-  torso.scale.z = 0.86;
+  torso.scale.z = 0.94;
   body.add(torso);
 
   // Little arms resting on the belly, each ending in a dark hoof tip.
@@ -208,12 +208,12 @@ function buildPig(o: Palette) {
   for (const side of [-1, 1]) {
     const arm = limb(
       bodyMat,
-      new THREE.Vector3(side * 0.5, 0.98, 0.32),
-      new THREE.Vector3(side * 0.24, 0.6, 0.66),
-      0.12,
+      new THREE.Vector3(side * 0.62, 1.0, 0.36),
+      new THREE.Vector3(side * 0.3, 0.64, 0.8),
+      0.15,
     );
     const hoof = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 32, 16), hoofMat));
-    hoof.scale.set(0.105, 0.1, 0.095);
+    hoof.scale.set(0.13, 0.12, 0.115);
     hoof.position.y = arm.length - 0.02;
     arm.aim.add(hoof);
     body.add(arm.pivot);
@@ -225,12 +225,12 @@ function buildPig(o: Palette) {
   for (const side of [-1, 1]) {
     const leg = limb(
       bodyMat,
-      new THREE.Vector3(side * 0.4, 0.28, 0.2),
-      new THREE.Vector3(side * 0.6, 0.24, 0.74),
-      0.21,
+      new THREE.Vector3(side * 0.46, 0.3, 0.26),
+      new THREE.Vector3(side * 0.68, 0.27, 0.9),
+      0.26,
     );
     const pad = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), hoofMat));
-    pad.scale.set(0.2, 0.07, 0.2);
+    pad.scale.set(0.245, 0.08, 0.245);
     pad.position.y = leg.length - 0.02;
     leg.aim.add(pad);
     body.add(leg.pivot);
@@ -242,21 +242,21 @@ function buildPig(o: Palette) {
   head.position.set(0, HEAD_Y, 0.04);
   root.add(head);
   const skull = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 96, 48), bodyMat));
-  skull.scale.set(1.02, 0.78, 0.86);
+  skull.scale.set(1.12, 0.86, 0.96);
   head.add(skull);
 
   // Ears: an upright base on the top corners whose tip folds forward and down.
   const ears: THREE.Group[] = [];
   for (const side of [-1, 1]) {
     const ear = new THREE.Group();
-    ear.position.set(side * 0.66, 0.5, 0.06);
+    ear.position.set(side * 0.74, 0.56, 0.06);
     const base = new THREE.Group();
     base.rotation.set(0.75, 0, side * -0.55);
-    base.add(earPiece(bodyMat, 0.5, 0.28, 0.42));
+    base.add(earPiece(bodyMat, 0.56, 0.3, 0.42));
     const fold = new THREE.Group();
-    fold.position.y = 0.24;
+    fold.position.y = 0.26;
     fold.rotation.x = 1.0;
-    fold.add(earPiece(bodyMat, 0.36, 0.26, 0.2));
+    fold.add(earPiece(bodyMat, 0.4, 0.28, 0.2));
     base.add(fold);
     ear.add(base);
     head.add(ear);
@@ -265,16 +265,16 @@ function buildPig(o: Palette) {
 
   // Snout: a small oval a shade deeper than the face, its oval nostrils riding along.
   const snout = new THREE.Group();
-  snout.position.set(0, -0.24, 0.8);
+  snout.position.set(0, -0.24, 0.9);
   head.add(snout);
   const disc = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), snoutMat));
-  disc.scale.set(0.31, 0.21, 0.16);
+  disc.scale.set(0.35, 0.235, 0.17);
   snout.add(disc);
   const nostrilMat = new THREE.MeshStandardMaterial({ color: o.nostril, roughness: 0.8 });
   for (const side of [-1, 1]) {
     const nostril = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), nostrilMat);
-    nostril.scale.set(0.045, 0.075, 0.03);
-    nostril.position.set(side * 0.1, 0, 0.145);
+    nostril.scale.set(0.05, 0.082, 0.03);
+    nostril.position.set(side * 0.115, 0, 0.155);
     snout.add(nostril);
   }
 
@@ -289,8 +289,8 @@ function buildPig(o: Palette) {
   const eyes: THREE.Mesh[] = [];
   for (const side of [-1, 1]) {
     const eye = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), eyeMat);
-    eye.scale.set(0.15, 0.16, 0.08);
-    eye.position.set(side * 0.39, -0.06, 0.77);
+    eye.scale.set(0.16, 0.17, 0.085);
+    eye.position.set(side * 0.43, -0.06, 0.86);
     eye.rotation.y = side * 0.45;
     const spark = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), highlight);
     spark.scale.set(0.3, 0.3, 0.3);
@@ -302,8 +302,8 @@ function buildPig(o: Palette) {
 
   // Blush: big soft discs on the cheeks.
   for (const side of [-1, 1]) {
-    const cheek = new THREE.Mesh(new THREE.PlaneGeometry(0.5, 0.32), blushDisc(o.blush));
-    cheek.position.set(side * 0.62, -0.36, 0.53);
+    const cheek = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.36), blushDisc(o.blush));
+    cheek.position.set(side * 0.7, -0.36, 0.62);
     cheek.rotation.y = side * 0.85;
     head.add(cheek);
   }
@@ -320,10 +320,10 @@ function buildPig(o: Palette) {
     new THREE.TubeGeometry(curve, 32, 0.011, 8, false),
     new THREE.MeshStandardMaterial({ color: "#6B2F2C", roughness: 0.7 }),
   );
-  smile.position.set(0, -0.5, 0.65);
+  smile.position.set(0, -0.52, 0.76);
   head.add(smile);
   const open = new THREE.Group();
-  open.position.set(0, -0.52, 0.62);
+  open.position.set(0, -0.54, 0.73);
   const throat = new THREE.Mesh(
     new THREE.SphereGeometry(1, 32, 16),
     new THREE.MeshStandardMaterial({ color: "#5a1f2b", roughness: 0.7 }),
@@ -402,38 +402,39 @@ export function mountPigScene(
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.4;
 
   const camera = new THREE.PerspectiveCamera(26, canvas.clientWidth / canvas.clientHeight, 0.1, 50);
   camera.position.set(0, 1.55, 6.9);
   camera.lookAt(0, 1.3, 0);
 
-  // White studio lighting: a big soft key from the upper left, a neutral fill, and a rim behind.
-  const key = new THREE.DirectionalLight("#fff6ee", 1.7);
-  key.position.set(-0.5, 6, 2.6);
+  // White studio lighting: a strong key from the upper left and only a little fill, so the clay
+  // shades from light to dark across its curves and reads as round, plus a rim behind.
+  const key = new THREE.DirectionalLight("#fff6ee", 2.4);
+  key.position.set(-2.2, 4.6, 3.2);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
-  key.shadow.radius = 14;
+  key.shadow.radius = 8;
   key.shadow.camera.left = -2;
   key.shadow.camera.right = 2;
   key.shadow.camera.top = 3;
   key.shadow.camera.bottom = -1;
   key.shadow.bias = -0.0005;
   scene.add(key);
-  const fill = new THREE.DirectionalLight("#fff4f0", 0.7);
+  const fill = new THREE.DirectionalLight("#fff4f0", 0.35);
   fill.position.set(3, 1.5, 2);
   scene.add(fill);
   const rim = new THREE.DirectionalLight("#ffffff", 1.1);
   rim.position.set(0, 3, -4);
   scene.add(rim);
-  scene.add(new THREE.HemisphereLight("#fff3ee", "#f2b5a5", 0.6));
-  const bounce = new THREE.DirectionalLight("#ffe9de", 0.45);
+  scene.add(new THREE.HemisphereLight("#fff3ee", "#f2b5a5", 0.35));
+  const bounce = new THREE.DirectionalLight("#ffe9de", 0.25);
   bounce.position.set(0, -1, 4);
   scene.add(bounce);
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(10, 10),
-    new THREE.ShadowMaterial({ opacity: 0.06 }),
+    new THREE.ShadowMaterial({ opacity: 0.035 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
