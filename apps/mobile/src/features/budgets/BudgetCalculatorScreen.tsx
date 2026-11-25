@@ -1,6 +1,7 @@
 import {
   accountSplitBalance,
   allocateBudget,
+  BUDGET_AND_SUBSCRIPTION_MAX_MINOR,
   currencyMetadata,
   DEFAULT_BUDGET_RULE_PERCENTAGES,
   distributeBucketLimits,
@@ -130,7 +131,7 @@ export function BudgetCalculatorScreen() {
     percentages.wants === DEFAULT_BUDGET_RULE_PERCENTAGES.wants &&
     percentages.savings === DEFAULT_BUDGET_RULE_PERCENTAGES.savings;
 
-  const categories = plan.data?.categories ?? [];
+  const categories = useMemo(() => plan.data?.categories ?? [], [plan.data]);
   const bucketAssignments = useMemo(() => {
     const grouped: Record<BudgetRuleBucket, string[]> = { needs: [], wants: [], savings: [] };
     for (const category of categories) {
@@ -182,6 +183,14 @@ export function BudgetCalculatorScreen() {
 
   const applyToBudgets = async () => {
     if (!local.workspace || !canApply) return;
+    if (plannedLimits.some(({ limitMinor }) => limitMinor > BUDGET_AND_SUBSCRIPTION_MAX_MINOR)) {
+      setStatus({
+        kind: "error",
+        message:
+          "A category limit is above the supported limit. Spread the bucket across more categories or lower the amount.",
+      });
+      return;
+    }
     setSaving(true);
     setStatus(null);
     try {

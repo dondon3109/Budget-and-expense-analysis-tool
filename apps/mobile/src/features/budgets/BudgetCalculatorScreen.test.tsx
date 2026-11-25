@@ -144,6 +144,17 @@ describe("BudgetCalculatorScreen", () => {
     expect(screen.getByRole("button", { name: "Apply to July 2026" })).toBeDisabled();
   });
 
+  it("explains a category limit above the supported maximum instead of saving it", async () => {
+    await render(<BudgetCalculatorScreen />);
+
+    await fireEvent.changeText(screen.getByLabelText(/Monthly take-home pay/), "3000000000");
+    await fireEvent.press(screen.getByRole("button", { name: "Housing: Needs" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Apply to July 2026" }));
+
+    expect(screen.getByText(/A category limit is above the supported limit/)).toBeTruthy();
+    expect(setBudgetLimits).not.toHaveBeenCalled();
+  });
+
   it("blocks apply on currency mismatch and explains zero-balance accounts", async () => {
     await render(<BudgetCalculatorScreen />);
 

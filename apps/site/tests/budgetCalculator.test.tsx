@@ -46,6 +46,13 @@ describe("BudgetCalculator UI", () => {
     expect(screen.getAllByText("₱10,000")).toHaveLength(2);
   });
 
+  it("shows an error instead of crashing on a negative income", () => {
+    const { container } = render(<BudgetCalculator />);
+
+    fireEvent.change(container.querySelector("#calc-income")!, { target: { value: "-500" } });
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter an amount of zero or more.");
+  });
+
   it("nudges percentages and auto-balances back to 100%", () => {
     render(<BudgetCalculator />);
 

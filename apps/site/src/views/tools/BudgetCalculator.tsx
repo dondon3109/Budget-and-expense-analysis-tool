@@ -105,7 +105,10 @@ export function BudgetCalculator() {
 
   const parsed = useMemo(() => {
     try {
-      return { incomeMinor: parseAmountToMinor(incomeInput), error: null };
+      const incomeMinor = parseAmountToMinor(incomeInput);
+      // allocateBudget throws on a negative amount, and it runs during render.
+      if (incomeMinor < 0) return { incomeMinor: null, error: "Enter an amount of zero or more." };
+      return { incomeMinor, error: null };
     } catch (error) {
       return {
         incomeMinor: null,
