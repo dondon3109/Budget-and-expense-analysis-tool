@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { petMomentCopy, petStatusLine } from "../src/petCopy";
+import { petEggProgressLine, petHealthHint, petMomentCopy, petStatusLine } from "../src/petCopy";
 import { petMoment } from "../src/petMoment";
 import type { PetSeen, PetView } from "../src/schemas/pet";
 
@@ -104,5 +104,37 @@ describe("petMomentCopy", () => {
     expect(petStatusLine(baby)).toBe("120 of 350 points to grow.");
     const egg = { ...baby, stage: "egg" as const, eggStreakDays: 3 };
     expect(petStatusLine(egg)).toMatch(/Day 3 of 7/);
+    expect(petEggProgressLine(egg)).toBe(
+      "3-day streak active. Open Zoption for 4 more days to hatch it. Missing a day starts over.",
+    );
+    expect(
+      petMomentCopy("daily", {
+        ...baby,
+        species: null,
+        stage: "egg",
+        diedAt: "2026-10-16T01:00:00.000Z",
+      }),
+    ).toEqual({
+      title: "Ready for a new egg",
+      body: "Bao passed away. Pick a new egg whenever you're ready.",
+    });
+  });
+
+  it("explains health countdowns and exact heal cost", () => {
+    const at = Date.parse(baby.lastActivityAt!);
+    expect(petHealthHint(baby, at + 6 * 60 * 60 * 1000)).toBe(
+      "Full for 24h after activity · drops in ~18h.",
+    );
+    expect(
+      petHealthHint({ ...baby, health: 75, healthState: "sick" }, at + 36 * 60 * 60 * 1000),
+    ).toBe(
+      "Costs 25 pts to heal on your next activity (never drops below your stage). Fading starts in ~12h.",
+    );
+    expect(
+      petHealthHint(
+        { ...baby, points: 0, health: 25, healthState: "fading" },
+        at + 60 * 60 * 60 * 1000,
+      ),
+    ).toBe("Heals free on your next activity. Log something within ~12h or it passes away.");
   });
 });

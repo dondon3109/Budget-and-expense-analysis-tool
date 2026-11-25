@@ -205,6 +205,26 @@ describe("pet routes", () => {
     const response = await call("/api/app/pet/check-in", ALICE, "POST");
     expect(await response.json()).toMatchObject({ stage: "egg", eggStreakDays: 1 });
   });
+  it("keeps concurrent check-in and egg choice from overwriting each other", async () => {
+    const harness = createHarness();
+    const tenantId = await aliceTenant(harness);
+    const [chosen, checkedIn] = await Promise.all([
+      petRepository.chooseEgg(
+        harness.env,
+        tenantId,
+        { species: "hippo", name: "Gloria", color: "pink" },
+        new Date(T0),
+      ),
+      petRepository.checkIn(harness.env, tenantId, new Date(T0 + 1000)),
+    ]);
+    expect(chosen.species).toBe("hippo");
+    expect(checkedIn).toBeDefined();
+    expect(await petRepository.get(harness.env, tenantId, new Date(T0 + 2000))).toMatchObject({
+      species: "hippo",
+      name: "Gloria",
+      color: "pink",
+    });
+  });
 });
 
 describe("pet activity", () => {

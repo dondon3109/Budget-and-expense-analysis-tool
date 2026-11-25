@@ -16,7 +16,11 @@ const mockRetry = jest.fn();
 jest.mock("expo-router", () => ({
   router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() },
 }));
-jest.mock("@/api/pet", () => ({ setPetEnabled: jest.fn(), choosePetEgg: jest.fn() }));
+jest.mock("@/api/pet", () => ({
+  getPet: jest.fn(),
+  setPetEnabled: jest.fn(),
+  choosePetEgg: jest.fn(),
+}));
 jest.mock("@/api/goal-profile", () => ({
   saveGoals: jest.fn(),
   skipGoal: jest.fn(),

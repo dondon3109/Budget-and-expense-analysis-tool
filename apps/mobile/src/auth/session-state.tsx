@@ -25,6 +25,7 @@ import {
   workspaceSubjects,
 } from "@/features/family/workspace-record";
 import { clearDailyReminder } from "@/features/reminders/daily-reminder";
+import { cancelPendingPetRefresh } from "@/auth/pet-sync";
 import { clearPetNotifications } from "@/features/pet/pet-notifications";
 import { clearPetMoment } from "@/features/pet/use-pet-moment";
 import { clearOverspendingNotification } from "@/features/reminders/overspending-notification";
@@ -134,6 +135,7 @@ export function clearUserScopedRuntimeState(): void {
   clearPlanCache();
   useWorkspaceCurrencyStore.getState().setCurrency("PHP");
   useGoalProfileStore.getState().reset();
+  cancelPendingPetRefresh();
   usePetStore.getState().reset();
   useOnboardingStore.getState().reset();
   // Best-effort like the rest of this boundary: a native notification failure

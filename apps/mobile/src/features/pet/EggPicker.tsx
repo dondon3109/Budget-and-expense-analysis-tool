@@ -7,7 +7,7 @@ import {
   type PetSpecies,
 } from "@zoption/shared";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { Button, FormField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -25,10 +25,15 @@ interface EggPickerProps {
 /** Six eggs to pick from, each hatching into its species, the pet's color, and its name. */
 export function EggPicker({ busy, onChoose }: EggPickerProps) {
   const theme = useZoptionTheme();
+  const { width } = useWindowDimensions();
   const [picked, setPicked] = useState<PetSpecies | null>(null);
   const [color, setColor] = useState<PetColor>("original");
   const [name, setName] = useState("");
   const trimmed = name.trim();
+  const eggSize = width < 380 ? 64 : 78;
+  const submit = () => {
+    if (picked && trimmed && !busy) onChoose(picked, trimmed, color);
+  };
 
   return (
     <View style={{ gap: spacing.md }}>
@@ -52,11 +57,17 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
             >
               <EggSprite
                 art={eggArt(species, 0, 0, color)}
-                size={84}
+                size={eggSize}
                 accessibilityLabel={`${petSpeciesLabels[species]} egg`}
                 still={!selected}
+                interactive={false}
               />
-              <Text style={[typography.label, { color: theme.colors.text }]}>
+              <Text
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}
+                style={[typography.label, { color: theme.colors.text }]}
+              >
                 {petSpeciesLabels[species]}
               </Text>
             </Pressable>
@@ -72,12 +83,9 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
         maxLength={PET_NAME_MAX_LENGTH}
         autoCapitalize="words"
         returnKeyType="done"
+        onSubmitEditing={submit}
       />
-      <Button
-        disabled={!picked || !trimmed}
-        loading={busy}
-        onPress={() => picked && trimmed && onChoose(picked, trimmed, color)}
-      >
+      <Button disabled={!picked || !trimmed} loading={busy} onPress={submit}>
         {eggButtonLabel(picked, trimmed)}
       </Button>
     </View>

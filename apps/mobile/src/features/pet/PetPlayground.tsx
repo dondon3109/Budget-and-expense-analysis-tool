@@ -59,7 +59,10 @@ export function PetSpotlight({ size, children }: { size: number; children: React
   const drift = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (reduceMotion) return;
+    if (reduceMotion !== false) {
+      drift.setValue(0);
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(drift, {
@@ -87,6 +90,7 @@ export function PetSpotlight({ size, children }: { size: number; children: React
     theme.colors.info,
     theme.colors.expense,
   ];
+  const groundColor = theme.dark ? "rgba(0, 0, 0, 0.35)" : "rgba(0, 0, 0, 0.12)";
   return (
     <View style={[styles.spotlight, { width: stage, height: stage }]}>
       <View
@@ -96,7 +100,7 @@ export function PetSpotlight({ size, children }: { size: number; children: React
           theme.clay ? { boxShadow: "inset 0px -10px 0px rgba(107, 63, 217, 0.1)" } : null,
         ]}
       />
-      <View style={[styles.ground, { backgroundColor: theme.colors.border, width: size * 0.6 }]} />
+      <View style={[styles.ground, { backgroundColor: groundColor, width: size * 0.6 }]} />
       {SPARKLES.map((sparkle, index) => (
         <Animated.Text
           key={sparkle.glyph}
@@ -267,10 +271,20 @@ export function GrowthPath({ stage }: { stage: PetView["stage"] }) {
               {/* Only the emoji dims: a see-through badge would show the track across it. */}
               <Text style={{ fontSize: 18, opacity: lit ? 1 : 0.45 }}>{petStageEmoji[step]}</Text>
             </View>
-            <Text style={[typography.caption, { color: theme.colors.text }]}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              style={[typography.caption, { color: theme.colors.text }]}
+            >
               {petStageLabels[step]}
             </Text>
-            <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              style={[typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}
+            >
               {step === "egg" ? "7 days" : `${PET_STAGE_THRESHOLDS[step]} pts`}
             </Text>
           </View>
@@ -315,8 +329,9 @@ export function EarnTiles() {
         ))}
       </View>
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-        Doing three different things in a day adds a 10 point bonus. A day earns at most{" "}
-        {PET_DAILY_POINT_CEILING} points.
+        Manual entries dated within a day, new subscriptions, and AI messages of 15+ characters
+        count. Doing three different things in a day adds a 10 point bonus (
+        {PET_DAILY_POINT_CEILING} points max per day).
       </Text>
     </View>
   );

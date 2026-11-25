@@ -1,5 +1,5 @@
 import { playClip, playHaptic } from "@/features/sounds/sound-effects";
-import { playPetReaction } from "./pet-sounds";
+import { playPetHatch, playPetReaction } from "./pet-sounds";
 
 jest.mock("@/features/sounds/sound-effects", () => ({
   playClip: jest.fn(),
@@ -32,6 +32,12 @@ describe("playPetReaction", () => {
   it("adds the sparkle and a success buzz to a dance", () => {
     playPetReaction("panda", "adult", "combo");
     expect(played()).toEqual(["panda-happy", "sparkle"]);
+    expect(jest.mocked(playHaptic).mock.calls).toEqual([["success"]]);
+  });
+
+  it("celebrates an egg hatch with sparkle, baby voice, and success buzz", () => {
+    playPetHatch("panda");
+    expect(played()).toEqual(["sparkle", "panda-happy"]);
     expect(jest.mocked(playHaptic).mock.calls).toEqual([["success"]]);
   });
 });

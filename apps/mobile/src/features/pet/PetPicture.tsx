@@ -67,7 +67,7 @@ export function PetPicture({ pet, size, accessibilityLabel }: PetPictureProps) {
   useEffect(() => {
     idle.setValue(0);
     blink.setValue(0);
-    if (reduceMotion) return;
+    if (reduceMotion !== false) return;
     if (mood === "egg") return;
     const loops = [loopBetween(idle, IDLE_MS[mood])];
     if (mood === "cute") {
@@ -90,13 +90,15 @@ export function PetPicture({ pet, size, accessibilityLabel }: PetPictureProps) {
 
   useEffect(() => {
     react.setValue(0);
-    if (!tap || reduceMotion) return;
-    Animated.timing(react, {
+    if (!tap || reduceMotion !== false) return;
+    const anim = Animated.timing(react, {
       toValue: 1,
       duration: PET_REACTION_MOTION[tap.reaction].ms,
       easing: Easing.linear,
       useNativeDriver: true,
-    }).start();
+    });
+    anim.start();
+    return () => anim.stop();
   }, [react, reduceMotion, tap]);
 
   const onPress = () => {
@@ -147,7 +149,9 @@ export function PetPicture({ pet, size, accessibilityLabel }: PetPictureProps) {
           </Animated.View>
         ) : null}
       </Animated.View>
-      {tap && !reduceMotion ? <ReactionBurst key={tap.id} reaction={tap.reaction} /> : null}
+      {tap && reduceMotion === false ? (
+        <ReactionBurst key={tap.id} reaction={tap.reaction} />
+      ) : null}
     </Pressable>
   );
 }
