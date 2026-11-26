@@ -247,8 +247,9 @@ function ear(side: number) {
   const base = place([0, 0, 0]);
   const bend = place([SHAPE.earBendX, SHAPE.earBendY, SHAPE.earBendZ]);
   const end = place([SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ]);
-  // Short petals, so the small turn from one to the next never shows as a ridge.
-  const steps = 9;
+  // Short petals, so the small turn from one to the next never shows as a ridge (with fewer, the
+  // thin flap crumples along its fold).
+  const steps = 16;
   const points = Array.from({ length: steps + 1 }, (_, i) => bezier(base, bend, end, i / steps));
   const radius = (t: number) =>
     (SHAPE.earR + SHAPE.earBulge * Math.sin(Math.PI * t) - SHAPE.earNarrow * t) * earScale;
@@ -274,8 +275,8 @@ function ear(side: number) {
       const { middle, reach } = bounds[i]!;
       const [dx, dy, dz] = [x - middle[0], y - middle[1], z - middle[2]];
       const far = Math.sqrt(dx * dx + dy * dy + dz * dz) - reach;
-      if (far * SHAPE.earThick >= d + 0.05) continue;
-      d = smin(d, segments[i]!(x, y, z), 0.05);
+      if (far * SHAPE.earThick >= d + 0.06) continue;
+      d = smin(d, segments[i]!(x, y, z), 0.06);
     }
     return d;
   };
@@ -414,11 +415,21 @@ export interface PigMesh extends SdfMesh {
   /** Per vertex: snout, nostril, and blush amounts, each 0 to 1. */
   regions: Float32Array;
   /**
-   * Per vertex: the hoof field, which crosses 0.5 at the edge of each hoof cap and sole, and the
-   * toes' split line (0 to 1). The material cuts the hoof color sharply at the field's 0.5 level,
-   * so the edge stays crisp between vertices instead of fading across the triangles.
+   * Per vertex: the hoof field, which crosses 0.5 at the edge of each hoof cap and sole; the
+   * signed distance across the nearer hoof from its middle; and how much of the toes' split line
+   * shows there (0 to 1, only down the hoof's front). The material cuts the hoof color sharply at
+   * the field's 0.5 level and draws the split where the distance across is under its width; both
+   * values change linearly or smoothly between vertices, so those edges stay crisp instead of
+   * fading across the triangles.
    */
   hoofs: Float32Array;
+  /**
+   * Per vertex: the difference between the distances to the two parts of the nearest crease (an
+   * arm and the rest of the figure, or the head and the body): 0 on the seam, changing about
+   * linearly across it. Then how strongly that crease's line shows there: 1 along a narrow crease,
+   * fading to 0 where a part melts in over a wide blend, such as the shoulder.
+   */
+  creases: Float32Array;
 }
 
 const smooth = (edge0: number, edge1: number, x: number) => {
@@ -445,7 +456,8 @@ export function pigMesh(): PigMesh {
   const skinWeight = new Float32Array(count * 4);
   const regions = new Float32Array(count * 3);
   const field = new Float32Array(count);
-  const hoofs = new Float32Array(count * 2);
+  const hoofs = new Float32Array(count * 3);
+  const creases = new Float32Array(count * 2);
   const d = new Float64Array(PARTS);
   const order = Array.from({ length: PARTS }, (_, i) => i);
   for (let v = 0; v < count; v += 1) {
@@ -483,17 +495,19 @@ export function pigMesh(): PigMesh {
     const normal: Vec3 = [mesh.normals[v * 3]!, mesh.normals[v * 3 + 1]!, mesh.normals[v * 3 + 2]!];
     let hoof = 0;
     let split = 0;
+    // Measured from the hoof on this side everywhere, so it changes smoothly between vertices.
+    const sideArm = arms[x < 0 ? 0 : 1]!;
+    const across = dot(sub([x, y, z], sideArm.wrist), sideArm.across);
     for (let side = 0; side < 2; side += 1) {
       const limb = arms[side]!;
       const onArm = smooth(0.04, 0, d[ARM_L + side]! - nearest);
       const past = dot(sub([x, y, z], limb.wrist), limb.dir);
-      // The toes' split: a darker groove down the middle of the hoof's front, as on the toy.
-      const offset = sub([x, y, z], limb.wrist);
+      // The toes' split: a dark line down the middle of the hoof's front, as on the toy.
       split = Math.max(
         split,
-        smooth(0.045, 0.015, Math.abs(dot(offset, limb.across))) *
-          smooth(0.04, 0.08, past) *
-          smooth(0.2, 0.5, dot(normal, limb.front)),
+        onArm *
+          smooth(SHAPE.hoofStart, SHAPE.hoofStart + 0.06, past) *
+          smooth(0.1, 0.4, dot(normal, limb.front)),
       );
       hoof = Math.max(hoof, onArm * smooth(SHAPE.hoofStart - 0.05, SHAPE.hoofStart + 0.05, past));
       // A sole is the flat end of the leg: facing along the leg, inside a pink rim.
@@ -508,12 +522,27 @@ export function pigMesh(): PigMesh {
     const blush = z > 0.2 ? (1 - cheek * cheek) ** 2 * (1 - snoutAmount) : 0;
     regions.set([snoutAmount, inNostril, blush], v * 3);
     field[v] = hoof;
-    hoofs[v * 2 + 1] = split;
+    hoofs[v * 3 + 1] = across;
+    hoofs[v * 3 + 2] = split;
+
+    // The creases where an arm lies against the body and where the head sits on it. In a blend of
+    // width k both distances are k / 4 on the seam, so a narrow crease (0.04 to 0.07) is told
+    // from the wide shoulder blend (0.12).
+    const arm = Math.min(d[ARM_L]!, d[ARM_R]!);
+    let rest = Infinity;
+    for (let part = 0; part < PARTS; part += 1)
+      if (part !== ARM_L && part !== ARM_R) rest = Math.min(rest, d[part]!);
+    const neck = d[HEAD]! - d[BODY]!;
+    const onNeck = Math.abs(neck) < Math.abs(arm - rest);
+    creases[v * 2] = onNeck ? neck : arm - rest;
+    creases[v * 2 + 1] = onNeck
+      ? smooth(0.04, 0.025, (d[HEAD]! + d[BODY]!) / 2)
+      : smooth(0.03, 0.015, (arm + rest) / 2);
   }
   // Two light passes smooth out the grid's small steps without moving the 0.5 level.
   for (let pass = 0; pass < 2; pass += 1) blurAttribute(field, 1, neighbors, 0.5);
-  for (let v = 0; v < count; v += 1) hoofs[v * 2] = field[v]!;
-  cached = { ...mesh, skinIndex, skinWeight, regions, hoofs };
+  for (let v = 0; v < count; v += 1) hoofs[v * 3] = field[v]!;
+  cached = { ...mesh, skinIndex, skinWeight, regions, hoofs, creases };
   return cached;
 }
 

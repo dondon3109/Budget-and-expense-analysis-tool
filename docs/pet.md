@@ -152,11 +152,11 @@ the figure, or the tombstone.
   chubby round body nearly as wide as the head, widest at the hips and narrowing a little toward
   the neck (each an egg-like form,
   `egg` in `pigShape.ts`, so no outline has flat sides); broad, thin, soft ear flaps rising from
-  the head's top corners and folding forward so their tips point down and out (petals along one
-  smooth curve, so the fold is a soft bend); short, fat arms that hang down the front of the body
+  the head's top corners and folding forward so their tips point down and out (many short petals
+  along one smooth curve, so the fold is a soft bend and the thin flap never crumples); short, fat arms that hang down the front of the body
   and turn slightly in, each ending in a round pink hand with a small rose-brown hoof pointing
   down and in onto the belly well above the feet (so the hoof and sole colors never touch), split
-  by a darker groove where the toes part. Each arm is one tube along a gentle curve, with no elbow
+  by a thin dark line where the toes part, tapering to a point up the hoof. Each arm is one tube along a gentle curve, with no elbow
   corner, and only its shoulder melts into the body: the rest meets it in a narrow crease, so the
   arms stand apart as limbs. The figure also has stubby legs stretched forward showing round rose-brown
   soles inside a pink rim; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
@@ -166,14 +166,19 @@ the figure, or the tombstone.
   all round). The shape is one signed distance field (`pet3d/pigShape.ts`) whose parts melt into
   each other with narrow creases (neck, arms, and legs), meshed
   once per page into a single seamless surface (`pet3d/sdfMesh.ts`, surface nets with normals from
-  the field's gradient, about 700ms on a laptop) and colored per vertex (snout, nostrils, blush)
+  the field's gradient, about 900ms on a laptop) and colored per vertex (snout, nostrils, blush)
   from the body color (`PIG_BODY`, tinted by the pet color). The mesh is then relaxed
   (`relaxMesh`): its grid steps are smoothed out without shrinking it, and its normals are
   averaged with their neighbors' twice, enough to hide the grid but not to blur the creases. The
   snout keeps its exact normals so the nostrils stay crisp. The hooves and soles are painted by the
   material instead: each vertex carries a smooth hoof field, and the shader cuts the hoof color
   where it crosses 0.5, antialiased over one pixel, so their edges stay as sharp as the toy's
-  between vertices rather than fading across the triangles. The material is matte with a
+  between vertices rather than fading across the triangles. The toe split and the crease lines
+  are cut the same way: each vertex stores a distance that changes linearly across the line (the
+  distance across the hoof; for a crease, how much nearer one part is than the other, 0 on the
+  seam), and the shader draws a crisp dark line where it is near 0. A soft shade either side of
+  each crease line sets the arms and the head apart from the body, as on the toy; the line fades
+  out over the shoulder, where the arm melts in. The material is matte with a
   light velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
   scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
   saturation. Its lights wrap just past the side they face and fade out flat, so no light's edge

@@ -83,19 +83,28 @@ function softSkin(o: Palette) {
   material.onBeforeCompile = (shader) => {
     // The hoof caps and soles: the hoof color cut at the hoof field's 0.5 level, antialiased over
     // one pixel, so the edge is as crisp as the eyes' however coarse the mesh is there. The toes'
-    // split is a darker groove down the middle of the hoof.
+    // split is cut the same way: a crisp dark line down the middle of the hoof's front that tapers
+    // to a point where it fades out. Where each arm lies against the body and where the head sits
+    // on it, a crisp dark crease line with a soft shadow either side sets the parts apart, as on
+    // the toy.
     shader.uniforms.hoofColor = { value: new THREE.Color(o.hoof) };
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", "#include <common>\nattribute vec2 hoof;\nvarying vec2 vHoof;")
-      .replace("#include <color_vertex>", "#include <color_vertex>\n\tvHoof = hoof;");
+      .replace(
+        "#include <common>",
+        "#include <common>\nattribute vec3 hoof;\nattribute vec2 crease;\nvarying vec3 vHoof;\nvarying vec2 vCrease;",
+      )
+      .replace(
+        "#include <color_vertex>",
+        "#include <color_vertex>\n\tvHoof = hoof;\n\tvCrease = crease;",
+      );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform vec3 hoofColor;\nvarying vec2 vHoof;",
+        "#include <common>\nuniform vec3 hoofColor;\nvarying vec3 vHoof;\nvarying vec2 vCrease;",
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor * ( 1.0 - 0.45 * vHoof.y ), onHoof );",
+        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tfloat splitEdge = fwidth( vHoof.y ) * 0.75;\n\tfloat splitWidth = 0.016 * smoothstep( 0.1, 0.9, vHoof.z );\n\tfloat split = 1.0 - smoothstep( splitWidth - splitEdge, splitWidth + splitEdge, abs( vHoof.y ) );\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor * ( 1.0 - 0.6 * split ), onHoof );\n\tfloat creaseEdge = fwidth( vCrease.x ) * 0.75;\n\tfloat creaseLine = 1.0 - smoothstep( 0.011 - creaseEdge, 0.011 + creaseEdge, abs( vCrease.x ) );\n\tfloat creaseShade = 1.0 - smoothstep( 0.0, 0.07, abs( vCrease.x ) );\n\tdiffuseColor.rgb *= 1.0 - ( 0.5 * creaseLine + 0.25 * creaseShade ) * vCrease.y;",
       );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <emissivemap_fragment>",
@@ -244,7 +253,8 @@ function buildPig(o: Palette) {
   geometry.setAttribute("position", new THREE.BufferAttribute(shape.positions, 3));
   geometry.setAttribute("normal", new THREE.BufferAttribute(shape.normals, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(pigColors(shape.regions, o), 3));
-  geometry.setAttribute("hoof", new THREE.BufferAttribute(shape.hoofs, 2));
+  geometry.setAttribute("hoof", new THREE.BufferAttribute(shape.hoofs, 3));
+  geometry.setAttribute("crease", new THREE.BufferAttribute(shape.creases, 2));
   geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(shape.skinIndex, 4));
   geometry.setAttribute("skinWeight", new THREE.BufferAttribute(shape.skinWeight, 4));
   geometry.setIndex(new THREE.BufferAttribute(shape.indices, 1));
