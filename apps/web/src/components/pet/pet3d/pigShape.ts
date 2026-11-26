@@ -425,9 +425,10 @@ export interface PigMesh extends SdfMesh {
   hoofs: Float32Array;
   /**
    * Per vertex: the difference between the distances to the two nearest parts: 0 on the seam
-   * between them, changing about linearly across it. Then how strongly that crease's line shows
-   * there: 1 along a narrow crease, fading to 0 where a part melts in over a wide blend, such as
-   * the shoulder.
+   * between them, changing about linearly across it, negative on the part the other presses into
+   * (the body under an arm, leg, or chin, the head under an ear). Then how strongly that crease's
+   * line shows there: 1 along a narrow crease, fading to 0 where a part melts in over a wide
+   * blend, such as the shoulder. Then the same spread a few vertices out, for the crease's shadow.
    */
   creases: Float32Array;
 }
@@ -457,7 +458,7 @@ export function pigMesh(): PigMesh {
   const regions = new Float32Array(count * 3);
   const field = new Float32Array(count);
   const hoofs = new Float32Array(count * 3);
-  const creases = new Float32Array(count * 2);
+  const creases = new Float32Array(count * 3);
   const d = new Float64Array(PARTS);
   const order = Array.from({ length: PARTS }, (_, i) => i);
   for (let v = 0; v < count; v += 1) {
@@ -532,12 +533,25 @@ export function pigMesh(): PigMesh {
     // blend (0.12). The snout stands proud of the face with no crease, so it gets no line.
     const a = Math.min(order[0]!, order[1]!);
     const b = Math.max(order[0]!, order[1]!);
-    creases[v * 2] = d[a]! - d[b]!;
-    creases[v * 2 + 1] = b === SNOUT ? 0 : smooth(0.028, 0.02, (d[a]! + d[b]!) / 2);
+    creases[v * 3] = d[a]! - d[b]!;
+    creases[v * 3 + 1] = b === SNOUT ? 0 : smooth(0.028, 0.02, (d[a]! + d[b]!) / 2);
   }
   // Two light passes smooth out the grid's small steps without moving the 0.5 level.
   for (let pass = 0; pass < 2; pass += 1) blurAttribute(field, 1, neighbors, 0.5);
   for (let v = 0; v < count; v += 1) hoofs[v * 3] = field[v]!;
+  // A crease's shadow reaches further than the narrow band where its line shows, so its strength
+  // spreads a few vertices out from the seam, a little weaker with each step (which also fades
+  // the shadow out along the seam where it reaches the shoulder).
+  const shade = new Float32Array(count);
+  for (let v = 0; v < count; v += 1) shade[v] = creases[v * 3 + 1]!;
+  for (let pass = 0; pass < 5; pass += 1) {
+    const next = shade.slice();
+    for (let v = 0; v < count; v += 1)
+      for (let n = neighbors.start[v]!; n < neighbors.start[v + 1]!; n += 1)
+        next[v] = Math.max(next[v]!, shade[neighbors.list[n]!]! * 0.9);
+    shade.set(next);
+  }
+  for (let v = 0; v < count; v += 1) creases[v * 3 + 2] = shade[v]!;
   cached = { ...mesh, skinIndex, skinWeight, regions, hoofs, creases };
   return cached;
 }

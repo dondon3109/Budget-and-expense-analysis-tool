@@ -30,6 +30,23 @@ const mix = (a: string, b: string, t: number) =>
 export const PIG_BODY = "#EEBDAE";
 
 /**
+ * The creases between the parts. Each has a narrow line (`line` either side of the seam, in figure
+ * units, `lineDark` of the way to `color`) and a soft shadow that reaches `under` into the part
+ * pressed on (the body under an arm, the head under an ear) and only `over` up the part pressing,
+ * as a clay limb shades the body it rests against. `color` is a warm shadow, so the creases darken
+ * the pink to a deeper rose instead of grey.
+ */
+const CREASE = {
+  line: 0.007,
+  lineDark: 0.75,
+  under: 0.13,
+  underDark: 0.45,
+  over: 0.035,
+  overDark: 0.2,
+  color: [0.6, 0.4, 0.38] as const,
+};
+
+/**
  * The pig's palette from its (tinted) body color. Each part keeps the same relation to the body as
  * on the reference clay toy: a slightly deeper snout, deep rose nostrils and blush, and rose-brown
  * hooves, so a tinted pig stays consistent.
@@ -89,10 +106,20 @@ function softSkin(o: Palette) {
     // meets the body, an ear meets the head, and the head sits on the body, a crisp dark crease
     // line with a soft shadow either side sets the parts apart, as on the toy.
     shader.uniforms.hoofColor = { value: new THREE.Color(o.hoof) };
+    shader.uniforms.creaseColor = { value: new THREE.Color(...CREASE.color) };
+    shader.defines = {
+      ...shader.defines,
+      CREASE_LINE: CREASE.line.toFixed(4),
+      CREASE_LINE_DARK: CREASE.lineDark.toFixed(3),
+      CREASE_UNDER: CREASE.under.toFixed(4),
+      CREASE_UNDER_DARK: CREASE.underDark.toFixed(3),
+      CREASE_OVER: CREASE.over.toFixed(4),
+      CREASE_OVER_DARK: CREASE.overDark.toFixed(3),
+    };
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
-        "#include <common>\nattribute vec3 hoof;\nattribute vec2 crease;\nvarying vec3 vHoof;\nvarying vec2 vCrease;",
+        "#include <common>\nattribute vec3 hoof;\nattribute vec3 crease;\nvarying vec3 vHoof;\nvarying vec3 vCrease;",
       )
       .replace(
         "#include <color_vertex>",
@@ -101,11 +128,11 @@ function softSkin(o: Palette) {
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
-        "#include <common>\nuniform vec3 hoofColor;\nvarying vec3 vHoof;\nvarying vec2 vCrease;",
+        "#include <common>\nuniform vec3 hoofColor;\nuniform vec3 creaseColor;\nvarying vec3 vHoof;\nvarying vec3 vCrease;",
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tfloat splitEdge = fwidth( vHoof.y ) * 0.75;\n\tfloat splitWidth = 0.016 * smoothstep( 0.1, 0.9, vHoof.z );\n\tfloat split = 1.0 - smoothstep( splitWidth - splitEdge, splitWidth + splitEdge, abs( vHoof.y ) );\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor * ( 1.0 - 0.6 * split ), onHoof );\n\tfloat rim = 1.0 - smoothstep( hoofEdge * 1.5, hoofEdge * 3.0, abs( vHoof.x - 0.5 ) );\n\tdiffuseColor.rgb *= 1.0 - 0.35 * rim;\n\tfloat creaseEdge = fwidth( vCrease.x ) * 0.75;\n\tfloat creaseLine = 1.0 - smoothstep( 0.011 - creaseEdge, 0.011 + creaseEdge, abs( vCrease.x ) );\n\tfloat creaseShade = 1.0 - smoothstep( 0.0, 0.07, abs( vCrease.x ) );\n\tdiffuseColor.rgb *= 1.0 - ( 0.5 * creaseLine + 0.25 * creaseShade ) * vCrease.y;",
+        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tfloat splitEdge = fwidth( vHoof.y ) * 0.75;\n\tfloat splitWidth = 0.016 * smoothstep( 0.1, 0.9, vHoof.z );\n\tfloat split = 1.0 - smoothstep( splitWidth - splitEdge, splitWidth + splitEdge, abs( vHoof.y ) );\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor * ( 1.0 - 0.6 * split ), onHoof );\n\tfloat rim = 1.0 - smoothstep( hoofEdge * 1.5, hoofEdge * 3.0, abs( vHoof.x - 0.5 ) );\n\tdiffuseColor.rgb *= 1.0 - 0.35 * rim;\n\tfloat creaseEdge = fwidth( vCrease.x ) * 0.75;\n\tfloat creaseLine = ( 1.0 - smoothstep( CREASE_LINE - creaseEdge, CREASE_LINE + creaseEdge, abs( vCrease.x ) ) ) * vCrease.y;\n\tfloat under = vCrease.x < 0.0 ? 1.0 - smoothstep( 0.0, CREASE_UNDER, -vCrease.x ) : 1.0 - smoothstep( 0.0, CREASE_OVER, vCrease.x );\n\tfloat creaseShade = under * under * vCrease.z * ( vCrease.x < 0.0 ? CREASE_UNDER_DARK : CREASE_OVER_DARK );\n\tdiffuseColor.rgb *= mix( vec3( 1.0 ), creaseColor, clamp( CREASE_LINE_DARK * creaseLine + creaseShade, 0.0, 1.0 ) );",
       );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <emissivemap_fragment>",
@@ -255,7 +282,7 @@ function buildPig(o: Palette) {
   geometry.setAttribute("normal", new THREE.BufferAttribute(shape.normals, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(pigColors(shape.regions, o), 3));
   geometry.setAttribute("hoof", new THREE.BufferAttribute(shape.hoofs, 3));
-  geometry.setAttribute("crease", new THREE.BufferAttribute(shape.creases, 2));
+  geometry.setAttribute("crease", new THREE.BufferAttribute(shape.creases, 3));
   geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(shape.skinIndex, 4));
   geometry.setAttribute("skinWeight", new THREE.BufferAttribute(shape.skinWeight, 4));
   geometry.setIndex(new THREE.BufferAttribute(shape.indices, 1));

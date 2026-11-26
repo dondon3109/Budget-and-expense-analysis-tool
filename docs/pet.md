@@ -176,10 +176,12 @@ the figure, or the tombstone.
   between vertices rather than fading across the triangles. The toe split and the crease lines
   are cut the same way: each vertex stores a distance that changes linearly across the line (the
   distance across the hoof; for a crease, how much nearer one of the two nearest parts is than the
-  other, 0 on the seam), and the shader draws a crisp dark line where it is near 0. A soft shade
-  either side of each crease line sets the arms, legs, ears, and head apart from what they meet,
-  as on the toy; the line fades out over the shoulder, where the arm melts in, and the snout gets
-  none. A thin dark groove runs round each hoof cap and sole where the color is cut, so they read
+  other, 0 on the seam), and the shader draws a crisp line where it is near 0. Each crease also
+  casts a soft shadow that reaches well into the part pressed on (the body under the chin, an arm,
+  or a leg; the head under an ear) and only a little up the part pressing, so the arms, legs,
+  ears, and head read as separate pieces resting against each other, as on the toy. Line and
+  shadow darken toward a warm deep rose rather than grey (`CREASE` in `pigScene.ts`); the line
+  fades out over the shoulder, where the arm melts in, and the snout gets none. A thin dark groove runs round each hoof cap and sole where the color is cut, so they read
   as set into the pink. The material is matte with a
   light velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
   scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
