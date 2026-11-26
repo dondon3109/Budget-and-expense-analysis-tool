@@ -156,9 +156,10 @@ the figure, or the tombstone.
   along one smooth curve, so the fold is a soft bend and the thin flap never crumples); short, fat arms that hang down the front of the body
   and turn slightly in, each ending in a round pink hand with a small rose-brown hoof pointing
   down and in onto the belly well above the feet (so the hoof and sole colors never touch), split by a soft groove where the toes part. Each arm is one tube along a gentle curve, with no elbow
-  corner, and only its shoulder melts into the body: below it the arm rests on the belly with its
-  center line about half its radius off the surface (`armRest`, pushed mostly forward so the
-  outline keeps its width), so most of its round shows and it meets the body in a narrow crease,
+  corner, and only its shoulder melts into the body: the shoulders sit low on the
+  body's top corners, clear of the cheeks, and from partway down the upper arm the arm rests on the
+  belly with its center line about half its radius off the surface (`armRest`, pushed forward and
+  never up, so the outline keeps its width and the shoulders do not rise into a shrug), so most of its round shows and it meets the body in a narrow crease,
   standing apart as a limb. The figure also has stubby legs stretched forward showing round rose-brown
   soles inside a pink rim; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
   top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The

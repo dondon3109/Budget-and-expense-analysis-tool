@@ -53,8 +53,8 @@ const SHAPE = {
   bodyP: 2,
   // Each arm follows a curve from the shoulder, bent toward the elbow point (which it does not
   // reach), to the wrist on the belly.
-  shoulderX: 0.66,
-  shoulderY: 1.1,
+  shoulderX: 0.62,
+  shoulderY: 1.0,
   shoulderZ: 0.42,
   elbowX: 0.69,
   elbowY: 0.9,
@@ -164,8 +164,8 @@ function bezier(a: Vec3, b: Vec3, c: Vec3, t: number): Vec3 {
 
 /**
  * `p` pushed out from the body until it is at least `gap` off its surface: along the body's normal
- * but mostly forward (its sideways part damped), so the arm comes off the belly without widening
- * the figure's outline. A few Newton steps on the body's distance, close to exact near the surface.
+ * but mostly forward (its sideways part damped, and never up), so the arm comes off the belly
+ * without widening the figure's outline or lifting into a shrug. A few Newton steps on the body's distance, close to exact near the surface.
  */
 function settle(p: Vec3, gap: number): Vec3 {
   let q: [number, number, number] = [p[0], p[1], p[2]];
@@ -178,7 +178,7 @@ function settle(p: Vec3, gap: number): Vec3 {
       torso(q[0], q[1] + h, q[2]) - torso(q[0], q[1] - h, q[2]),
       torso(q[0], q[1], q[2] + h) - torso(q[0], q[1], q[2] - h),
     ]);
-    const n = unit([g[0] * 0.25, g[1], g[2]]);
+    const n = unit([g[0] * 0.25, Math.min(g[1], 0) * 0.25, g[2]]);
     // How far a step along `n` moves the point off the surface, so the step lands on `gap`.
     const rate = Math.max(dot(n, g), 0.3);
     q = [
@@ -208,7 +208,7 @@ function arm(side: number) {
   // The shoulder stays where it is, melting into the body; the rest settles onto it.
   const points = Array.from({ length: steps + 1 }, (_, i) => {
     const t = i / steps;
-    const rise = Math.min(t / 0.5, 1);
+    const rise = Math.min(Math.max((t - 0.2) / 0.5, 0), 1);
     const gap = radius(t) * SHAPE.armRest * rise * rise * (3 - 2 * rise);
     return settle(bezier(shoulder, elbow, guide, t), gap);
   });
