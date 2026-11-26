@@ -9,7 +9,7 @@ import type { PetGradient, PetLayer, PetShape } from "./shapes";
 // spot, the base tone, a shaded edge, and a faint bounce light at the rim), with a glossy
 // highlight on the head and body and a soft contact shadow on the ground. The figure is built
 // from one chibi template: the stage sets the proportions, the species adds its ears, snout,
-// spines, or patches, and a Legend wears its own golden outfit.
+// or muzzle, and a Legend wears its own golden outfit.
 
 /** How a hatched pet looks: healthy, or sick (half-lidded, pale, sweating), or fading (washed out). */
 export type PetFigureHealth = "healthy" | "sick" | "fading";
@@ -149,26 +149,20 @@ const pt = (x: number, y: number) => `${r1(x)} ${r1(y)}`;
 // ---- Palettes ------------------------------------------------------------------------------
 
 interface Palette {
-  /** Fur, skin, or feathers: the part a pet color tints. */
+  /** Skin: the part a pet color tints. */
   body: string;
-  /** Belly, face, or muzzle. */
+  /** Belly, snout, or muzzle. */
   light: string;
   /** Inner ears and paw pads. */
   inner: string;
-  /** Nose, nostrils, or panda patches. */
+  /** Nostrils. */
   dark: string;
-  /** Beak and feet on a penguin. */
-  beak: string;
 }
 
 const INK = "#24161A";
 
 function palette(species: PetSpecies, color: PetColor): Palette {
   switch (species) {
-    case "hedgehog": {
-      const body = tintPetHex("#8E5D3B", color);
-      return { body, light: "#F4DEC2", inner: "#EDB5A2", dark: "#3A2520", beak: "#3A2520" };
-    }
     case "pig": {
       const body = tintPetHex("#F2A4B4", color);
       return {
@@ -176,21 +170,7 @@ function palette(species: PetSpecies, color: PetColor): Palette {
         light: lighten(body, 0.38),
         inner: darken(body, 0.12),
         dark: darken(body, 0.45),
-        beak: darken(body, 0.45),
       };
-    }
-    case "hamster": {
-      const body = tintPetHex("#F1A140", color);
-      return { body, light: "#FCE8CB", inner: "#F6A9B4", dark: "#D9707F", beak: "#D9707F" };
-    }
-    case "penguin": {
-      const body = tintPetHex("#313A4C", color);
-      return { body, light: "#FBF8F1", inner: "#F6A9B4", dark: INK, beak: "#F4A23C" };
-    }
-    case "panda": {
-      // The patches are the panda's body color, as on its egg.
-      const body = tintPetHex("#2B2B34", color);
-      return { body, light: "#F7F5EF", inner: "#F6A9B4", dark: INK, beak: INK };
     }
     case "hippo": {
       const body = tintPetHex("#A9A1CB", color);
@@ -199,7 +179,6 @@ function palette(species: PetSpecies, color: PetColor): Palette {
         light: lighten(body, 0.3),
         inner: "#EAA8C0",
         dark: darken(body, 0.5),
-        beak: darken(body, 0.5),
       };
     }
   }
@@ -215,7 +194,6 @@ function washed(colors: Palette, health: PetFigureHealth): Palette {
     light: wash(colors.light),
     inner: wash(colors.inner),
     dark: wash(colors.dark),
-    beak: wash(colors.beak),
   };
 }
 
@@ -284,52 +262,23 @@ const GROUND = 188;
 
 // ---- Parts ---------------------------------------------------------------------------------
 
-/** A hedgehog's soft rounded spines: a spiky halo behind the head and back. */
-function spines(b: Build, color: string): PetShape {
-  const cy = (b.headY - b.headR + b.bodyY + b.bodyRy) / 2 - 6;
-  const rx = Math.max(b.headR, b.bodyRx) * 1.24;
-  const ry = (b.bodyY + b.bodyRy - (b.headY - b.headR)) / 2 + 10;
-  const count = 15;
-  // From lower left, over the top, to lower right; the bottom is hidden behind the body.
-  const from = Math.PI * 0.82;
-  const to = Math.PI * 2.18;
-  let d = "";
-  for (let i = 0; i <= count; i += 1) {
-    const base = from + ((to - from) * i) / count;
-    const x = 100 + Math.cos(base) * rx * 0.8;
-    const y = cy + Math.sin(base) * ry * 0.8;
-    d += `${i === 0 ? "M" : "L"}${pt(x, y)} `;
-    if (i === count) break;
-    const tip = base + (to - from) / count / 2;
-    d += `L${pt(100 + Math.cos(tip) * rx, cy + Math.sin(tip) * ry)} `;
-  }
-  return { kind: "path", d: `${d}Z`, fill: soft(color, 0.3, 0.34), stroke: color, strokeWidth: 7 };
-}
-
 function ears(species: PetSpecies, b: Build, c: Palette): PetShape[] {
   const { headY: y, headR: r } = b;
   const at = (side: -1 | 1, angle: number, lift = 1) => ({
     x: 100 + side * Math.cos(angle) * r * lift,
     y: y - Math.sin(angle) * r * lift,
   });
-  const round = (angle: number, size: number, fill: string, inner: string | null) =>
-    ([-1, 1] as const).flatMap((side) => {
-      const p = at(side, angle, 0.92);
-      const parts = [circle(p.x, p.y, size, soft(fill))];
-      if (inner) parts.push(circle(p.x + side * 1, p.y + 1.5, size * 0.55, soft(inner, 0.2, 0.15)));
-      return parts;
-    });
   switch (species) {
-    case "hedgehog":
-      return round(1.0, r * 0.2, c.body, c.inner);
-    case "hamster":
-      return round(0.95, r * 0.27, c.body, c.inner);
-    case "panda":
-      return round(0.92, r * 0.3, c.body, null);
     case "hippo":
-      return round(1.12, r * 0.17, c.body, c.inner);
-    case "penguin":
-      return [];
+      // Small round ears with a pink inside, high on the head.
+      return ([-1, 1] as const).flatMap((side) => {
+        const p = at(side, 1.12, 0.92);
+        const size = r * 0.17;
+        return [
+          circle(p.x, p.y, size, soft(c.body)),
+          circle(p.x + side * 1, p.y + 1.5, size * 0.55, soft(c.inner, 0.2, 0.15)),
+        ];
+      });
     case "pig":
       // Soft floppy ears that tip out and down beside the head.
       return ([-1, 1] as const).map((side) =>
@@ -345,12 +294,8 @@ function ears(species: PetSpecies, b: Build, c: Palette): PetShape[] {
   }
 }
 
-function legs(species: PetSpecies, b: Build, c: Palette): PetShape[] {
+function legs(b: Build, c: Palette): PetShape[] {
   return ([-1, 1] as const).flatMap((side) => {
-    if (species === "penguin") {
-      const x = 100 + side * b.bodyRx * 0.4;
-      return [ellipse(x, GROUND - 5, 14, 7, soft(c.beak, 0.4, 0.24))];
-    }
     // Short stumps that grow out of the bottom of the body, like a desk toy's.
     const x = 100 + side * b.bodyRx * 0.42;
     const top = b.bodyY + b.bodyRy * (b.sits ? 0.2 : 0.05);
@@ -359,16 +304,15 @@ function legs(species: PetSpecies, b: Build, c: Palette): PetShape[] {
   });
 }
 
-/** Small side nubs: a penguin's flippers, and the arm a Legend holds its prize in. */
-function arms(species: PetSpecies, b: Build, c: Palette, legend: boolean): PetShape[] {
-  if (species !== "penguin" && !legend) return [];
-  const long = species === "penguin";
+/** Small side nubs: the arms a Legend holds its prize in. */
+function arms(b: Build, c: Palette, legend: boolean): PetShape[] {
+  if (!legend) return [];
   return ([-1, 1] as const).map((side) =>
     ellipse(
       100 + side * b.bodyRx * 0.92,
       b.bodyY - b.bodyRy * 0.15,
-      long ? 8 : 9,
-      long ? 20 : 12,
+      9,
+      12,
       soft(c.body),
       side * 22,
     ),
@@ -376,14 +320,12 @@ function arms(species: PetSpecies, b: Build, c: Palette, legend: boolean): PetSh
 }
 
 /** Belly or chest: a lighter oval on the front of the body. */
-function belly(species: PetSpecies, b: Build, c: Palette): PetShape[] {
-  if (species === "panda") return [];
-  const wide = species === "penguin" ? 0.8 : 0.66;
+function belly(b: Build, c: Palette): PetShape[] {
   return [
     ellipse(
       100,
       b.bodyY + b.bodyRy * 0.12,
-      b.bodyRx * wide,
+      b.bodyRx * 0.66,
       b.bodyRy * 0.78,
       soft(c.light, 0.5, 0.16),
     ),
@@ -393,39 +335,12 @@ function belly(species: PetSpecies, b: Build, c: Palette): PetShape[] {
 /** The face markings and snout, drawn on the head below the eyes. */
 function face(species: PetSpecies, b: Build, c: Palette): PetShape[] {
   const { headY: y, headR: r } = b;
-  const eyeY = eyeHeight(species, b);
   switch (species) {
-    case "hedgehog":
-      return [
-        ellipse(100, y + r * 0.2, r * 0.84, r * 0.72, soft(c.light, 0.4, 0.16)),
-        ...nose(y + r * 0.24, r * 0.12, c.dark),
-      ];
     case "pig":
       return [
         ellipse(100, y + r * 0.32, r * 0.36, r * 0.25, soft(c.light, 0.4, 0.2)),
         ellipse(100 - r * 0.12, y + r * 0.32, r * 0.06, r * 0.1, c.dark),
         ellipse(100 + r * 0.12, y + r * 0.32, r * 0.06, r * 0.1, c.dark),
-      ];
-    case "hamster":
-      return [
-        ellipse(100, y + r * 0.42, r * 0.66, r * 0.44, soft(c.light, 0.5, 0.16)),
-        ...nose(y + r * 0.2, r * 0.09, c.dark),
-      ];
-    case "penguin":
-      return [
-        ellipse(100 - r * 0.27, eyeY + 2, r * 0.42, r * 0.5, soft(c.light, 0.5, 0.14)),
-        ellipse(100 + r * 0.27, eyeY + 2, r * 0.42, r * 0.5, soft(c.light, 0.5, 0.14)),
-        ellipse(100, y + r * 0.42, r * 0.5, r * 0.4, soft(c.light, 0.5, 0.14)),
-        solid(
-          `M${pt(100 - r * 0.17, y + r * 0.24)} Q${pt(100, y + r * 0.14)} ${pt(100 + r * 0.17, y + r * 0.24)} Q${pt(100, y + r * 0.46)} ${pt(100 - r * 0.17, y + r * 0.24)} Z`,
-          soft(c.beak, 0.45, 0.25),
-        ),
-      ];
-    case "panda":
-      return [
-        ellipse(100 - r * 0.42, eyeY + 3, r * 0.29, r * 0.36, soft(c.body, 0.25, 0.2), 32),
-        ellipse(100 + r * 0.42, eyeY + 3, r * 0.29, r * 0.36, soft(c.body, 0.25, 0.2), -32),
-        ...nose(y + r * 0.22, r * 0.12, c.body),
       ];
     case "hippo":
       return [
@@ -437,24 +352,14 @@ function face(species: PetSpecies, b: Build, c: Palette): PetShape[] {
 }
 
 function eyeHeight(species: PetSpecies, b: Build): number {
-  if (species === "hippo") return b.headY - b.headR * 0.14;
-  if (species === "pig") return b.headY - b.headR * 0.06;
-  return b.headY;
+  return b.headY - b.headR * (species === "hippo" ? 0.14 : 0.06);
 }
 
 function mouthAt(species: PetSpecies, b: Build): number {
-  const { headY: y, headR: r } = b;
-  if (species === "pig") return y + r * 0.62;
-  if (species === "hippo") return y + r * 0.6;
-  if (species === "penguin") return y + r * 0.5;
-  if (species === "hedgehog") return y + r * 0.42;
-  if (species === "panda") return y + r * 0.4;
-  return y + r * 0.34;
+  return b.headY + b.headR * (species === "hippo" ? 0.6 : 0.62);
 }
 
 function mouth(species: PetSpecies, b: Build, health: PetFigureHealth): PetShape[] {
-  // A penguin's beak is its mouth.
-  if (species === "penguin") return [];
   const y = mouthAt(species, b);
   if (health === "sick") return [stroke(`M${pt(100 - 7, y + 1)} q3.5 -3 7 0 q3.5 3 7 0`, INK, 2.2)];
   if (health === "fading") return [stroke(`M${pt(100 - 4, y + 1)} L${pt(100 + 4, y + 1)}`, INK, 2)];
@@ -465,17 +370,6 @@ function mouth(species: PetSpecies, b: Build, health: PetFigureHealth): PetShape
       INK,
       2.2,
     ),
-  ];
-}
-
-/** A small rounded nose with a glint, wider at the top. */
-function nose(y: number, w: number, color: string): PetShape[] {
-  return [
-    solid(
-      `M${pt(100 - w, y)} Q${pt(100, y - w * 0.45)} ${pt(100 + w, y)} Q${pt(100 + w * 0.7, y + w * 1.05)} ${pt(100, y + w * 1.15)} Q${pt(100 - w * 0.7, y + w * 1.05)} ${pt(100 - w, y)} Z`,
-      soft(color, 0.4, 0.3),
-    ),
-    ellipse(100 - w * 0.3, y + w * 0.15, w * 0.32, w * 0.18, glint(0.8)),
   ];
 }
 
@@ -527,8 +421,7 @@ function eyes(species: PetSpecies, b: Build, health: PetFigureHealth, closed: bo
   const s = b.eye;
   const y = eyeHeight(species, b);
   const dx = b.headR * 0.42;
-  // On a panda's dark patches the lids need a light line to read.
-  const lid = species === "panda" ? "#F1ECE4" : INK;
+  const lid = INK;
   const shapes = ([-1, 1] as const).flatMap((side): PetShape[] => {
     const x = 100 + side * dx;
     if (closed)
@@ -553,9 +446,7 @@ function eyes(species: PetSpecies, b: Build, health: PetFigureHealth, closed: bo
     }
     const rx = 7 * s;
     const ry = 8.6 * s;
-    const parts: PetShape[] = [];
-    if (species === "panda") parts.push(ellipse(x, y, rx + 1.6, ry + 1.6, "#F7F5EF"));
-    parts.push(
+    return [
       ellipse(x, y, rx, ry, eyeBall),
       // A big soft window reflection up and to the left, a small glint below, and a faint
       // rim of light along the bottom of the glass.
@@ -563,8 +454,7 @@ function eyes(species: PetSpecies, b: Build, health: PetFigureHealth, closed: bo
       circle(x - rx * 0.32, y - ry * 0.38, rx * 0.24, "#FFFFFF"),
       circle(x + rx * 0.4, y + ry * 0.36, rx * 0.12, "#FFFFFF"),
       ellipse(x, y + ry * 0.62, rx * 0.62, ry * 0.2, glint(0.22)),
-    );
-    return parts;
+    ];
   });
   return { shapes };
 }
@@ -576,7 +466,7 @@ function sickExtras(species: PetSpecies, b: Build): PetShape[] {
   const x = 100 + b.headR * 0.78;
   const y = b.headY - b.headR * 0.46;
   const drop = `M${pt(x, y - 9)} Q${pt(x + 7, y + 1)} ${pt(x, y + 5)} Q${pt(x - 7, y + 1)} ${pt(x, y - 9)} Z`;
-  const my = species === "penguin" ? b.headY + b.headR * 0.32 : mouthAt(species, b);
+  const my = mouthAt(species, b);
   const from = { x: 100 + 6, y: my + 1 };
   const to = { x: 100 + 26, y: my - 7 };
   return [
@@ -601,55 +491,27 @@ const GOLD = "#EDB93E";
 const goldFill = soft(GOLD, 0.55, 0.32);
 
 interface Outfit {
-  cape: string | null;
-  hat: "crown" | "tophat" | "lotus" | "straw" | null;
-  item: "shield" | "coin" | "seed" | "fish" | "staff" | "lotus";
-  sash?: string;
+  hat: "tophat" | "lotus";
+  item: "coin" | "lotus";
+  sash: string;
 }
 
 const outfits: Record<PetSpecies, Outfit> = {
-  hedgehog: { cape: "#C8443C", hat: null, item: "shield" },
-  pig: { cape: null, hat: "tophat", item: "coin", sash: "#7A3B8F" },
-  hamster: { cape: "#8C3A8C", hat: "crown", item: "seed" },
-  penguin: { cape: "#3A5BC6", hat: "crown", item: "fish" },
-  panda: { cape: "#C8443C", hat: "straw", item: "staff" },
-  hippo: { cape: null, hat: "lotus", item: "lotus", sash: "#2A9D8F" },
+  pig: { hat: "tophat", item: "coin", sash: "#7A3B8F" },
+  hippo: { hat: "lotus", item: "lotus", sash: "#2A9D8F" },
 };
 
-function cape(b: Build, color: string): PetShape[] {
-  const top = b.bodyY - b.bodyRy * 0.85;
-  const d = `M${pt(100 - b.bodyRx * 0.7, top)} Q${pt(100 - b.bodyRx * 1.35, GROUND - 30)} ${pt(100 - b.bodyRx * 1.2, GROUND - 2)} Q${pt(100, GROUND + 6)} ${pt(100 + b.bodyRx * 1.2, GROUND - 2)} Q${pt(100 + b.bodyRx * 1.35, GROUND - 30)} ${pt(100 + b.bodyRx * 0.7, top)} Z`;
-  return [solid(d, soft(color, 0.3, 0.38))];
-}
-
 function collar(b: Build, outfit: Outfit): PetShape[] {
-  const y = b.headY + b.headR * 0.92;
-  if (outfit.sash) {
-    const d = `M${pt(100 - b.bodyRx * 0.85, b.bodyY - b.bodyRy * 0.55)} L${pt(100 - b.bodyRx * 0.62, b.bodyY - b.bodyRy * 0.78)} L${pt(100 + b.bodyRx * 0.9, b.bodyY + b.bodyRy * 0.55)} L${pt(100 + b.bodyRx * 0.66, b.bodyY + b.bodyRy * 0.76)} Z`;
-    return [
-      solid(d, soft(outfit.sash, 0.3, 0.3)),
-      circle(100 - b.bodyRx * 0.6, b.bodyY - b.bodyRy * 0.6, 5, goldFill),
-    ];
-  }
-  if (outfit.cape) return [circle(100, y, 6, goldFill)];
-  return [];
+  const d = `M${pt(100 - b.bodyRx * 0.85, b.bodyY - b.bodyRy * 0.55)} L${pt(100 - b.bodyRx * 0.62, b.bodyY - b.bodyRy * 0.78)} L${pt(100 + b.bodyRx * 0.9, b.bodyY + b.bodyRy * 0.55)} L${pt(100 + b.bodyRx * 0.66, b.bodyY + b.bodyRy * 0.76)} Z`;
+  return [
+    solid(d, soft(outfit.sash, 0.3, 0.3)),
+    circle(100 - b.bodyRx * 0.6, b.bodyY - b.bodyRy * 0.6, 5, goldFill),
+  ];
 }
 
 function hat(b: Build, kind: Outfit["hat"]): PetShape[] {
   const top = b.headY - b.headR * 0.9;
   switch (kind) {
-    case null:
-      return [];
-    case "crown": {
-      const w = b.headR * 0.5;
-      const d = `M${pt(100 - w, top + 6)} L${pt(100 - w - 3, top - 16)} L${pt(100 - w * 0.45, top - 6)} L${pt(100, top - 22)} L${pt(100 + w * 0.45, top - 6)} L${pt(100 + w + 3, top - 16)} L${pt(100 + w, top + 6)} Q${pt(100, top + 11)} ${pt(100 - w, top + 6)} Z`;
-      return [
-        solid(d, goldFill),
-        circle(100, top - 1, 3.4, soft("#D8344A", 0.5, 0.3)),
-        circle(100 - w * 0.62, top + 1, 2.4, soft("#3A7BD5", 0.5, 0.3)),
-        circle(100 + w * 0.62, top + 1, 2.4, soft("#3A7BD5", 0.5, 0.3)),
-      ];
-    }
     case "tophat": {
       const w = b.headR * 0.42;
       return [
@@ -672,20 +534,6 @@ function hat(b: Build, kind: Outfit["hat"]): PetShape[] {
           ellipse(100, top - 9, 7.5, 15, soft("#F6D46A", 0.55, 0.3)),
           circle(100, top - 1, 3, soft("#D8344A", 0.5, 0.3)),
         ]);
-    case "straw": {
-      const w = b.headR * 1.15;
-      return [
-        solid(
-          `M${pt(100 - w, top + 12)} Q${pt(100, top - 34)} ${pt(100 + w, top + 12)} Q${pt(100, top + 18)} ${pt(100 - w, top + 12)} Z`,
-          soft("#E6C26A", 0.45, 0.32),
-        ),
-        stroke(
-          `M${pt(100 - w * 0.62, top + 4)} Q${pt(100, top - 6)} ${pt(100 + w * 0.62, top + 4)}`,
-          "#B98B35",
-          2.2,
-        ),
-      ];
-    }
   }
 }
 
@@ -693,35 +541,10 @@ function item(b: Build, kind: Outfit["item"]): PetShape[] {
   const x = 100 + b.bodyRx * 1.02;
   const y = b.bodyY - b.bodyRy * 0.12;
   switch (kind) {
-    case "shield":
-      return [
-        circle(x + 2, y + 4, 18, soft("#D3D8E2", 0.55, 0.35)),
-        circle(x + 2, y + 4, 11, goldFill),
-        circle(x + 2, y + 4, 4, soft("#D8344A", 0.5, 0.3)),
-      ];
     case "coin":
       return [
         circle(x + 2, y, 11, goldFill),
         stroke(`M${pt(x - 4, y)} a6 6 0 1 0 12 0 a6 6 0 1 0 -12 0`, "#C08A1E", 1.8),
-      ];
-    case "seed":
-      return [
-        ellipse(x + 2, y - 2, 8, 12.5, goldFill, 18),
-        ellipse(x, y - 6, 2, 5, glint(0.8), 18),
-      ];
-    case "fish":
-      return [
-        stroke(`M${pt(x + 2, y + 34)} L${pt(x + 2, y - 26)}`, "#C99A2E", 4.5),
-        ellipse(x + 2, y - 34, 7, 12, goldFill),
-        solid(`M${pt(x + 2, y - 46)} L${pt(x - 6, y - 56)} L${pt(x + 10, y - 56)} Z`, goldFill),
-      ];
-    case "staff":
-      return [
-        stroke(`M${pt(x + 2, y + 44)} L${pt(x + 2, y - 52)}`, "#D9A93A", 6),
-        ...[-34, -10, 14].map((dy) =>
-          stroke(`M${pt(x - 1.5, y + dy)} L${pt(x + 5.5, y + dy)}`, "#A87A22", 2),
-        ),
-        ellipse(x + 10, y - 50, 8, 3.4, soft("#7CC35A", 0.4, 0.3), -30),
       ];
     case "lotus":
       return [
@@ -776,28 +599,20 @@ export function petFigureArt(
   const headRx = b.headR * (species === "hippo" ? 1.1 : 1.04);
   const headRy = b.headR * 0.92;
 
-  const back: PetShape[] = [];
-  if (outfit?.cape) back.push(...cape(b, outfit.cape));
-  if (species === "hedgehog") back.push(spines(b, c.body));
-  back.push(...ears(species, b, c));
+  const back: PetShape[] = ears(species, b, c);
 
   const figure: PetShape[] = [
-    ellipse(100, b.bodyY, b.bodyRx, b.bodyRy, soft(species === "panda" ? c.light : c.body)),
-    ...belly(species, b, c),
+    ellipse(100, b.bodyY, b.bodyRx, b.bodyRy, soft(c.body)),
+    ...belly(b, c),
     ...(outfit ? collar(b, outfit) : []),
-    ...legs(species, b, c),
-    ...arms(species, b, c, outfit !== null),
+    ...legs(b, c),
+    ...arms(b, c, outfit !== null),
     ellipse(100, b.headY + headRy * 0.92, headRx * 0.7, 9, occlusion),
-    ellipse(100, b.headY, headRx, headRy, soft(species === "panda" ? c.light : c.body, 0.36)),
+    ellipse(100, b.headY, headRx, headRy, soft(c.body, 0.36)),
     ...face(species, b, c),
     ...(health === "fading" ? [] : cheeks(species, b)),
     ...mouth(species, b, health),
   ];
-  if (species === "penguin")
-    figure.push(
-      ellipse(100 - 3, b.headY - headRy + 2, 3.5, 8, soft(c.body), -18),
-      ellipse(100 + 4, b.headY - headRy + 1, 3, 7, soft(c.body), 22),
-    );
   if (outfit) figure.push(...hat(b, outfit.hat), ...item(b, outfit.item));
   figure.push(...gloss(b));
   if (health === "sick") figure.push(...sickExtras(species, b));

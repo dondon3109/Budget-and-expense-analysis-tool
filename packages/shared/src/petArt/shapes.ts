@@ -54,15 +54,7 @@ export const line = (d: string, stroke = OUTLINE, strokeWidth = 3): PetShape => 
   strokeWidth,
 });
 
-export const blob = (d: string, fill: string, stroke = OUTLINE): PetShape => ({
-  kind: "path",
-  d,
-  fill,
-  stroke,
-  strokeWidth: LINE,
-});
-
-export const oval = (
+const oval = (
   cx: number,
   cy: number,
   rx: number,

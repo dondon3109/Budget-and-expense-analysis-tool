@@ -97,10 +97,10 @@ describe("petSounds", () => {
   it("unlocks hatch audio muted during the gesture and plays sparkle before baby voice", async () => {
     const { playPetHatch, unlockPetHatchAudio } = await import("../src/lib/petSounds");
 
-    unlockPetHatchAudio("panda");
+    unlockPetHatchAudio("hippo");
     expect(created.map((audio) => audio.src)).toEqual([
       "/pet/sounds/sparkle.wav",
-      "/pet/sounds/panda-baby-happy.wav",
+      "/pet/sounds/hippo-baby-happy.wav",
     ]);
     expect(created[0]?.muted).toBe(true);
     expect(created[1]?.muted).toBe(true);
@@ -111,7 +111,7 @@ describe("petSounds", () => {
     expect(created[1]?.pause).toHaveBeenCalledTimes(1);
     expect(created[1]?.muted).toBe(false);
 
-    playPetHatch("panda");
+    playPetHatch("hippo");
     expect(created[0]?.play).toHaveBeenCalledTimes(2);
     expect(created[1]?.play).toHaveBeenCalledTimes(1);
 

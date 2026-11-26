@@ -9,6 +9,7 @@ import {
   petHealthStates,
   petSpecies,
   petStages,
+  retiredPetSpecies,
 } from "../pet";
 import { isoDateSchema } from "./common";
 
@@ -20,7 +21,10 @@ export const petNameSchema = z.string().trim().min(1).max(PET_NAME_MAX_LENGTH);
 /** The stored `PetState` (see pet.ts), read back from D1 as JSON. */
 export const petStoredStateSchema = z
   .object({
-    species: z.enum(petSpecies).nullable(),
+    species: z.preprocess(
+      (value) => ((retiredPetSpecies as readonly unknown[]).includes(value) ? "pig" : value),
+      z.enum(petSpecies).nullable(),
+    ),
     // Pets stored before names existed have none; the view falls back to the species label.
     name: petNameSchema.nullable().default(null),
     // Pets stored before colors existed have none until the user picks one.

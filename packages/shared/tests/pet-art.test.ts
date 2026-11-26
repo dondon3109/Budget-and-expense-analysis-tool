@@ -62,15 +62,15 @@ describe("pet figures", () => {
   });
 
   it("recolors the body and keeps the rest", () => {
-    const original = fills(petFigureArt("penguin", "adult", "healthy", "original").body);
-    const pink = fills(petFigureArt("penguin", "adult", "healthy", "pink").body);
-    expect(fills(petFigureArt("penguin", "adult", "healthy", null).body)).toEqual(original);
-    expect(original).toContain("#313A4C");
-    expect(pink).toContain(tintPetHex("#313A4C", "pink"));
-    expect(pink).not.toContain("#313A4C");
-    // The white belly is drawn the same in every color.
-    expect(pink.filter((color) => color === "#FBF8F1")).toHaveLength(
-      original.filter((color) => color === "#FBF8F1").length,
+    const original = fills(petFigureArt("hippo", "adult", "healthy", "original").body);
+    const pink = fills(petFigureArt("hippo", "adult", "healthy", "pink").body);
+    expect(fills(petFigureArt("hippo", "adult", "healthy", null).body)).toEqual(original);
+    expect(original).toContain("#A9A1CB");
+    expect(pink).toContain(tintPetHex("#A9A1CB", "pink"));
+    expect(pink).not.toContain("#A9A1CB");
+    // The pink inner ears are drawn the same in every color.
+    expect(pink.filter((color) => color === "#EAA8C0")).toHaveLength(
+      original.filter((color) => color === "#EAA8C0").length,
     );
   });
 
@@ -84,24 +84,23 @@ describe("pet figures", () => {
 describe("pet colors", () => {
   it("tints only an egg's body fills", () => {
     const fills = (color: PetColor) =>
-      eggArt("panda", 0, 0, color)
+      eggArt("hippo", 0, 0, color)
         .flatMap((layer) => layer.shapes)
         .map((shape) => shape.fill)
         .filter((fill) => typeof fill === "string");
     const pink = fills("pink");
-    // The black patches turn pink; the white shell and green bamboo stay as drawn.
-    expect(pink).toContain(tintPetHex("#24242C", "pink"));
-    expect(pink).not.toContain("#24242C");
-    expect(pink).toContain("#FAFAF5");
-    expect(pink).toContain("#6CBF45");
-    expect(fills("original")).toContain("#24242C");
+    // The lilac shell turns pink; the water at its base stays as drawn.
+    expect(pink).toContain(tintPetHex("#A7A1C6", "pink"));
+    expect(pink).not.toContain("#A7A1C6");
+    expect(pink).toContain("#86CDEB");
+    expect(fills("original")).toContain("#A7A1C6");
   });
 });
 
 describe("petMood", () => {
   const baby = {
     enabled: true,
-    species: "panda",
+    species: "hippo",
     name: "Bao",
     color: "original",
     stage: "baby",

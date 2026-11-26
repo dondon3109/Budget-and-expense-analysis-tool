@@ -5,8 +5,10 @@
  */
 
 // The pet enums live here rather than in types.ts, which is at its line limit.
-export const petSpecies = ["hedgehog", "pig", "hamster", "penguin", "panda", "hippo"] as const;
+export const petSpecies = ["pig", "hippo"] as const;
 export type PetSpecies = (typeof petSpecies)[number];
+/** Species no longer offered. A stored pet of one is read back as a pig, keeping its progress. */
+export const retiredPetSpecies = ["hedgehog", "hamster", "penguin", "panda"] as const;
 
 /** A pet's body color; "original" keeps the art as drawn. See petArt/colors.ts. */
 export const petColors = ["original", "pink", "mint", "sky", "lilac", "peach"] as const;

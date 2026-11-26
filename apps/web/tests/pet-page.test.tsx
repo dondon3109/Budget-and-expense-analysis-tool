@@ -41,7 +41,7 @@ import { renderWithProviders } from "./helpers/render";
 
 const babyPet: PetView = {
   enabled: true,
-  species: "panda",
+  species: "hippo",
   name: "Bao",
   color: "original",
   stage: "baby",
@@ -148,7 +148,7 @@ describe("pet on the web", () => {
   });
 
   it("hatches a ready egg on the tenth click", async () => {
-    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "panda", eggStreakDays: 7 });
+    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "hippo", eggStreakDays: 7 });
     vi.mocked(hatchPet).mockResolvedValue(babyPet);
     renderWithProviders(<PetPage />);
 
@@ -160,12 +160,12 @@ describe("pet on the web", () => {
 
     expect(await screen.findByRole("heading", { name: "Bao" })).toBeInTheDocument();
     expect(hatchPet).toHaveBeenCalledTimes(1);
-    expect(unlockPetHatchAudio).toHaveBeenCalledWith("panda");
-    expect(playPetHatch).toHaveBeenCalledWith("panda");
+    expect(unlockPetHatchAudio).toHaveBeenCalledWith("hippo");
+    expect(playPetHatch).toHaveBeenCalledWith("hippo");
   });
 
   it("settles a ready egg back when the hatch fails", async () => {
-    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "panda", eggStreakDays: 7 });
+    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "hippo", eggStreakDays: 7 });
     vi.mocked(hatchPet).mockRejectedValue(new Error("offline"));
     renderWithProviders(<PetPage />);
 
@@ -186,7 +186,7 @@ describe("pet on the web", () => {
     expect(pet.querySelector(".pet-hearts")).toBeNull();
     fireEvent.click(pet);
     expect(pet.querySelector(".pet-hearts")).toHaveTextContent("💖");
-    expect(playPetReaction).toHaveBeenLastCalledWith("panda", "baby", "happy");
+    expect(playPetReaction).toHaveBeenLastCalledWith("hippo", "baby", "happy");
   });
 
   it("answers a click on a sick pet weakly, in its sad voice", async () => {
@@ -198,7 +198,7 @@ describe("pet on the web", () => {
 
     expect(pet.querySelector(".pet-hearts")).toHaveTextContent("🤒");
     expect(pet.querySelector(".pet-hearts")).not.toHaveTextContent("💖");
-    expect(playPetReaction).toHaveBeenLastCalledWith("panda", "baby", "sick");
+    expect(playPetReaction).toHaveBeenLastCalledWith("hippo", "baby", "sick");
   });
 
   it("tells a free user their pet needs a paid plan to grow", async () => {

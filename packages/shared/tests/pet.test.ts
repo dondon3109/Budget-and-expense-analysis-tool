@@ -170,7 +170,7 @@ describe("applyPetEvent", () => {
   const login = (occurredAt: number) => ({ action: "login" as const, occurredAt });
 
   function readyEgg(): PetState {
-    let state = startPetEgg("panda", "Bao", "original");
+    let state = startPetEgg("hippo", "Bao", "original");
     for (let day = 0; day < 7; day += 1)
       state = applyPetEvent(state, login(t0 + day * 24 * hour), true);
     return state;
@@ -190,7 +190,7 @@ describe("applyPetEvent", () => {
   });
 
   it("waits for a tap after seven days, then hatches healthy with no points carried over", () => {
-    let state = startPetEgg("panda", "Bao", "original");
+    let state = startPetEgg("hippo", "Bao", "original");
     state = applyPetEvent(state, { action: "transaction", occurredAt: t0 }, true);
     expect(state.eggStreak.streakDays).toBe(0);
     expect(hatchPetEgg(state, t0)).toBeNull();
@@ -282,6 +282,18 @@ describe("pet names", () => {
     const stored = { ...emptyPetState, species: "pig" } as Record<string, unknown>;
     delete stored.name;
     expect(petStoredStateSchema.parse(stored).name).toBeNull();
+  });
+
+  it("reads a pet of a retired species back as a pig that keeps its progress", () => {
+    const stored = { ...emptyPetState, species: "panda", name: "Bao", points: 400 };
+    expect(petStoredStateSchema.parse(stored)).toMatchObject({
+      species: "pig",
+      name: "Bao",
+      points: 400,
+    });
+    expect(
+      petEggChoiceSchema.safeParse({ species: "panda", color: "pink", name: "Bao" }).success,
+    ).toBe(false);
   });
 
   it("trims a chosen name and rejects a blank or long one", () => {

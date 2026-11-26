@@ -3,12 +3,10 @@ import type { PetColor, PetSpecies } from "../pet";
 import { tintPetHex } from "./colors";
 
 import {
-  blob,
   dot,
   groundShadow,
   line,
   OUTLINE,
-  oval,
   type PetArt,
   type PetLayer,
   type PetShape,
@@ -64,39 +62,7 @@ const shine: PetShape = {
   },
 };
 
-const triangle = (x: number, y: number): string =>
-  `M${x - 6} ${y + 6} L${x} ${y - 8} L${x + 6} ${y + 6} Z`;
-
-function seed(x: number, y: number, rotate: number): PetShape[] {
-  return [
-    oval(x, y, 5, 9, "#3E2C20", { strokeWidth: 0, rotate }),
-    oval(x, y, 1.4, 6, "#F5E9D3", { strokeWidth: 0, rotate }),
-  ];
-}
-
-function zigzag(fromX: number, toX: number, y: number, rise: number): string {
-  let d = `M${fromX} ${y}`;
-  for (let x = fromX; x < toX; x += 8) d += ` l4 ${rise} l4 ${-rise}`;
-  return d;
-}
-
 const patterns: Record<PetSpecies, PetShape[]> = {
-  hedgehog: [
-    shell("#B07A45"),
-    blob(BASE, "#F2DDB6"),
-    ...[
-      [78, 46],
-      [100, 34],
-      [122, 46],
-      [64, 74],
-      [88, 66],
-      [112, 66],
-      [136, 74],
-      [78, 98],
-      [102, 92],
-      [126, 100],
-    ].map(([x, y]) => ({ kind: "path" as const, d: triangle(x!, y!), fill: "#6B4527" })),
-  ],
   pig: [
     shell("#F6A9B8"),
     dot(70, 70, 10, "#E98AA0"),
@@ -105,41 +71,6 @@ const patterns: Record<PetSpecies, PetShape[]> = {
     dot(124, 154, 8, "#E98AA0"),
     dot(62, 160, 6, "#E98AA0"),
     line("M140 122 c0 -12 16 -12 16 0 c0 9 -11 9 -11 2", "#C9607A", 4),
-  ],
-  hamster: [
-    shell("#F0A040"),
-    oval(100, 146, 50, 36, "#FCE6C2", { strokeWidth: 0 }),
-    ...seed(70, 62, -25),
-    ...seed(118, 50, 20),
-    ...seed(138, 90, 35),
-    ...seed(62, 102, -10),
-    ...seed(100, 84, 0),
-  ],
-  penguin: [
-    shell("#2C3340"),
-    blob(
-      "M100 62 C132 62 152 100 152 132 C152 164 128 184 100 184 C72 184 48 164 48 132 C48 100 68 62 100 62 Z",
-      "#FFFFFF",
-      "#2C3340",
-    ),
-    { kind: "path", d: BASE, fill: "#BFE7F7" },
-    line(zigzag(38, 162, 152, 6), "#FFFFFF", 3),
-  ],
-  panda: [
-    shell("#FAFAF5"),
-    {
-      kind: "path",
-      d: "M50 72 C46 44 80 30 96 44 C106 54 92 78 74 82 C62 84 52 80 50 72 Z",
-      fill: "#24242C",
-    },
-    {
-      kind: "path",
-      d: "M152 110 C168 104 172 130 164 146 C156 160 136 156 138 140 C140 126 142 114 152 110 Z",
-      fill: "#24242C",
-    },
-    oval(84, 162, 14, 10, "#24242C", { strokeWidth: 0 }),
-    blob("M112 66 C128 42 156 40 164 48 C150 60 132 72 112 66 Z", "#6CBF45"),
-    line("M115 65 C130 56 146 50 160 48", "#3F8A2A", 2),
   ],
   hippo: [
     shell("#A7A1C6"),
@@ -193,11 +124,7 @@ export function eggCracks(days: number, taps = 0): PetShape[] {
 // The fills that are the egg's body, which a pet color tints; the rest (bellies, seeds, water,
 // bamboo) keeps its color, like the pictures' body masks.
 const bodyFills: Record<PetSpecies, string[]> = {
-  hedgehog: ["#B07A45", "#6B4527"],
   pig: ["#F6A9B8", "#E98AA0"],
-  hamster: ["#F0A040"],
-  penguin: ["#2C3340"],
-  panda: ["#24242C"],
   hippo: ["#A7A1C6", "#C9C3E0"],
 };
 

@@ -6,8 +6,10 @@ the web it has its own page (`/app/pet`) in the sidebar. The rules live in
 
 ## Rules
 
-- The user picks one of six eggs (hedgehog, pig, hamster, penguin, panda, hippo) and names it (1 to
-  20 characters, trimmed; `PET_NAME_MAX_LENGTH`). The name is kept after death for the memorial
+- The user picks one of two eggs (pig or hippo) and names it (1 to
+  20 characters, trimmed; `PET_NAME_MAX_LENGTH`). A pet stored as a retired species (hedgehog,
+  hamster, penguin, or panda; `retiredPetSpecies`) is read back as a pig with its name, color,
+  points, and stage, so no stored pet fails to load. The name is kept after death for the memorial
   and replaced by the next egg's. Pets stored before names existed go by their species label. An egg is ready
   after 7 consecutive Manila days with an app check-in; a missed day before then resets the count.
   A ready egg stays ready however many days pass, until the user taps it 10 times
@@ -78,9 +80,9 @@ two seconds make it dance with a shower of hearts, a slight celebratory pitch li
 sparkle jingle (then three seconds before the next dance). A sick pet wobbles with a 🤒 and a
 fading one barely stirs with a 💤, both in that stage's sad voice, quieter and slightly slower when
 fading. Every species and hatched stage (Baby, Juvenile, Adult, Legend) has its own happy and sad clip,
-growing from baby peeps and yips to full adult calls (like a hippo bellow-roar or emperor penguin
-trumpet) and resonant Legend calls with a subtle chime flourish.
-`scripts/generate-pet-sounds.mjs` (backed by `scripts/pet-sounds/`) synthesizes all 49 loudness-matched
+growing from baby squeaks and grunts to full adult calls (like a hippo bellow-roar or a pig's
+oink) and resonant Legend calls with a subtle chime flourish.
+`scripts/generate-pet-sounds.mjs` (backed by `scripts/pet-sounds/`) synthesizes all 17 loudness-matched
 clips into `apps/mobile/assets/sounds/pet/` and `apps/web/public/pet/sounds/` and writes the mobile
 static asset map (`apps/mobile/src/features/pet/pet-sound-assets.ts`). The phone also buzzes,
 lightly or with a success pattern on a dance; the web does not. The voice follows the Sound effects
@@ -132,15 +134,10 @@ the figure, or the tombstone.
 - One template: the stage sets the proportions (Baby sits, with the biggest head and eyes; Juvenile
   and Adult stand a little taller with slightly smaller eyes; Legend is the Adult in an outfit), and
   younger stages are scaled around the feet. Two stubby front legs stand under the body; only a
-  penguin's flippers and a Legend's prize-holding arms stick out at the sides. The species adds its
-  parts: hedgehog spines and cream face, pig floppy ears and snout, hamster round ears and cream
-  muzzle, penguin white face, beak, flippers, and tuft, panda black ears, eye patches, and legs,
-  hippo wide head, muzzle, and nostrils.
-- Legend outfits, all gold with no glow or sparkles: hedgehog in a red cape with a gold shield, pig
-  in a top hat and purple sash holding a gold coin, hamster in a crown and purple cape holding a
-  golden seed, penguin in a crown and blue cape with a golden fish scepter, panda in a straw hat and
-  red cape holding a golden bamboo staff, hippo in a lotus crown and teal sash holding a golden
-  lotus.
+  Legend's prize-holding arms stick out at the sides. The species adds its parts: pig floppy ears
+  and snout, hippo wide head, small round ears, muzzle, and nostrils.
+- Legend outfits, all gold with no glow or sparkles: pig in a top hat and purple sash holding a
+  gold coin, hippo in a lotus crown and teal sash holding a golden lotus.
 - Health looks: a sick pet goes pale and slightly green, with half-closed droopy eyes, a wavy
   mouth, a sweat drop, and a thermometer; a fading pet washes out toward grey, slumps lower and
   wider, and its eyes are flat lines.
@@ -173,8 +170,8 @@ the figure, or the tombstone.
 
 ### Colors
 
-A pet color changes only the body (fur, skin, feathers), so cheeks, bellies, eyes, and Legend
-outfits stay as drawn, and Pink is the same pink on every species, black panda patches included.
+A pet color changes only the body (skin), so cheeks, bellies, eyes, and Legend
+outfits stay as drawn, and Pink is the same pink on both species.
 `tintPetHex` (`packages/shared/src/petArt/colors.ts`) maps a body color's luminance onto the
 color's dark-to-light ramp, so shading survives: eggs tint their body fills, and figures tint the
 species' base body color before deriving its shading (pig and hippo derive their snout, muzzle,

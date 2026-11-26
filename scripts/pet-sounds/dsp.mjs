@@ -416,77 +416,6 @@ export function nasalSnuffle({
   return lowpass2(highpass2(out, 140), cutoffHz);
 }
 
-/**
- * Warm, organic whistle-register chirp/peep for hamsters, baby chicks, and baby hedgehogs.
- * Uses rounded oral-cavity resonance and gentle breath so it reads sweet rather than clinical.
- */
-export function softChirp({
-  duration,
-  pitch,
-  seed = 1,
-  vibrato = null,
-  breath = 0.08,
-  harmonics = [1, 0.32, 0.1, 0.03],
-  formantScale = 1.05,
-  formantBw = 420,
-  cutoffHz = 4200,
-  attack = 0.009,
-  release = 0.028,
-}) {
-  const n = Math.round(duration * SAMPLE_RATE);
-  const rand = noiseSource(seed);
-  const drift = driftSource(seed + 33, n, 18);
-  const source = new Float64Array(n);
-  const air = new Float64Array(n);
-  let phase = 0;
-
-  for (let i = 0; i < n; i += 1) {
-    const t = i / SAMPLE_RATE;
-    const u = i / n;
-    const vib = vibrato
-      ? Math.pow(2, (vibrato.semitones * Math.sin(2 * Math.PI * vibrato.rate * t)) / 12)
-      : 1;
-    const flutter = 1 + 0.007 * Math.sin(2 * Math.PI * 24 * t) + 0.012 * drift[i];
-    const f0 = at(pitch, u) * vib * flutter;
-    phase += (2 * Math.PI * f0) / SAMPLE_RATE;
-    let s = 0;
-    for (let h = 0; h < harmonics.length; h += 1) {
-      if ((h + 1) * f0 < SAMPLE_RATE * 0.43) {
-        s += harmonics[h] * Math.sin((h + 1) * phase + h * 0.35);
-      }
-    }
-    source[i] = s;
-    air[i] = rand() * (0.45 + 0.55 * Math.sin(phase));
-  }
-
-  const voiced = resonator(
-    source,
-    (u) => Math.min(3400, Math.max(700, at(pitch, u) * formantScale)),
-    formantBw,
-  );
-  const airBand = resonator(air, (u) => Math.min(3600, Math.max(1200, at(pitch, u) * 1.3)), 750);
-  const vPeak = peak(voiced) || 1;
-  const aPeak = peak(airBand) || 1;
-
-  const out = new Float64Array(n);
-  for (let i = 0; i < n; i += 1) {
-    const t = i / SAMPLE_RATE;
-    const u = i / n;
-    const att = Math.min(1, t / attack);
-    const rel = Math.min(1, (duration - t) / release);
-    const env =
-      Math.sin(Math.PI * 0.5 * att) *
-      Math.sin(Math.PI * 0.5 * Math.max(0, rel)) *
-      (0.68 + 0.32 * Math.sin(Math.PI * u));
-    const vibAm =
-      vibrato && vibrato.amDepth
-        ? 1 - vibrato.amDepth * (0.5 - 0.5 * Math.sin(2 * Math.PI * vibrato.rate * t))
-        : 1;
-    out[i] = ((voiced[i] / vPeak) * (1 - breath) + (airBand[i] / aPeak) * breath) * env * vibAm;
-  }
-  return lowpass2(out, cutoffHz);
-}
-
 /** Light, crystalline celesta/chime note for the dance sparkle and Legend flourishes. */
 export function chimeNote(frequency, duration, decay = 0.085) {
   const n = Math.round(duration * SAMPLE_RATE);
@@ -670,7 +599,7 @@ export function finalizeClip(
 
   const { aDba } = measureLoudness(trimmed);
   const desiredGain = Math.pow(10, (targetDba - aDba) / 20);
-  // Allow pulling hot pure tones (hamster) down freely, and lifting quiet/high-crest clips up to +7 dB
+  // Allow pulling hot pure tones down freely, and lifting quiet/high-crest clips up to +7 dB
   // with transparent soft limiting above 0.52 so peaks stay strictly <= MAX_PEAK.
   const appliedGain = Math.min(2.25, Math.max(0.18, desiredGain));
   const knee = MAX_PEAK * 0.72;
