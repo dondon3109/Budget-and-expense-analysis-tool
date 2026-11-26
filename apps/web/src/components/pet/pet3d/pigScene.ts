@@ -84,9 +84,10 @@ function softSkin(o: Palette) {
     // The hoof caps and soles: the hoof color cut at the hoof field's 0.5 level, antialiased over
     // one pixel, so the edge is as crisp as the eyes' however coarse the mesh is there. The toes'
     // split is cut the same way: a crisp dark line down the middle of the hoof's front that tapers
-    // to a point where it fades out. Where each arm lies against the body and where the head sits
-    // on it, a crisp dark crease line with a soft shadow either side sets the parts apart, as on
-    // the toy.
+    // to a point where it fades out. A thin dark groove a couple of pixels wide runs round each
+    // hoof cap and sole, so they read as set into the pink like the toy's. Where an arm or a leg
+    // meets the body, an ear meets the head, and the head sits on the body, a crisp dark crease
+    // line with a soft shadow either side sets the parts apart, as on the toy.
     shader.uniforms.hoofColor = { value: new THREE.Color(o.hoof) };
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -104,7 +105,7 @@ function softSkin(o: Palette) {
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tfloat splitEdge = fwidth( vHoof.y ) * 0.75;\n\tfloat splitWidth = 0.016 * smoothstep( 0.1, 0.9, vHoof.z );\n\tfloat split = 1.0 - smoothstep( splitWidth - splitEdge, splitWidth + splitEdge, abs( vHoof.y ) );\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor * ( 1.0 - 0.6 * split ), onHoof );\n\tfloat creaseEdge = fwidth( vCrease.x ) * 0.75;\n\tfloat creaseLine = 1.0 - smoothstep( 0.011 - creaseEdge, 0.011 + creaseEdge, abs( vCrease.x ) );\n\tfloat creaseShade = 1.0 - smoothstep( 0.0, 0.07, abs( vCrease.x ) );\n\tdiffuseColor.rgb *= 1.0 - ( 0.5 * creaseLine + 0.25 * creaseShade ) * vCrease.y;",
+        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tfloat splitEdge = fwidth( vHoof.y ) * 0.75;\n\tfloat splitWidth = 0.016 * smoothstep( 0.1, 0.9, vHoof.z );\n\tfloat split = 1.0 - smoothstep( splitWidth - splitEdge, splitWidth + splitEdge, abs( vHoof.y ) );\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor * ( 1.0 - 0.6 * split ), onHoof );\n\tfloat rim = 1.0 - smoothstep( hoofEdge * 1.5, hoofEdge * 3.0, abs( vHoof.x - 0.5 ) );\n\tdiffuseColor.rgb *= 1.0 - 0.35 * rim;\n\tfloat creaseEdge = fwidth( vCrease.x ) * 0.75;\n\tfloat creaseLine = 1.0 - smoothstep( 0.011 - creaseEdge, 0.011 + creaseEdge, abs( vCrease.x ) );\n\tfloat creaseShade = 1.0 - smoothstep( 0.0, 0.07, abs( vCrease.x ) );\n\tdiffuseColor.rgb *= 1.0 - ( 0.5 * creaseLine + 0.25 * creaseShade ) * vCrease.y;",
       );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <emissivemap_fragment>",

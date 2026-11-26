@@ -424,10 +424,10 @@ export interface PigMesh extends SdfMesh {
    */
   hoofs: Float32Array;
   /**
-   * Per vertex: the difference between the distances to the two parts of the nearest crease (an
-   * arm and the rest of the figure, or the head and the body): 0 on the seam, changing about
-   * linearly across it. Then how strongly that crease's line shows there: 1 along a narrow crease,
-   * fading to 0 where a part melts in over a wide blend, such as the shoulder.
+   * Per vertex: the difference between the distances to the two nearest parts: 0 on the seam
+   * between them, changing about linearly across it. Then how strongly that crease's line shows
+   * there: 1 along a narrow crease, fading to 0 where a part melts in over a wide blend, such as
+   * the shoulder.
    */
   creases: Float32Array;
 }
@@ -525,19 +525,15 @@ export function pigMesh(): PigMesh {
     hoofs[v * 3 + 1] = across;
     hoofs[v * 3 + 2] = split;
 
-    // The creases where an arm lies against the body and where the head sits on it. In a blend of
-    // width k both distances are k / 4 on the seam, so a narrow crease (0.04 to 0.07) is told
-    // from the wide shoulder blend (0.12).
-    const arm = Math.min(d[ARM_L]!, d[ARM_R]!);
-    let rest = Infinity;
-    for (let part = 0; part < PARTS; part += 1)
-      if (part !== ARM_L && part !== ARM_R) rest = Math.min(rest, d[part]!);
-    const neck = d[HEAD]! - d[BODY]!;
-    const onNeck = Math.abs(neck) < Math.abs(arm - rest);
-    creases[v * 2] = onNeck ? neck : arm - rest;
-    creases[v * 2 + 1] = onNeck
-      ? smooth(0.04, 0.025, (d[HEAD]! + d[BODY]!) / 2)
-      : smooth(0.03, 0.015, (arm + rest) / 2);
+    // The crease between the two nearest parts (an arm or a leg and the body, an ear and the head,
+    // the head and the body). The pair is ordered by part, so the difference keeps its sign across
+    // the seam and changes about linearly through 0 on it. In a blend of width k both distances
+    // are k / 4 on the seam, so the narrow creases (0.04 to 0.07) are told from the wide shoulder
+    // blend (0.12). The snout stands proud of the face with no crease, so it gets no line.
+    const a = Math.min(order[0]!, order[1]!);
+    const b = Math.max(order[0]!, order[1]!);
+    creases[v * 2] = d[a]! - d[b]!;
+    creases[v * 2 + 1] = b === SNOUT ? 0 : smooth(0.028, 0.02, (d[a]! + d[b]!) / 2);
   }
   // Two light passes smooth out the grid's small steps without moving the 0.5 level.
   for (let pass = 0; pass < 2; pass += 1) blurAttribute(field, 1, neighbors, 0.5);

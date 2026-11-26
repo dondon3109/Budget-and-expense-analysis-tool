@@ -175,10 +175,12 @@ the figure, or the tombstone.
   where it crosses 0.5, antialiased over one pixel, so their edges stay as sharp as the toy's
   between vertices rather than fading across the triangles. The toe split and the crease lines
   are cut the same way: each vertex stores a distance that changes linearly across the line (the
-  distance across the hoof; for a crease, how much nearer one part is than the other, 0 on the
-  seam), and the shader draws a crisp dark line where it is near 0. A soft shade either side of
-  each crease line sets the arms and the head apart from the body, as on the toy; the line fades
-  out over the shoulder, where the arm melts in. The material is matte with a
+  distance across the hoof; for a crease, how much nearer one of the two nearest parts is than the
+  other, 0 on the seam), and the shader draws a crisp dark line where it is near 0. A soft shade
+  either side of each crease line sets the arms, legs, ears, and head apart from what they meet,
+  as on the toy; the line fades out over the shoulder, where the arm melts in, and the snout gets
+  none. A thin dark groove runs round each hoof cap and sole where the color is cut, so they read
+  as set into the pink. The material is matte with a
   light velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
   scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
   saturation. Its lights wrap just past the side they face and fade out flat, so no light's edge
