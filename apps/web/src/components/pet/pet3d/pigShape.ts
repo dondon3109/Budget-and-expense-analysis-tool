@@ -46,7 +46,7 @@ const SHAPE = {
   headTaper: 0.21,
   headP: 2.2,
   bodyY: 0.705,
-  bodyRx: 1.135,
+  bodyRx: 0.95,
   bodyRy: 1.11,
   bodyRz: 1.0,
   bodyTaper: 0.12,
@@ -58,29 +58,35 @@ const SHAPE = {
   tummyRy: 0.55,
   tummyRz: 0.6,
   tummyBlend: 0.3,
-  // Each arm follows a curve from the shoulder, bent toward the elbow point (which it does not
-  // reach), to the wrist on the belly.
-  shoulderX: 0.61,
-  shoulderY: 0.95,
-  shoulderZ: 0.36,
-  elbowX: 0.76,
-  elbowY: 0.78,
-  elbowZ: 0.8,
-  wristX: 0.38,
-  wristY: 0.76,
-  wristZ: 1,
-  armR: 0.27,
-  handR: 0.2,
+  // Each arm follows a curve from the shoulder, high on the body's side under the cheek, bent
+  // toward the elbow point (which it does not reach) so it hugs the side, to the wrist on the
+  // belly. It tapers evenly from `armR` to `handR`, and its last stretch drops by `handDroop` so
+  // the hand turns down into the hoof.
+  shoulderX: 0.63,
+  shoulderY: 1.13,
+  shoulderZ: 0.45,
+  elbowX: 0.97,
+  elbowY: 0.77,
+  elbowZ: 0.55,
+  wristX: 0.36,
+  wristY: 0.9,
+  wristZ: 0.98,
+  armR: 0.32,
+  handR: 0.14,
+  handDroop: 0.12,
   // Below the shoulder, how far each arm's center line sits off the body, as a share of its radius,
   // so the arm rests on the belly with most of its round showing instead of sinking into it.
-  armRest: 0.45,
-  // The hoof: a small cone `hoofR` thick reaching `hoofLen` from the wrist, out of the round hand,
-  // turned down by `hoofDown` from the forearm's line. Its color starts `hoofStart` past the wrist,
-  // so the hand stays pink and only the cone's tip is brown.
-  hoofR: 0.105,
-  hoofLen: 0.25,
-  hoofDown: 0.35,
-  hoofStart: 0.12,
+  armRest: 0.6,
+  // The hoof: a cone `hoofR` thick reaching `hoofLen` from the wrist and narrowing to `hoofPoint`
+  // of that, turned down by `hoofDown` and back toward the belly by `hoofBack` from the forearm's
+  // line, so it continues the hand to a point. Its color starts `hoofStart` past the wrist along
+  // the forearm, so the whole end of the hand is brown.
+  hoofR: 0.13,
+  hoofLen: 0.2,
+  hoofDown: 0.15,
+  hoofStart: -0.02,
+  hoofPoint: 0.3,
+  hoofBack: 0.1,
   footX: 0.74,
   footR: 0.28,
   // Each leg runs from its hip (`hipX` out from the middle) forward to its foot, `legR` thick.
@@ -196,47 +202,68 @@ function settle(p: Vec3, gap: number): Vec3 {
   return q;
 }
 
+// How many of the arm's segments, from the shoulder, melt into the body over the wide blend.
+const MELT = 3;
+
 /**
- * An arm on `side` (-1 viewer's left, 1 right): a short, fat arm hanging down the front of the body
- * and turning slightly in, ending in a round hand with a small split hoof that points down and in
- * onto the belly above the legs. It is one tube along a gentle curve (the elbow only bends it a
- * little, so it has no corner), and only its shoulder melts into the body: the rest lies against
- * it as a limb of its own, with a crease all along.
+ * An arm on `side` (-1 viewer's left, 1 right): a fat drumstick of an arm that starts high on the
+ * body's side under the cheek, hugs the side as it comes down, and turns in across the belly,
+ * tapering to a small split hoof that points down and in above the legs. It is one smooth tube
+ * along a curve (no elbow corner), and only its shoulder melts into the body: the rest lies
+ * against it as a limb of its own, with a crease all along.
  */
 function arm(side: number) {
   const { armR, handR } = SHAPE;
   const shoulder = mirror(side, [SHAPE.shoulderX, SHAPE.shoulderY, SHAPE.shoulderZ]);
   const elbow = mirror(side, [SHAPE.elbowX, SHAPE.elbowY, SHAPE.elbowZ]);
   const guide = mirror(side, [SHAPE.wristX, SHAPE.wristY, SHAPE.wristZ]);
-  const steps = 6;
-  // Full along the upper arm, narrowing toward the hand.
-  const radius = (t: number) => armR + (handR - armR) * t * t;
+  const steps = 12;
+  // Thick at the shoulder, tapering evenly to the hand, like a drumstick.
+  const radius = (t: number) => armR + (handR - armR) * t;
   // The shoulder stays where it is, melting into the body; the rest settles onto it.
-  const points = Array.from({ length: steps + 1 }, (_, i) => {
+  const settled = Array.from({ length: steps + 1 }, (_, i) => {
     const t = i / steps;
     const rise = Math.min(Math.max((t - 0.2) / 0.5, 0), 1);
     const gap = radius(t) * SHAPE.armRest * rise * rise * (3 - 2 * rise);
-    return settle(bezier(shoulder, elbow, guide, t), gap);
+    // The hand turns down at the end, so the hoof continues the forearm instead of hanging off
+    // a knuckle.
+    const turn = Math.max((t - 0.6) / 0.4, 0) ** 2 * SHAPE.handDroop;
+    const [px, py, pz] = bezier(shoulder, elbow, guide, t);
+    return settle([px, py - turn, pz], gap);
   });
+  // Settling moves each point by a different amount, so smooth the line it leaves (ends fixed)
+  // or the arm shows a lump at every joint.
+  let points: Vec3[] = settled;
+  for (let pass = 0; pass < 3; pass += 1)
+    points = points.map((p, i) => {
+      if (i === 0 || i === steps) return p;
+      const [a, b] = [points[i - 1]!, points[i + 1]!];
+      return [
+        (a[0] + 2 * p[0] + b[0]) / 4,
+        (a[1] + 2 * p[1] + b[1]) / 4,
+        (a[2] + 2 * p[2] + b[2]) / 4,
+      ];
+    });
   const wrist = points[steps]!;
   const segments = points
     .slice(1)
     .map((end, i) => roundCone(points[i]!, end, radius(i / steps), radius((i + 1) / steps)));
   // The hoof turns down and in off the forearm, so its tip points onto the belly.
   const forearm = unit(sub(wrist, points[steps - 2]!));
-  const dir = unit([forearm[0], forearm[1] - SHAPE.hoofDown, forearm[2]]);
+  const dir = unit([forearm[0], forearm[1] - SHAPE.hoofDown, forearm[2] - SHAPE.hoofBack]);
   const { hoofR, hoofLen } = SHAPE;
   const tip: Vec3 = [
     wrist[0] + dir[0] * hoofLen,
     wrist[1] + dir[1] * hoofLen,
     wrist[2] + dir[2] * hoofLen,
   ];
-  const hoof = roundCone(wrist, tip, hoofR, hoofR * 0.7);
+  const hoof = roundCone(wrist, tip, hoofR, hoofR * SHAPE.hoofPoint);
   // The hoof's front, and the line across it where the two toes split (painted, see `pigMesh`).
   const front = unit(cross(cross(dir, [0, 0.4, 1]), dir));
   const across = unit(cross(dir, front));
   return {
     wrist,
+    forearm,
     dir,
     front,
     across,
@@ -250,9 +277,13 @@ function arm(side: number) {
      * arm melts in; the rest meets the body in a narrow crease, so it reads as a limb of its own.
      */
     joined(rest: number, x: number, y: number, z: number) {
-      const top = segments[0]!(x, y, z);
-      let d = top;
-      for (let i = 1; i < steps; i += 1) d = Math.min(d, segments[i]!(x, y, z));
+      let top = Infinity;
+      let d = Infinity;
+      for (let i = 0; i < steps; i += 1) {
+        const segment = segments[i]!(x, y, z);
+        if (i < MELT) top = Math.min(top, segment);
+        d = Math.min(d, segment);
+      }
       d = smin(d, hoof(x, y, z), 0.06);
       return smin(smin(rest, top, 0.12), d, 0.04);
     },
@@ -567,7 +598,9 @@ export function pigMesh(): PigMesh {
     for (let side = 0; side < 2; side += 1) {
       const limb = arms[side]!;
       const onArm = smooth(0.04, 0, d[ARM_L + side]! - nearest);
-      const past = dot(sub([x, y, z], limb.wrist), limb.dir);
+      // Measured along the forearm, so the whole round end of the hand is hoof, not just the
+      // part that turns down.
+      const past = dot(sub([x, y, z], limb.wrist), limb.forearm);
       // The toes' split: a dark line down the middle of the hoof's front, as on the toy.
       split = Math.max(
         split,

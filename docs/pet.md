@@ -156,18 +156,23 @@ the figure, or the tombstone.
   plate rising from the head's top corner to a crisp rounded fold, then a flap turned over it
   that hangs forward and narrows to a rounded point aiming down and out (both legs are chains of
   short petals along one fold line, so the fold stays one clean edge and the flap never
-  crumples); short, round arms that start low on the body's sides and hang down its front
-  and turn slightly in, each ending in a round pink hand with a small rose-brown hoof pointing
-  down and in onto the belly well above the feet (so the hoof and sole colors never touch), split by a soft groove where the toes part. Each arm is one tube along a gentle curve, with no elbow
-  corner, and only its shoulder melts into the body: the shoulders sit low on the
-  body's sides, well below the cheeks, so the chest shows under the chin as on the toy, and from partway down the upper arm the arm rests on the
-  belly with its center line about half its radius off the surface (`armRest`, pushed mostly forward and never up, so the outline keeps its width and the shoulders do not rise into a shrug), so most of its round shows and it meets the body in a narrow crease,
+  crumples); fat drumstick arms that start high on the body's sides under the cheeks, hug the
+  sides as they come down (forming the figure's outline there, so the body itself is a little
+  narrower than the head), and turn in across the belly, tapering evenly to a small pointed
+  rose-brown hoof that continues the hand down and in onto the belly well above the feet (so the
+  hoof and sole colors never touch; the whole end of the hand is brown, measured along the
+  forearm), split by a soft groove where the toes part. Each arm is one smooth tube along a curve
+  (its center line smoothed after it settles onto the body, so no joint shows as a lump), with no
+  elbow corner, and only its shoulder melts into the body: from partway down the upper arm the
+  arm rests on the belly with its center line about half its radius off the surface (`armRest`,
+  pushed mostly forward and never up, so the shoulders do not rise into a shrug), so most of its
+  round shows and it meets the body in a narrow crease,
   standing apart as a limb. The figure also has stubby legs stretched forward showing round rose-brown
   soles inside a pink rim (each sole is painted on the leg's own surface, so a hand resting close
   by never bites into its color); wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
   top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The
   proportions (`SHAPE` in `pigShape.ts`) were fitted to a photo of the reference toy by matching
-  its outline (about 96% overlap; most of the rest is the photo's floor shadow and a pixel of edge
+  its outline (about 94% overlap; most of the rest is the photo's floor shadow and a pixel of edge
   all round). The shape is one signed distance field (`pet3d/pigShape.ts`) whose parts melt into
   each other with narrow creases (neck, arms, and legs), meshed
   once per page into a single seamless surface (`pet3d/sdfMesh.ts`, surface nets with normals from
