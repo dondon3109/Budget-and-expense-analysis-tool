@@ -193,15 +193,14 @@ function arm(side: number) {
     },
     /**
      * The arm joined to `rest` (the distance to the rest of the figure). Only the top of the upper
-     * arm melts in; the rest meets the body in a narrow crease, so it reads as a limb of its own
-     * (any narrower and the mesh grid draws the crease jagged).
+     * arm melts in; the rest meets the body in a narrow crease, so it reads as a limb of its own.
      */
     joined(rest: number, x: number, y: number, z: number) {
       const top = segments[0]!(x, y, z);
       let d = top;
       for (let i = 1; i < steps; i += 1) d = Math.min(d, segments[i]!(x, y, z));
       d = smin(d, hoof(x, y, z), 0.06);
-      return smin(smin(rest, top, 0.12), d, 0.08);
+      return smin(smin(rest, top, 0.12), d, 0.04);
     },
   };
 }
@@ -380,12 +379,12 @@ const nearby = (x: number, y: number, z: number, c: Vec3, r: number) =>
 
 /** The whole pig: every part melted together, with the creases a clay toy has between them. */
 export function pigDistance(x: number, y: number, z: number) {
-  let d = smin(torso(x, y, z), skull(x, y, z), 0.12);
+  let d = smin(torso(x, y, z), skull(x, y, z), 0.07);
   for (let side = 0; side < 2; side += 1) {
     const s = side === 0 ? -1 : 1;
     if (nearby(x, y, z, [0.72 * s, 0.86, 0.74], 0.92) < d + 0.1) d = arms[side]!.joined(d, x, y, z);
     if (nearby(x, y, z, [0.8 * s, 0.33, 0.62], 0.82) < d + 0.14)
-      d = smin(d, legs[side]!.distance(x, y, z), 0.1);
+      d = smin(d, legs[side]!.distance(x, y, z), 0.06);
     if (nearby(x, y, z, [0.9 * s, 2.6, 0.45], 0.85) < d + 0.12)
       d = smin(d, ears[side]!(x, y, z), 0.06);
   }
@@ -425,10 +424,11 @@ export function pigMesh(): PigMesh {
   if (cached) return cached;
   const mesh = meshSdf(pigDistance, [-1.6, -0.1, -1.1], [1.6, 3.15, 1.45], 0.024);
   const count = mesh.positions.length / 3;
-  // Soften the shading everywhere but the snout, whose exact normals keep the nostrils crisp.
+  // Soften the shading a little everywhere but the snout, whose exact normals keep the nostrils
+  // crisp. More passes than this blur the creases and the body loses its form.
   const neighbors = meshNeighbors(mesh.indices, count);
   const exactNormals = mesh.normals.slice();
-  relaxMesh(mesh, neighbors, 3, 8);
+  relaxMesh(mesh, neighbors, 3, 2);
   const skinIndex = new Uint16Array(count * 4);
   const skinWeight = new Float32Array(count * 4);
   const regions = new Float32Array(count * 3);

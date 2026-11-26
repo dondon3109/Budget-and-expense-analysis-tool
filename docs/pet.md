@@ -163,25 +163,27 @@ the figure, or the tombstone.
   top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The
   proportions (`SHAPE` in `pigShape.ts`) were fitted to a photo of the reference toy by matching
   its outline. The shape is one signed distance field (`pet3d/pigShape.ts`) whose parts melt into
-  each other with soft creases, meshed
+  each other with narrow creases (neck, arms, and legs), meshed
   once per page into a single seamless surface (`pet3d/sdfMesh.ts`, surface nets with normals from
   the field's gradient, about 700ms on a laptop) and colored per vertex (snout, nostrils, blush)
   from the body color (`PIG_BODY`, tinted by the pet color). The mesh is then relaxed
   (`relaxMesh`): its grid steps are smoothed out without shrinking it, and its normals are
-  averaged with their neighbors' so the creases where parts blend shade as soft curves. The snout
-  keeps its exact normals so the nostrils stay crisp. The hooves and soles are painted by the
+  averaged with their neighbors' twice, enough to hide the grid but not to blur the creases. The
+  snout keeps its exact normals so the nostrils stay crisp. The hooves and soles are painted by the
   material instead: each vertex carries a smooth hoof field, and the shader cuts the hoof color
   where it crosses 0.5, antialiased over one pixel, so their edges stay as sharp as the toy's
   between vertices rather than fading across the triangles. The material is matte with a
-  soft velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
+  light velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
   scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
-  saturation. Its lights wrap a little past the side they face and fade out flat, so no light's
-  edge draws a hard line across a curve such as the ear's fold. It is lit like a white studio
+  saturation. Its lights wrap just past the side they face and fade out flat, so no light's edge
+  draws a hard line across a curve such as the ear's fold, while the forms still shade firmly
+  enough to read crisp. It is lit like a white studio
   product shot, with a strong key low from the right
   leaving the left side in warm shade, a glow rimming the right edge from behind (from the side it
   would shine through the body onto the inside of the left arm), a bounce from the floor that
   keeps the chin crease light, ambient occlusion (`GTAOPass`, blend at most 1, or the deepest
-  creases turn grey-blue) darkening the creases under the chin and around the ears, arms, and legs,
+  creases turn grey-blue; a short radius and a tight denoise, so each crease shadow is a crisp
+  line rather than a smudge) darkening the creases under the chin and around the ears, arms, and legs,
   and a contact shadow. The lighting and colors were fitted to the same photo. A faint light high
   above casts the short floor shadow (from the low key it would run off the canvas); the figure
   takes no shadow itself, because a shadow map speckles its curved surface. The mesh is

@@ -74,9 +74,9 @@ function pigColors(regions: Float32Array, o: Palette) {
 function softSkin(o: Palette) {
   const material = new THREE.MeshPhysicalMaterial({
     vertexColors: true,
-    roughness: 0.6,
+    roughness: 0.45,
     metalness: 0,
-    sheen: 0.9,
+    sheen: 0.5,
     sheenRoughness: 0.5,
     sheenColor: new THREE.Color(mix(o.body, "#FFF4EE", 0.6)),
   });
@@ -107,7 +107,7 @@ function softSkin(o: Palette) {
       "#include <lights_physical_pars_fragment>",
       THREE.ShaderChunk.lights_physical_pars_fragment.replace(
         "float dotNL = saturate( dot( geometryNormal, directLight.direction ) );",
-        "float lit = saturate( ( dot( geometryNormal, directLight.direction ) + 0.3 ) / 1.3 );\n\tfloat dotNL = lit * lit;",
+        "float lit = saturate( ( dot( geometryNormal, directLight.direction ) + 0.12 ) / 1.12 );\n\tfloat dotNL = lit * lit;",
       ),
     );
   };
@@ -415,7 +415,9 @@ export function mountPigScene(
   composer.setSize(width, height);
   composer.addPass(new ColorPass(scene, camera));
   const occlusion = new GTAOPass(scene, camera, width, height);
-  occlusion.updateGtaoMaterial({ radius: 0.5, distanceExponent: 1, thickness: 1, scale: 2 });
+  occlusion.updateGtaoMaterial({ radius: 0.3, distanceExponent: 1, thickness: 1, scale: 2 });
+  // A tight denoise keeps each crease shadow a crisp line instead of a smudge.
+  occlusion.updatePdMaterial({ radius: 4 });
   // Above 1 the blend pushes the deepest creases (under the ears) negative, which tone mapping
   // turns grey-blue.
   occlusion.blendIntensity = 0.75;
