@@ -6,12 +6,14 @@ import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
 import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 
-// PROTOTYPE: the Baby pig as a real 3D figure, modeled on a soft clay toy: a big round head on a
-// chubby pear-shaped sitting body, ears that fold forward at the tips, little arms resting on the
-// belly with slit hoof tips, stubby legs stretched forward showing round slit hoof soles,
-// wide-set dark eyes with one highlight, a small oval snout, a thin smile, and soft blush, all in
-// matte peach clay lit like a white studio product shot. The other species, stages, and health
-// looks still draw the SVG figure (PetFigure.tsx) until this is approved and rolled out.
+import { onSurface, PIG_BONES, PIG_FACE, pigMesh } from "./pigShape";
+
+// PROTOTYPE: the Baby pig as a real 3D figure, modeled on a soft clay toy (the shape is in
+// pigShape.ts): one seamless, smoothly blended body in matte pastel peach with a soft velvet sheen,
+// a deeper snout with deep nostrils, rose-brown split hooves and round soles, wide-set glossy brown
+// eyes with one highlight, a thin smile, and soft blush, lit like a bright white studio product
+// shot. The other species, stages, and health looks still draw the SVG figure (PetFigure.tsx)
+// until this is approved and rolled out.
 
 interface Palette {
   body: string;
@@ -24,68 +26,65 @@ interface Palette {
 const mix = (a: string, b: string, t: number) =>
   `#${new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString()}`;
 
-/** The pig's original peach clay, before a pet color tints it. */
-export const PIG_BODY = "#F4A08E";
+/** The pig's original pastel peach, before a pet color tints it. */
+export const PIG_BODY = "#F6ADA3";
 
 /**
  * The pig's palette from its (tinted) body color. Each part keeps the same relation to the body as
- * on the reference clay figure: a deeper coral snout and blush, darker nostrils, and brown-maroon
+ * on the reference clay toy: a slightly deeper snout, deep rose nostrils and blush, and rose-brown
  * hooves, so a tinted pig stays consistent.
  */
 export function pigPalette(body: string): Palette {
   return {
     body,
-    snout: mix(body, "#D4544A", 0.7),
-    nostril: mix(body, "#9A3328", 0.6),
-    hoof: mix(body, "#7E2E22", 0.72),
-    blush: mix(body, "#D24A42", 0.6),
+    snout: mix(body, "#EE7C68", 0.7),
+    nostril: mix(body, "#A3302A", 0.85),
+    hoof: mix(body, "#78281C", 0.95),
+    blush: mix(body, "#E8685A", 0.75),
   };
 }
 
-/**
- * A fine, soft grain shared by every clay part: blurred noise used as a bump and roughness map, so
- * light breaks up across the surface like a soft-touch vinyl toy instead of sliding off plastic.
- */
-let grain: THREE.CanvasTexture | null = null;
-function clayGrain() {
-  if (grain) return grain;
-  const size = 256;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  const image = ctx.createImageData(size, size);
-  for (let i = 0; i < image.data.length; i += 4) {
-    const v = 118 + Math.random() * 20;
-    image.data[i] = image.data[i + 1] = image.data[i + 2] = v;
-    image.data[i + 3] = 255;
+/** Per-vertex colors from the mesh's regions (snout, hoof, nostril, blush) in this palette. */
+function pigColors(regions: Float32Array, o: Palette) {
+  const body = new THREE.Color(o.body);
+  const snout = new THREE.Color(o.snout);
+  const nostril = new THREE.Color(o.nostril);
+  const hoof = new THREE.Color(o.hoof);
+  const blush = new THREE.Color(o.blush);
+  const colors = new Float32Array((regions.length / 4) * 3);
+  const c = new THREE.Color();
+  for (let v = 0; v < regions.length / 4; v += 1) {
+    c.copy(body)
+      .lerp(blush, regions[v * 4 + 3]! * 0.85)
+      .lerp(snout, regions[v * 4]!)
+      .lerp(nostril, regions[v * 4 + 2]!)
+      .lerp(hoof, regions[v * 4 + 1]!);
+    colors.set([c.r, c.g, c.b], v * 3);
   }
-  ctx.putImageData(image, 0, 0);
-  // Soften the speckle into a gentle grain.
-  ctx.filter = "blur(1.2px)";
-  ctx.drawImage(canvas, 0, 0);
-  grain = new THREE.CanvasTexture(canvas);
-  grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
-  grain.repeat.set(3, 2);
-  return grain;
+  return colors;
 }
 
 /**
- * Soft matte clay, like fondant: no shine, a barely-there grain, and a warm sheen at the edges
- * that stands in for light glowing through the surface.
+ * Soft matte clay with a velvet sheen, like a flocked vinyl toy: light rolls off its edges in a
+ * pale glow instead of a shine, and a little of the surface color is added back everywhere, as
+ * light scattering inside soft material would, so the shadows stay warm and never go grey.
  */
-function clay(color: string, extra: Partial<THREE.MeshPhysicalMaterialParameters> = {}) {
-  return new THREE.MeshPhysicalMaterial({
-    color,
-    roughness: 0.9,
-    roughnessMap: clayGrain(),
-    bumpMap: clayGrain(),
-    bumpScale: 0.03,
+function softSkin(o: Palette) {
+  const material = new THREE.MeshPhysicalMaterial({
+    vertexColors: true,
+    roughness: 0.7,
     metalness: 0,
-    sheen: 0.25,
-    sheenRoughness: 0.6,
-    sheenColor: new THREE.Color(mix(color, "#FFD2C2", 0.3)),
-    ...extra,
+    sheen: 0.9,
+    sheenRoughness: 0.5,
+    sheenColor: new THREE.Color(mix(o.body, "#FFF4EE", 0.6)),
   });
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <emissivemap_fragment>",
+      "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.08;",
+    );
+  };
+  return material;
 }
 
 /** A soft round shadow texture for the floor under the pet. */
@@ -95,95 +94,26 @@ function contactShadow() {
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d")!;
   const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, "rgba(70,50,48,0.5)");
-  g.addColorStop(0.45, "rgba(70,50,48,0.22)");
-  g.addColorStop(1, "rgba(70,50,48,0)");
+  g.addColorStop(0, "rgba(90,60,56,0.42)");
+  g.addColorStop(0.45, "rgba(90,60,56,0.18)");
+  g.addColorStop(1, "rgba(90,60,56,0)");
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, size, size);
   const texture = new THREE.CanvasTexture(canvas);
   // Read as sRGB; as linear data the dark shadow brightens into a pink haze on the white card.
   texture.colorSpace = THREE.SRGBColorSpace;
   const mesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(3.1, 1.5),
+    new THREE.PlaneGeometry(3.4, 1.9),
     new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
   );
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = 0.002;
-  return mesh;
-}
-
-/** Marks a mesh to cast and receive the soft studio shadow. */
-function shaded<T extends THREE.Mesh>(mesh: T) {
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
+  mesh.position.set(0, 0.002, 0.25);
   return mesh;
 }
 
 /**
- * A rounded limb from `from` to `to`: a group pivoting at `from` (so it can swing) holding a capsule
- * along the limb. `end` is the limb's tip in the group's own space, for its hoof.
- */
-function limb(material: THREE.Material, from: THREE.Vector3, to: THREE.Vector3, radius: number) {
-  const pivot = new THREE.Group();
-  pivot.position.copy(from);
-  const aim = new THREE.Group();
-  const direction = to.clone().sub(from);
-  const length = direction.length();
-  aim.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
-  pivot.add(aim);
-  const capsule = shaded(
-    new THREE.Mesh(
-      new THREE.CapsuleGeometry(radius, Math.max(length - radius * 2, 0.01), 12, 32),
-      material,
-    ),
-  );
-  capsule.position.y = length / 2;
-  aim.add(capsule);
-  return { pivot, aim, length };
-}
-
-/** A soft blush: a disc whose color fades out to its edge. */
-function blushDisc(color: string) {
-  const size = 128;
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = size;
-  const ctx = canvas.getContext("2d")!;
-  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  g.addColorStop(0, "rgba(255,255,255,0.9)");
-  g.addColorStop(0.55, "rgba(255,255,255,0.45)");
-  g.addColorStop(1, "rgba(255,255,255,0)");
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, size);
-  return new THREE.MeshBasicMaterial({
-    color,
-    map: new THREE.CanvasTexture(canvas),
-    transparent: true,
-    depthWrite: false,
-  });
-}
-
-/** A rounded triangle, extruded with a soft bevel, for an ear's two halves. */
-function earPiece(material: THREE.Material, width: number, height: number, taper: number) {
-  const shape = new THREE.Shape();
-  shape.moveTo(-width / 2, 0);
-  shape.quadraticCurveTo(-width * taper, height * 0.75, 0, height);
-  shape.quadraticCurveTo(width * taper, height * 0.75, width / 2, 0);
-  shape.quadraticCurveTo(0, -height * 0.06, -width / 2, 0);
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: 0.03,
-    bevelEnabled: true,
-    bevelThickness: 0.04,
-    bevelSize: 0.04,
-    bevelSegments: 6,
-    curveSegments: 24,
-  });
-  geometry.translate(0, 0, -0.015);
-  return shaded(new THREE.Mesh(geometry, material));
-}
-
-/**
- * The layer for flat see-through planes (blush, floor, contact shadow). Only the color pass draws
- * them; the occlusion pass would read their flat edges as creases and outline them.
+ * The layer for flat see-through planes (floor, contact shadow). Only the color pass draws them;
+ * the occlusion pass would read their flat edges as creases and outline them.
  */
 const DECALS = 1;
 
@@ -196,228 +126,141 @@ class ColorPass extends RenderPass {
   }
 }
 
-/**
- * A hoof cap over the round end of a limb of `limbRadius`: a dark, gently domed disc (a lathe, so it
- * shades smoothly) with a slit cut in from its rim, which reads as a pig's cloven hoof. `slit` is
- * how far the cut reaches toward the center (1 reaches it). The slit turns to face `toward` (a
- * world direction), so it shows on the visible side of each limb.
- */
-function hoofCap(
-  material: THREE.Material,
-  slitMaterial: THREE.Material,
-  aim: THREE.Object3D,
-  limbRadius: number,
-  slit: number,
-  toward: THREE.Vector3,
-) {
-  // The cap's back sits where the limb's rounded end is still 89% of its full width, inset a little so
-  // a rim of the limb shows around it; its front follows that rounded end, a little flatter, as a
-  // sole is, and just proud of it.
-  const back = 0.45 * limbRadius;
-  const radius = Math.sqrt(limbRadius ** 2 - back ** 2) * 0.92;
-  const rim = limbRadius * 0.1;
-  const height = (rho: number) =>
-    rim + Math.max(Math.sqrt(Math.max(limbRadius ** 2 - rho ** 2, 0)) - back, 0) * 0.85;
-  const profile = [new THREE.Vector2(0, 0), new THREE.Vector2(radius * 0.97, 0)];
-  for (let i = 0; i <= 6; i += 1) {
-    const a = (i / 6) * (Math.PI / 2);
-    profile.push(
-      new THREE.Vector2(
-        radius - rim + Math.cos(a - Math.PI / 2) * rim,
-        rim + Math.sin(a - Math.PI / 2) * rim,
-      ),
-    );
-  }
-  for (let i = 1; i <= 16; i += 1) {
-    const rho = (radius - rim) * (1 - i / 16);
-    profile.push(new THREE.Vector2(rho, height(rho)));
-  }
-  const cap = new THREE.Group();
-  cap.add(shaded(new THREE.Mesh(new THREE.LatheGeometry(profile, 64), material)));
-
-  // The slit: a fine dark groove laid into the dome from the rim, along the cap's -z.
-  const points: THREE.Vector3[] = [];
-  for (let i = 0; i <= 8; i += 1) {
-    const rho = (radius - rim * 0.4) * (1 - (slit * i) / 8);
-    points.push(new THREE.Vector3(0, height(rho) - limbRadius * 0.01, -rho));
-  }
-  const groove = new THREE.Mesh(
-    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 16, limbRadius * 0.045, 8, false),
-    slitMaterial,
+/** Orients `object` so its +z faces along `normal`. */
+function facing(object: THREE.Object3D, normal: readonly [number, number, number]) {
+  object.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 0, 1),
+    new THREE.Vector3(...normal).normalize(),
   );
-  cap.add(groove);
-
-  const local = toward.clone().applyQuaternion(aim.quaternion.clone().invert());
-  cap.rotation.y = Math.atan2(-local.x, -local.z);
-  return { cap, back };
 }
 
-// Where the head sits; the idle breath bobs it around this height.
-const HEAD_Y = 1.74;
-
-function buildPig(o: Palette) {
-  const root = new THREE.Group();
-  const bodyMat = clay(o.body);
-  const snoutMat = clay(o.snout, { roughness: 0.85 });
-  const hoofMat = clay(o.hoof, { roughness: 0.8, sheen: 0.3 });
-  const slitMat = clay(mix(o.hoof, "#2A0E08", 0.5), { roughness: 0.9 });
-
-  // Body: one smooth pear, wide at the seat and narrowing up to the neck.
-  const body = new THREE.Group();
-  root.add(body);
-  const profile = new THREE.SplineCurve(
-    [
-      [0, 0.04],
-      [0.6, 0.06],
-      [0.88, 0.24],
-      [0.96, 0.5],
-      [0.9, 0.8],
-      [0.74, 1.06],
-      [0.5, 1.24],
-      [0, 1.32],
-    ].map(([r, y]) => new THREE.Vector2(r, y)),
-  ).getPoints(40);
-  const torso = shaded(new THREE.Mesh(new THREE.LatheGeometry(profile, 72), bodyMat));
-  torso.scale.z = 0.94;
-  body.add(torso);
-
-  // Little arms resting on the belly, each ending in a slit hoof cap.
-  const arms: THREE.Group[] = [];
-  for (const side of [-1, 1]) {
-    const arm = limb(
-      bodyMat,
-      new THREE.Vector3(side * 0.62, 1.0, 0.36),
-      new THREE.Vector3(side * 0.3, 0.64, 0.8),
-      0.15,
-    );
-    const hoof = hoofCap(hoofMat, slitMat, arm.aim, 0.15, 1, new THREE.Vector3(0, 0.4, 1));
-    hoof.cap.position.y = arm.length - hoof.back;
-    arm.aim.add(hoof.cap);
-    body.add(arm.pivot);
-    arms.push(arm.pivot);
-  }
-
-  // Stubby legs stretched forward, showing round hoof soles to the front.
-  const legs: THREE.Group[] = [];
-  for (const side of [-1, 1]) {
-    const leg = limb(
-      bodyMat,
-      new THREE.Vector3(side * 0.46, 0.3, 0.26),
-      new THREE.Vector3(side * 0.68, 0.27, 0.9),
-      0.26,
-    );
-    const sole = hoofCap(hoofMat, slitMat, leg.aim, 0.26, 0.3, new THREE.Vector3(0, 1, 0));
-    sole.cap.position.y = leg.length - sole.back;
-    leg.aim.add(sole.cap);
-    body.add(leg.pivot);
-    legs.push(leg.pivot);
-  }
-
-  // Head: wide and round, a little flatter than tall, sitting on the body.
-  const head = new THREE.Group();
-  head.position.set(0, HEAD_Y, 0.04);
-  root.add(head);
-  const skull = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 96, 48), bodyMat));
-  skull.scale.set(1.12, 0.86, 0.96);
-  head.add(skull);
-
-  // Ears: an upright base on the top corners whose tip folds forward and down.
-  const ears: THREE.Group[] = [];
-  for (const side of [-1, 1]) {
-    const ear = new THREE.Group();
-    ear.position.set(side * 0.74, 0.56, 0.06);
-    const base = new THREE.Group();
-    base.rotation.set(0.75, 0, side * -0.55);
-    base.add(earPiece(bodyMat, 0.56, 0.3, 0.42));
-    const fold = new THREE.Group();
-    fold.position.y = 0.26;
-    fold.rotation.x = 1.0;
-    fold.add(earPiece(bodyMat, 0.4, 0.28, 0.2));
-    base.add(fold);
-    ear.add(base);
-    head.add(ear);
-    ears.push(ear);
-  }
-
-  // Snout: a small oval a shade deeper than the face, its oval nostrils riding along.
-  const snout = new THREE.Group();
-  snout.position.set(0, -0.24, 0.9);
-  head.add(snout);
-  const disc = shaded(new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), snoutMat));
-  disc.scale.set(0.35, 0.235, 0.17);
-  snout.add(disc);
-  const nostrilMat = new THREE.MeshStandardMaterial({ color: o.nostril, roughness: 0.8 });
-  for (const side of [-1, 1]) {
-    const nostril = new THREE.Mesh(new THREE.SphereGeometry(1, 24, 12), nostrilMat);
-    nostril.scale.set(0.05, 0.082, 0.03);
-    nostril.position.set(side * 0.115, 0, 0.155);
-    snout.add(nostril);
-  }
-
-  // Eyes: dark glossy beads, wide-set and low, each with one bright highlight.
-  const eyeMat = new THREE.MeshPhysicalMaterial({
-    color: "#1B110F",
-    roughness: 0.15,
-    clearcoat: 1,
-    clearcoatRoughness: 0.05,
-  });
-  const highlight = new THREE.MeshBasicMaterial({ color: "#ffffff" });
-  const eyes: THREE.Mesh[] = [];
-  for (const side of [-1, 1]) {
-    const eye = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), eyeMat);
-    eye.scale.set(0.16, 0.17, 0.085);
-    eye.position.set(side * 0.43, -0.06, 0.86);
-    eye.rotation.y = side * 0.45;
-    const spark = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 8), highlight);
-    spark.scale.set(0.3, 0.3, 0.3);
-    spark.position.set(0.34, 0.36, 0.86);
-    eye.add(spark);
-    head.add(eye);
-    eyes.push(eye);
-  }
-
-  // Blush: big soft discs on the cheeks.
-  for (const side of [-1, 1]) {
-    const cheek = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 0.36), blushDisc(o.blush));
-    cheek.position.set(side * 0.7, -0.36, 0.62);
-    cheek.rotation.y = side * 0.85;
-    cheek.layers.set(DECALS);
-    head.add(cheek);
-  }
-
-  // Mouth: a thin U smile that gives way to an open, happy mouth (with a tongue) on a tap.
-  const curve = new THREE.CatmullRomCurve3([
-    new THREE.Vector3(-0.09, 0.02, -0.02),
-    new THREE.Vector3(-0.045, -0.025, 0),
-    new THREE.Vector3(0, -0.035, 0.005),
-    new THREE.Vector3(0.045, -0.025, 0),
-    new THREE.Vector3(0.09, 0.02, -0.02),
-  ]);
-  const smile = new THREE.Mesh(
-    new THREE.TubeGeometry(curve, 32, 0.011, 8, false),
-    new THREE.MeshStandardMaterial({ color: "#6B2F2C", roughness: 0.7 }),
+/**
+ * An eye: a glossy dark-brown bead with a lighter brown rim, set into the face along its surface
+ * normal, with one bright highlight to the upper right. Its group scales on y to blink.
+ */
+function eye(side: number, head: THREE.Object3D, headAt: THREE.Vector3) {
+  const { point, normal } = onSurface(side * PIG_FACE.eye.x, PIG_FACE.eye.y);
+  const group = new THREE.Group();
+  group.position.set(point[0], point[1], point[2]).sub(headAt);
+  group.position.addScaledVector(new THREE.Vector3(...normal), -0.03);
+  facing(group, normal);
+  const glossy = (color: string) =>
+    new THREE.MeshPhysicalMaterial({
+      color,
+      roughness: 0.25,
+      clearcoat: 1,
+      clearcoatRoughness: 0.08,
+    });
+  const iris = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), glossy("#4B2418"));
+  iris.scale.set(0.188, 0.198, 0.075);
+  const pupil = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), glossy("#140907"));
+  pupil.scale.set(0.152, 0.162, 0.073);
+  pupil.position.z = 0.008;
+  const spark = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 20, 10),
+    new THREE.MeshBasicMaterial({ color: "#ffffff" }),
   );
-  smile.position.set(0, -0.52, 0.76);
+  spark.scale.set(0.036, 0.04, 0.02);
+  spark.position.set(0.058, 0.07, 0.075);
+  group.add(iris, pupil, spark);
+  head.add(group);
+  return group;
+}
+
+/** The mouth: a thin U smile that gives way to an open, happy mouth (with a tongue) on a tap. */
+function mouth(head: THREE.Object3D, headAt: THREE.Vector3) {
+  const { y, halfWidth } = PIG_FACE.smile;
+  const points: THREE.Vector3[] = [];
+  for (let i = 0; i <= 8; i += 1) {
+    const x = -halfWidth + (2 * halfWidth * i) / 8;
+    const u = x / halfWidth;
+    const { point, normal } = onSurface(x, y - 0.034 * (1 - u * u));
+    points.push(
+      new THREE.Vector3(...point).addScaledVector(new THREE.Vector3(...normal), 0.004).sub(headAt),
+    );
+  }
+  const smile = new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 48, 0.012, 8, false),
+    new THREE.MeshStandardMaterial({ color: "#6E3029", roughness: 0.7 }),
+  );
   head.add(smile);
+
+  const { point, normal } = onSurface(0, y - 0.03);
   const open = new THREE.Group();
-  open.position.set(0, -0.54, 0.73);
+  open.position.set(point[0], point[1], point[2]).sub(headAt);
+  facing(open, normal);
   const throat = new THREE.Mesh(
     new THREE.SphereGeometry(1, 32, 16),
     new THREE.MeshStandardMaterial({ color: "#5a1f2b", roughness: 0.7 }),
   );
-  throat.scale.set(0.09, 0.07, 0.05);
+  throat.scale.set(0.09, 0.07, 0.04);
   const tongue = new THREE.Mesh(
     new THREE.SphereGeometry(1, 24, 12),
     new THREE.MeshStandardMaterial({ color: "#f07c90", roughness: 0.6 }),
   );
-  tongue.scale.set(0.06, 0.035, 0.035);
-  tongue.position.set(0, -0.03, 0.025);
+  tongue.scale.set(0.06, 0.035, 0.03);
+  tongue.position.set(0, -0.03, 0.02);
   open.add(throat, tongue);
   open.scale.setScalar(0.001);
   head.add(open);
-
-  return { root, body, head, ears, eyes, arms, legs, snout, smile, open };
+  return { smile, open };
 }
+
+function bone(name: string, bones: THREE.Bone[]) {
+  return bones[PIG_BONES.findIndex((b) => b.name === name)]!;
+}
+
+function buildPig(o: Palette) {
+  const root = new THREE.Group();
+  const shape = pigMesh();
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(shape.positions, 3));
+  geometry.setAttribute("normal", new THREE.BufferAttribute(shape.normals, 3));
+  geometry.setAttribute("color", new THREE.BufferAttribute(pigColors(shape.regions, o), 3));
+  geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(shape.skinIndex, 4));
+  geometry.setAttribute("skinWeight", new THREE.BufferAttribute(shape.skinWeight, 4));
+  geometry.setIndex(new THREE.BufferAttribute(shape.indices, 1));
+
+  // The rig: every bone at its pivot, so turning one swings its part around the joint.
+  const bones = PIG_BONES.map(() => new THREE.Bone());
+  PIG_BONES.forEach(({ at, parent }, i) => {
+    const from = PIG_BONES[parent]?.at ?? [0, 0, 0];
+    bones[i]!.position.set(at[0] - from[0], at[1] - from[1], at[2] - from[2]);
+    if (parent >= 0) bones[parent]!.add(bones[i]!);
+  });
+  const skin = new THREE.SkinnedMesh(geometry, softSkin(o));
+  // It casts the floor shadow but takes none itself: a shadow map speckles a curved surface, and
+  // the ambient occlusion pass already darkens the creases more softly.
+  skin.castShadow = true;
+  // The hop and the dance carry the pig past its rest bounds; never cull it.
+  skin.frustumCulled = false;
+  skin.add(bones[0]!);
+  skin.updateMatrixWorld(true);
+  skin.bind(new THREE.Skeleton(bones));
+  root.add(skin);
+
+  const head = bone("head", bones);
+  const headAt = new THREE.Vector3(...PIG_BONES[2]!.at);
+  const eyes = [eye(-1, head, headAt), eye(1, head, headAt)];
+  const { smile, open } = mouth(head, headAt);
+
+  return {
+    root,
+    body: bone("body", bones),
+    head,
+    ears: [bone("earL", bones), bone("earR", bones)],
+    snout: bone("snout", bones),
+    arms: [bone("armL", bones), bone("armR", bones)],
+    legs: [bone("legL", bones), bone("legR", bones)],
+    eyes,
+    smile,
+    open,
+  };
+}
+
+// Where the head and snout bones rest; the idle breath and twitch move them around these.
+const HEAD_Y = PIG_BONES[2]!.at[1];
+const SNOUT_Y = PIG_BONES[5]!.at[1] - HEAD_Y;
 
 /** A running pig scene: `react` plays a tap's reaction, `dispose` frees the GPU resources. */
 export interface PigScene {
@@ -456,7 +299,7 @@ function keyed(at: number[], values: number[], p: number) {
 }
 
 // A reaction's hop is a fraction of the figure's height, as in the SVG figure's CSS.
-const FIGURE_HEIGHT = 2.6;
+const FIGURE_HEIGHT = 3;
 
 /**
  * Renders the pig into `canvas` and animates it unless `still`: an idle life (breathing, a head
@@ -479,33 +322,39 @@ export function mountPigScene(
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.4;
+  scene.environmentIntensity = 0.35;
 
-  const camera = new THREE.PerspectiveCamera(26, canvas.clientWidth / canvas.clientHeight, 0.1, 50);
-  camera.position.set(0, 1.55, 6.9);
-  camera.lookAt(0, 1.3, 0);
+  // Framed with headroom above the ears for the hop and the dance.
+  const camera = new THREE.PerspectiveCamera(25, canvas.clientWidth / canvas.clientHeight, 0.1, 50);
+  camera.position.set(0, 2.0, 9.4);
+  camera.lookAt(0, 1.66, 0.2);
 
-  // White studio lighting: a strong key from the upper left and only a little fill, so the clay
-  // shades from light to dark across its curves and reads as round, plus a rim behind.
-  const key = new THREE.DirectionalLight("#fff6ee", 2.4);
-  key.position.set(-2.2, 4.6, 3.2);
+  // Bright white studio lighting like a product shot: a key from the upper right that leaves the
+  // left side in warm shade, a little fill and sky light so the clay stays pastel, a rim behind,
+  // and a glow along the right edge.
+  const key = new THREE.DirectionalLight("#fff6ee", 2.6);
+  key.position.set(2.6, 4.4, 3.6);
   key.castShadow = true;
   key.shadow.mapSize.set(1024, 1024);
-  key.shadow.radius = 8;
-  key.shadow.camera.left = -2;
+  key.shadow.radius = 10;
+  key.shadow.camera.left = -3;
   key.shadow.camera.right = 2;
-  key.shadow.camera.top = 3;
+  key.shadow.camera.top = 3.4;
   key.shadow.camera.bottom = -1;
   key.shadow.bias = -0.0005;
+  key.shadow.normalBias = 0.05;
   scene.add(key);
-  const fill = new THREE.DirectionalLight("#fff4f0", 0.35);
-  fill.position.set(3, 1.5, 2);
+  const fill = new THREE.DirectionalLight("#fff4f0", 0.2);
+  fill.position.set(-3, 1.5, 3);
   scene.add(fill);
-  const rim = new THREE.DirectionalLight("#ffffff", 1.1);
+  const rim = new THREE.DirectionalLight("#ffffff", 0.9);
   rim.position.set(0, 3, -4);
   scene.add(rim);
-  scene.add(new THREE.HemisphereLight("#fff3ee", "#f2b5a5", 0.35));
-  const bounce = new THREE.DirectionalLight("#ffe9de", 0.25);
+  const edge = new THREE.DirectionalLight("#fff8f4", 1.2);
+  edge.position.set(4.5, 1.5, -0.5);
+  scene.add(edge);
+  scene.add(new THREE.HemisphereLight("#fff6f2", "#e39a8a", 0.35));
+  const bounce = new THREE.DirectionalLight("#ffece4", 0.35);
   bounce.position.set(0, -1, 4);
   scene.add(bounce);
 
@@ -625,7 +474,7 @@ export function mountPigScene(
     const twitching = t > twitchAt ? Math.sin(((t - twitchAt) / 0.45) * Math.PI * 4) : 0;
     const squish = snoutSpring.step(-rise * 0.03, dt);
     pet.snout.scale.set(1 - squish * 0.5 + twitching * 0.04, 1 + squish - twitching * 0.05, 1);
-    pet.snout.position.y = -0.24 + twitching * 0.012;
+    pet.snout.position.y = SNOUT_Y + twitching * 0.012;
     pet.snout.rotation.z = twitching * 0.05;
 
     // The mouth opens into a happy smile with the joy curve.
@@ -640,7 +489,7 @@ export function mountPigScene(
 
     // Eyes squint shut with joy; otherwise a quick blink every few seconds.
     const blinking = t % BLINK > BLINK - 0.14;
-    const eyeOpen = blinking ? 0.02 : 0.16 * (1 - joy * 0.75);
+    const eyeOpen = blinking ? 0.12 : 1 - joy * 0.75;
     for (const eye of pet.eyes) eye.scale.y = eyeOpen;
   }
 
@@ -655,8 +504,6 @@ export function mountPigScene(
         material.dispose();
       }
     });
-    grain?.dispose();
-    grain = null;
     scene.environment?.dispose();
     pmrem.dispose();
     occlusion.dispose();
