@@ -1,10 +1,6 @@
 import { PET_REACTION_MOTION, type PetReaction } from "@zoption/shared";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 
 import { onSurface, PIG_BONES, PIG_FACE, pigMesh } from "./pigShape";
 
@@ -181,21 +177,6 @@ function contactShadow() {
   return mesh;
 }
 
-/**
- * The layer for flat see-through planes (floor, contact shadow). Only the color pass draws them;
- * the occlusion pass would read their flat edges as creases and outline them.
- */
-const DECALS = 1;
-
-/** The color pass: the scene with its decal planes, which the occlusion pass leaves out. */
-class ColorPass extends RenderPass {
-  override render(...args: Parameters<RenderPass["render"]>) {
-    this.camera.layers.enable(DECALS);
-    super.render(...args);
-    this.camera.layers.disable(DECALS);
-  }
-}
-
 /** Orients `object` so its +z faces along `normal`. */
 function facing(object: THREE.Object3D, normal: readonly [number, number, number]) {
   object.quaternion.setFromUnitVectors(
@@ -302,7 +283,7 @@ function buildPig(o: Palette) {
   });
   const skin = new THREE.SkinnedMesh(geometry, softSkin(o));
   // It casts the floor shadow but takes none itself: a shadow map speckles a curved surface, and
-  // the ambient occlusion pass already darkens the creases more softly.
+  // the crease shading (`CREASE`) already darkens the folds more softly.
   skin.castShadow = true;
   // The hop and the dance carry the pig past its rest bounds; never cull it.
   skin.frustumCulled = false;
@@ -440,33 +421,12 @@ export function mountPigScene(
   );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
-  floor.layers.set(DECALS);
   scene.add(floor);
   const shadow = contactShadow();
-  shadow.layers.set(DECALS);
   scene.add(shadow);
 
   const pet = buildPig(pigPalette(body));
   scene.add(pet.root);
-
-  // Ambient occlusion darkens the creases (under the chin, where the arms and legs meet the body,
-  // inside the ears) the way a real toy shades where light can't reach, which is most of what makes
-  // the clay read as solid. The passes keep the canvas's transparent background.
-  const width = canvas.clientWidth;
-  const height = canvas.clientHeight;
-  const composer = new EffectComposer(renderer);
-  composer.setPixelRatio(renderer.getPixelRatio());
-  composer.setSize(width, height);
-  composer.addPass(new ColorPass(scene, camera));
-  const occlusion = new GTAOPass(scene, camera, width, height);
-  occlusion.updateGtaoMaterial({ radius: 0.3, distanceExponent: 1, thickness: 1, scale: 2 });
-  // A tight denoise keeps each crease shadow a crisp line instead of a smudge.
-  occlusion.updatePdMaterial({ radius: 4 });
-  // Above 1 the blend pushes the deepest creases (under the ears) negative, which tone mapping
-  // turns grey-blue.
-  occlusion.blendIntensity = 0.75;
-  composer.addPass(occlusion);
-  composer.addPass(new OutputPass());
 
   // Springs for the parts that follow the body. Ears are loose and wobbly, legs a little firmer.
   const earSprings = [new Spring(140, 6), new Spring(140, 6)];
@@ -586,19 +546,17 @@ export function mountPigScene(
     });
     scene.environment?.dispose();
     pmrem.dispose();
-    occlusion.dispose();
-    composer.dispose();
     renderer.dispose();
   };
   if (still) {
     pose(0);
-    composer.render();
+    renderer.render(scene, camera);
     return { react: () => {}, dispose };
   }
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
     pose(clock.getElapsedTime());
-    composer.render();
+    renderer.render(scene, camera);
   });
   return {
     react(kind) {

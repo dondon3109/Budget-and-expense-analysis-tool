@@ -193,10 +193,9 @@ the figure, or the tombstone.
   product shot, with a strong key low from the right
   leaving the left side in warm shade, a glow rimming the right edge from behind (from the side it
   would shine through the body onto the inside of the left arm), a bounce from the floor that
-  keeps the chin crease light, ambient occlusion (`GTAOPass`, blend at most 1, or the deepest
-  creases turn grey-blue; a short radius and a tight denoise, so each crease shadow is a crisp
-  line rather than a smudge) darkening the creases under the chin and around the ears, arms, and legs,
-  and a contact shadow. The lighting and colors were fitted to the same photo. A faint light high
+  keeps the chin crease light, and a contact shadow. There is no ambient occlusion pass: the crease
+  shading darkens the folds without its screen-space noise, which showed as grainy streaks along
+  the arms and chin. The lighting and colors were fitted to the same photo. A faint light high
   above casts the short floor shadow (from the low key it would run off the canvas); the figure
   takes no shadow itself, because a shadow map speckles its curved surface. The mesh is
   skinned to a rig (head, ears, snout, arms, legs; weights blended across each crease so a bend
