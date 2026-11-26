@@ -31,8 +31,8 @@ export const PIG_BONES: ReadonlyArray<{ name: string; parent: number; at: Vec3 }
   { name: "earL", parent: 2, at: [-0.6, 2.52, 0.1] },
   { name: "earR", parent: 2, at: [0.6, 2.52, 0.1] },
   { name: "snout", parent: 2, at: [0, 1.78, 0.95] },
-  { name: "armL", parent: 0, at: [-0.72, 1.02, 0.38] },
-  { name: "armR", parent: 0, at: [0.72, 1.02, 0.38] },
+  { name: "armL", parent: 0, at: [-0.82, 1.06, 0.24] },
+  { name: "armR", parent: 0, at: [0.82, 1.06, 0.24] },
   { name: "legL", parent: 0, at: [-0.64, 0.34, 0.2] },
   { name: "legR", parent: 0, at: [0.64, 0.34, 0.2] },
 ];
@@ -77,21 +77,26 @@ function scaled(a: Vec3, s: number): Vec3 {
   return [a[0] * s, a[1] * s, a[2] * s];
 }
 
-/** An arm on `side` (-1 viewer's left, 1 right): shoulder, elbow, and a split hoof at the wrist. */
+/**
+ * An arm on `side` (-1 viewer's left, 1 right): a short chubby arm from the side of the body,
+ * bending at the elbow so its split hoof rests on the belly, well above the legs.
+ */
 function arm(side: number) {
-  const shoulder = mirror(side, [0.72, 1.02, 0.38]);
-  const elbow = mirror(side, [0.92, 0.78, 0.62]);
-  const wrist = mirror(side, [0.4, 0.66, 1.0]);
-  const dir = unit(sub(wrist, elbow));
+  const shoulder = mirror(side, [0.82, 1.06, 0.24]);
+  const elbow = mirror(side, [0.92, 0.78, 0.56]);
+  const wrist = mirror(side, [0.54, 0.9, 0.9]);
+  // The hoof turns down off the forearm, so its tip rests on the belly instead of facing out.
+  const forearm = unit(sub(wrist, elbow));
+  const dir = unit([forearm[0], forearm[1] - 0.9, forearm[2]]);
   const tip: Vec3 = [wrist[0] + dir[0] * 0.13, wrist[1] + dir[1] * 0.13, wrist[2] + dir[2] * 0.13];
-  const upper = roundCone(shoulder, elbow, 0.2, 0.19);
-  const lower = roundCone(elbow, wrist, 0.19, 0.17);
-  const hoof = roundCone(wrist, tip, 0.17, 0.075);
+  const upper = roundCone(shoulder, elbow, 0.25, 0.25);
+  const lower = roundCone(elbow, wrist, 0.25, 0.2);
+  const hoof = roundCone(wrist, tip, 0.2, 0.1);
   // The cleft between the two toes: a rounded groove down the middle of the hoof's front face,
   // notching its tip. Wide enough for the mesh grid to draw it smoothly.
   const front = unit(cross(cross(dir, [0, 0.4, 1]), dir));
   const cleft = roundCone(
-    [wrist[0] + front[0] * 0.155, wrist[1] + front[1] * 0.155, wrist[2] + front[2] * 0.155],
+    [wrist[0] + front[0] * 0.185, wrist[1] + front[1] * 0.185, wrist[2] + front[2] * 0.185],
     [tip[0] + dir[0] * 0.06, tip[1] + dir[1] * 0.06, tip[2] + dir[2] * 0.06],
     0.022,
     0.026,
@@ -127,16 +132,28 @@ function leg(side: number) {
   };
 }
 
-/** An ear on `side`: a thick soft petal rising from the head's top corner, its tip flopped forward. */
+/**
+ * An ear on `side`: a thick, soft petal rising from the head's top corner and curling over so its
+ * round tip droops forward, like a floppy felt ear. It is a chain of petals along a gentle curve,
+ * melted together so the bend reads as one soft fold rather than a hinge.
+ */
 function ear(side: number) {
-  const base = mirror(side, [0.56, 2.56, 0.22]);
-  const fold = mirror(side, [0.8, 2.78, 0.46]);
-  const tip = mirror(side, [1.08, 2.5, 0.82]);
+  const points = [
+    mirror(side, [0.56, 2.56, 0.2]),
+    mirror(side, [0.72, 2.78, 0.36]),
+    mirror(side, [0.92, 2.82, 0.56]),
+    mirror(side, [1.06, 2.7, 0.76]),
+    mirror(side, [1.12, 2.58, 0.86]),
+  ];
+  const radii = [0.29, 0.28, 0.25, 0.19, 0.14];
   const facing = mirror(side, [0.3, 0.3, 1]);
-  const width = unit(cross(sub(fold, base), facing));
-  const lower = petal(base, fold, 0.3, 0.24, facing, 0.34);
-  const flap = petal(fold, tip, 0.24, 0.11, cross(width, sub(tip, fold)), 0.38);
-  return (x: number, y: number, z: number) => smin(lower(x, y, z), flap(x, y, z), 0.1);
+  const width = unit(cross(sub(points[1]!, points[0]!), facing));
+  const segments = points.slice(1).map((end, i) => {
+    const start = points[i]!;
+    return petal(start, end, radii[i]!, radii[i + 1]!, cross(width, sub(end, start)), 0.5);
+  });
+  return (x: number, y: number, z: number) =>
+    segments.reduce((d, segment) => smin(d, segment(x, y, z), 0.12), Infinity);
 }
 
 /**
@@ -214,11 +231,11 @@ export function pigDistance(x: number, y: number, z: number) {
   let d = smin(torso(x, y, z), skull(x, y, z), 0.06);
   for (let side = 0; side < 2; side += 1) {
     const s = side === 0 ? -1 : 1;
-    if (nearby(x, y, z, [0.68 * s, 0.86, 0.64], 0.84) < d + 0.1)
+    if (nearby(x, y, z, [0.72 * s, 0.98, 0.62], 0.78) < d + 0.1)
       d = smin(d, arms[side]!.distance(x, y, z), 0.06);
     if (nearby(x, y, z, [0.73 * s, 0.33, 0.5], 0.72) < d + 0.14)
       d = smin(d, legs[side]!.distance(x, y, z), 0.1);
-    if (nearby(x, y, z, [0.95 * s, 2.6, 0.33], 0.7) < d + 0.12)
+    if (nearby(x, y, z, [0.84 * s, 2.65, 0.54], 0.82) < d + 0.12)
       d = smin(d, ears[side]!(x, y, z), 0.12);
   }
   if (nearby(x, y, z, [0, SNOUT_Y, FACE_Z], 0.45) < d + 0.06) {
@@ -284,7 +301,7 @@ export function pigMesh(): PigMesh {
       const limb = arms[side]!;
       const onArm = smooth(0.04, 0, d[ARM_L + side]! - nearest);
       const past = dot(sub([x, y, z], limb.wrist), limb.dir);
-      hoof = Math.max(hoof, onArm * smooth(-0.05, -0.02, past));
+      hoof = Math.max(hoof, onArm * smooth(0.07, 0.1, past));
       // A sole is the flat end of the leg: facing along the leg, past the rounded rim.
       const foot = legs[side]!;
       const onLeg = smooth(0.04, 0, d[LEG_L + side]! - nearest);
