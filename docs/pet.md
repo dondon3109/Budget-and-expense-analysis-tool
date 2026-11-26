@@ -152,9 +152,11 @@ the figure, or the tombstone.
   chubby round body nearly as wide as the head, widest at the hips and narrowing a little toward
   the neck (each an egg-like form,
   `egg` in `pigShape.ts`, so no outline has flat sides), with a round tummy swelling out of the
-  belly between the arms so the front reads as a soft mound rather than a flat panel; broad, thin, soft ear flaps rising from
-  the head's top corners and folding forward so their tips point down and out (many short petals
-  along one smooth curve, so the fold is a soft bend and the thin flap never crumples); short, round arms that start low on the body's sides and hang down its front
+  belly between the arms so the front reads as a soft mound rather than a flat panel; broad, thin felt ears, each a short
+  plate rising from the head's top corner to a crisp rounded fold, then a flap turned over it
+  that hangs forward and narrows to a rounded point aiming down and out (both legs are chains of
+  short petals along one fold line, so the fold stays one clean edge and the flap never
+  crumples); short, round arms that start low on the body's sides and hang down its front
   and turn slightly in, each ending in a round pink hand with a small rose-brown hoof pointing
   down and in onto the belly well above the feet (so the hoof and sole colors never touch), split by a soft groove where the toes part. Each arm is one tube along a gentle curve, with no elbow
   corner, and only its shoulder melts into the body: the shoulders sit low on the

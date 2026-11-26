@@ -87,21 +87,20 @@ const SHAPE = {
   hipX: 0.72,
   footZ: 0.94,
   legR: 0.38,
-  earX: 0.675,
-  earY: 2.29,
-  earScale: 0.925,
-  // Each ear's curve from its base, bent toward its bend point, to its tip (before scaling), and
-  // its radius: `earR` at the base, swelling by `earBulge` midway and narrowing by `earNarrow` to
-  // the tip. `earThick` is how thick it is for its width.
-  earBendX: 0.05,
-  earBendY: 0.85,
-  earBendZ: 0.05,
-  earTipX: 0.39,
-  earTipY: 0.15,
-  earTipZ: 0.6,
-  earR: 0.37,
-  earBulge: 0.04,
-  earNarrow: 0.2,
+  earX: 0.72,
+  earY: 2.26,
+  earScale: 0.86,
+  // Each ear (before scaling): a base plate from the ear's root up to its fold, then a flap from
+  // the fold over and down to its tip. `earR` is half the ear's width, the flap narrowing to
+  // `earTipR` at its tip, and `earThick` is how thick it is for its width.
+  earFoldX: 0.1,
+  earFoldY: 0.45,
+  earFoldZ: 0,
+  earTipX: 0.37,
+  earTipY: 0.1,
+  earTipZ: 0.42,
+  earR: 0.34,
+  earTipR: 0.05,
   earThick: 0.3,
 };
 
@@ -278,24 +277,33 @@ function leg(side: number) {
 }
 
 /**
- * An ear on `side`: a thick, soft, round-tipped petal rising from the head's top corner and
- * folding forward so its tip points down and out, like a floppy felt ear. It follows one smooth
- * curve (so the fold is a soft bend, not a crease) and is widest past its base, rounding off to
- * a full tip.
+ * An ear on `side`: a thin, broad felt ear folded over like the toy's. A short base plate rises
+ * from the head's top corner to a fold, and a flap turns over that fold and hangs forward and
+ * out, narrowing to a rounded point. Both lie along the same fold line, so the top edge is one
+ * crisp rounded fold rather than a soft bend.
  */
 function ear(side: number) {
   const { earX, earY, earScale } = SHAPE;
   const place = (o: Vec3) =>
     mirror(side, [earX + o[0] * earScale, earY + o[1] * earScale, o[2] * earScale]);
   const base = place([0, 0, 0]);
-  const bend = place([SHAPE.earBendX, SHAPE.earBendY, SHAPE.earBendZ]);
-  const end = place([SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ]);
-  // Short petals, so the small turn from one to the next never shows as a ridge (with fewer, the
-  // thin flap crumples along its fold).
+  const fold = place([SHAPE.earFoldX, SHAPE.earFoldY, SHAPE.earFoldZ]);
+  const tip = place([SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ]);
+  // Short petals along each straight leg, so no joint shows as a ridge.
+  const up = 6;
   const steps = 16;
-  const points = Array.from({ length: steps + 1 }, (_, i) => bezier(base, bend, end, i / steps));
-  const radius = (t: number) =>
-    (SHAPE.earR + SHAPE.earBulge * Math.sin(Math.PI * t) - SHAPE.earNarrow * t) * earScale;
+  const lerp = (a: Vec3, b: Vec3, t: number): Vec3 => [
+    a[0] + (b[0] - a[0]) * t,
+    a[1] + (b[1] - a[1]) * t,
+    a[2] + (b[2] - a[2]) * t,
+  ];
+  const points = Array.from({ length: steps + 1 }, (_, i) =>
+    i <= up ? lerp(base, fold, i / up) : lerp(fold, tip, (i - up) / (steps - up)),
+  );
+  const radius = (t: number) => {
+    const flap = Math.max((t * steps - up) / (steps - up), 0);
+    return (SHAPE.earR + (SHAPE.earTipR - SHAPE.earR) * flap * flap) * earScale;
+  };
   const facing = mirror(side, [0.3, 0.3, 1]);
   const width = unit(cross(sub(points[1]!, points[0]!), facing));
   const segments = points.slice(1).map((p, i) => {
