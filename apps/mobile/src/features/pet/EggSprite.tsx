@@ -1,36 +1,13 @@
 import { useEffect, useId, useRef } from "react";
 import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
-import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path } from "react-native-svg";
 
-import type { PetLayer, PetShape } from "@zoption/shared";
+import type { PetLayer } from "@zoption/shared";
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { useReduceMotion } from "@/ui/reduce-motion";
 
-const CANVAS = 200;
+import { PetArtSvg } from "./PetArtSvg";
 
-function Shape({ shape }: { shape: PetShape }) {
-  const paint = {
-    fill: shape.fill ?? "none",
-    stroke: shape.stroke,
-    strokeWidth: shape.stroke ? shape.strokeWidth : undefined,
-    strokeLinecap: "round" as const,
-    strokeLinejoin: "round" as const,
-    opacity: shape.opacity,
-  };
-  if (shape.kind === "path") return <Path d={shape.d} {...paint} />;
-  if (shape.kind === "circle") return <Circle cx={shape.cx} cy={shape.cy} r={shape.r} {...paint} />;
-  return (
-    <Ellipse
-      cx={shape.cx}
-      cy={shape.cy}
-      rx={shape.rx}
-      ry={shape.ry}
-      rotation={shape.rotate}
-      origin={shape.rotate ? `${shape.cx}, ${shape.cy}` : undefined}
-      {...paint}
-    />
-  );
-}
+const CANVAS = 200;
 
 /** One art layer as a plain SVG; also draws the hatch shine. */
 export function LayerSvg({
@@ -42,23 +19,7 @@ export function LayerSvg({
   size: number;
   clipId: string;
 }) {
-  const shapes = layer.shapes.map((shape, index) => <Shape key={index} shape={shape} />);
-  return (
-    <Svg width={size} height={size} viewBox={`0 0 ${CANVAS} ${CANVAS}`}>
-      {layer.clip ? (
-        <>
-          <Defs>
-            <ClipPath id={clipId}>
-              <Path d={layer.clip} />
-            </ClipPath>
-          </Defs>
-          <G clipPath={`url(#${clipId})`}>{shapes}</G>
-        </>
-      ) : (
-        shapes
-      )}
-    </Svg>
-  );
+  return <PetArtSvg layers={[layer]} size={size} idBase={clipId} />;
 }
 
 const timing = (value: Animated.Value, toValue: number, duration: number) =>

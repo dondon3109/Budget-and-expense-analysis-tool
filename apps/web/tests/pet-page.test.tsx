@@ -41,7 +41,7 @@ import { renderWithProviders } from "./helpers/render";
 
 const babyPet: PetView = {
   enabled: true,
-  species: "panda",
+  species: "hippo",
   name: "Bao",
   color: "original",
   stage: "baby",
@@ -135,7 +135,7 @@ describe("pet on the web", () => {
     expect(await screen.findByRole("heading", { name: "Pick a color for Bao" })).toBeVisible();
     // The pet itself previews each color.
     expect(
-      screen.getByRole("radio", { name: "Pink" }).closest("label")?.querySelector("img"),
+      screen.getByRole("radio", { name: "Pink" }).closest("label")?.querySelector("svg.pet-figure"),
     ).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Keep original" }));
 
@@ -148,7 +148,7 @@ describe("pet on the web", () => {
   });
 
   it("hatches a ready egg on the tenth click", async () => {
-    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "panda", eggStreakDays: 7 });
+    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "hippo", eggStreakDays: 7 });
     vi.mocked(hatchPet).mockResolvedValue(babyPet);
     renderWithProviders(<PetPage />);
 
@@ -160,12 +160,12 @@ describe("pet on the web", () => {
 
     expect(await screen.findByRole("heading", { name: "Bao" })).toBeInTheDocument();
     expect(hatchPet).toHaveBeenCalledTimes(1);
-    expect(unlockPetHatchAudio).toHaveBeenCalledWith("panda");
-    expect(playPetHatch).toHaveBeenCalledWith("panda");
+    expect(unlockPetHatchAudio).toHaveBeenCalledWith("hippo");
+    expect(playPetHatch).toHaveBeenCalledWith("hippo");
   });
 
   it("settles a ready egg back when the hatch fails", async () => {
-    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "panda", eggStreakDays: 7 });
+    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "hippo", eggStreakDays: 7 });
     vi.mocked(hatchPet).mockRejectedValue(new Error("offline"));
     renderWithProviders(<PetPage />);
 
@@ -176,17 +176,16 @@ describe("pet on the web", () => {
     expect(screen.getByRole("button", { name: /Click 10 more times/ })).toBeInTheDocument();
   });
 
-  it("marks the current stage on the growth path and hearts a petted pet", async () => {
+  it("marks the current stage on the growth path and hops a petted pet without hearts", async () => {
     vi.mocked(checkInPet).mockResolvedValue(babyPet);
     renderWithProviders(<PetPage />);
 
     const path = await screen.findByRole("list", { name: "Growth path" });
     expect(path.querySelector('[aria-current="step"]')).toHaveTextContent("Baby");
     const pet = screen.getByRole("button", { name: "Pet Bao" });
-    expect(pet.querySelector(".pet-hearts")).toBeNull();
     fireEvent.click(pet);
-    expect(pet.querySelector(".pet-hearts")).toHaveTextContent("💖");
-    expect(playPetReaction).toHaveBeenLastCalledWith("panda", "baby", "happy");
+    expect(pet.querySelector(".pet-hearts")).toBeNull();
+    expect(playPetReaction).toHaveBeenLastCalledWith("hippo", "baby", "happy");
   });
 
   it("answers a click on a sick pet weakly, in its sad voice", async () => {
@@ -197,8 +196,7 @@ describe("pet on the web", () => {
     fireEvent.click(pet);
 
     expect(pet.querySelector(".pet-hearts")).toHaveTextContent("🤒");
-    expect(pet.querySelector(".pet-hearts")).not.toHaveTextContent("💖");
-    expect(playPetReaction).toHaveBeenLastCalledWith("panda", "baby", "sick");
+    expect(playPetReaction).toHaveBeenLastCalledWith("hippo", "baby", "sick");
   });
 
   it("tells a free user their pet needs a paid plan to grow", async () => {

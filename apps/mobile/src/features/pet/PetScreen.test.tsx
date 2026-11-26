@@ -97,7 +97,7 @@ describe("PetScreen", () => {
     await render(<PetScreen />);
 
     expect(screen.getByText("Bao")).toBeTruthy();
-    expect(screen.getByText("Panda · Baby")).toBeTruthy();
+    expect(screen.getByText("Hippo · Baby")).toBeTruthy();
     expect(screen.getByLabelText("120 of 350 points to grow")).toBeTruthy();
     expect(screen.getByLabelText("Health 100 of 100")).toBeTruthy();
     expect(screen.getByLabelText("Today 30 of 100 points")).toBeTruthy();
@@ -120,21 +120,19 @@ describe("PetScreen", () => {
     await render(<PetScreen />);
 
     expect(screen.getByLabelText("Growth path: Baby now")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("imagebutton", { name: "Bao, Hippo · Baby" }));
     expect(screen.queryByText("💖")).toBeNull();
-    await fireEvent.press(screen.getByRole("imagebutton", { name: "Bao, Panda · Baby" }));
-    expect(screen.getAllByText("💖").length).toBeGreaterThan(0);
   });
 
-  it("answers a tap on a sick pet weakly, with no hearts", async () => {
+  it("answers a tap on a sick pet weakly", async () => {
     const sick = { ...babyPet, health: 75, healthState: "sick" as const };
     usePetStore.setState({ pet: sick });
     jest.mocked(getPet).mockResolvedValue(sick);
     await render(<PetScreen />);
 
-    await fireEvent.press(screen.getByRole("imagebutton", { name: "Bao, Panda · Baby" }));
+    await fireEvent.press(screen.getByRole("imagebutton", { name: "Bao, Hippo · Baby" }));
 
     expect(screen.getByText("🤒")).toBeTruthy();
-    expect(screen.queryByText("💖")).toBeNull();
   });
 
   it("warns when the pet is sick", async () => {
@@ -173,7 +171,7 @@ describe("PetScreen", () => {
   });
 
   describe("a ready egg", () => {
-    const readyEgg = { ...noPet, species: "panda" as const, eggStreakDays: 7 };
+    const readyEgg = { ...noPet, species: "hippo" as const, eggStreakDays: 7 };
     const tapTenTimes = async () => {
       for (let tap = 0; tap < 10; tap += 1) {
         await fireEvent.press(screen.getByRole("imagebutton"));

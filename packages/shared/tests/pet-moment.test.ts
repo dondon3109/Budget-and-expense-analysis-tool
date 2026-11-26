@@ -6,7 +6,7 @@ import type { PetSeen, PetView } from "../src/schemas/pet";
 
 const baby: PetView = {
   enabled: true,
-  species: "panda",
+  species: "hippo",
   name: "Bao",
   color: "original",
   stage: "baby",
@@ -21,7 +21,7 @@ const baby: PetView = {
   diedAt: null,
 };
 const seenBaby: PetSeen = {
-  species: "panda",
+  species: "hippo",
   stage: "baby",
   unwell: false,
   ready: false,

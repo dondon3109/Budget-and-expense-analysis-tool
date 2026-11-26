@@ -4,6 +4,7 @@ import {
   PET_COMBO_COOLDOWN_MS,
   PET_TAP_HISTORY_START,
   petHatchSoundCue,
+  petReactionBurst,
   petSoundCue,
   petTapReaction,
   type PetReaction,
@@ -47,6 +48,20 @@ describe("petTapReaction", () => {
   });
 });
 
+describe("petReactionBurst", () => {
+  it("sends up no hearts for a tap or a dance", () => {
+    expect(petReactionBurst("happy")).toEqual([]);
+    const dance = petReactionBurst("combo").map((glyph) => glyph.glyph);
+    expect(dance.length).toBeGreaterThan(0);
+    expect(dance.join("")).not.toMatch(/💜|💖/u);
+  });
+
+  it("floats one 🤒 or 💤 from an unwell pet", () => {
+    expect(petReactionBurst("sick").map((glyph) => glyph.glyph)).toEqual(["🤒"]);
+    expect(petReactionBurst("fading").map((glyph) => glyph.glyph)).toEqual(["💤"]);
+  });
+});
+
 describe("petSoundCue", () => {
   it("picks each stage's own clip instead of relying on large speed shifts", () => {
     const baby = petSoundCue("hippo", "baby", "happy");
@@ -61,10 +76,10 @@ describe("petSoundCue", () => {
   });
 
   it("uses the stage's sad clip, quieter and slightly slower when fading", () => {
-    const sick = petSoundCue("panda", "adult", "sick");
-    const fading = petSoundCue("panda", "adult", "fading");
-    expect(sick).toMatchObject({ clip: "panda-adult-sad", voice: "sad", sparkle: null });
-    expect(fading.clip).toBe("panda-adult-sad");
+    const sick = petSoundCue("hippo", "adult", "sick");
+    const fading = petSoundCue("hippo", "adult", "fading");
+    expect(sick).toMatchObject({ clip: "hippo-adult-sad", voice: "sad", sparkle: null });
+    expect(fading.clip).toBe("hippo-adult-sad");
     expect(fading.volume).toBeLessThan(sick.volume);
     expect(fading.rate).toBeLessThan(sick.rate);
   });
@@ -80,8 +95,8 @@ describe("petSoundCue", () => {
   });
 
   it("leads a hatch with sparkle before the baby's happy voice", () => {
-    const hatch = petHatchSoundCue("hedgehog");
-    expect(hatch.voiceClip).toBe("hedgehog-baby-happy");
+    const hatch = petHatchSoundCue("hippo");
+    expect(hatch.voiceClip).toBe("hippo-baby-happy");
     expect(hatch.voiceDelayMs).toBeGreaterThan(0);
     expect(hatch.sparkleVolume).toBeLessThan(1);
   });

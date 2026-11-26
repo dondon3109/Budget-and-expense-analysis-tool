@@ -42,7 +42,7 @@ All notable product changes are documented here.
 - Name your pet when you pick its egg, on web and mobile. Its pop-ups and notifications call it by name.
 - A new Fun theme, on web and mobile: candy colors, puffy clay cards, and chunky buttons that press down, made to match your pet.
 - New accounts finish setup by picking a theme and choosing whether to raise a streak pet, on web and mobile. Saying yes opens the egg picker.
-- The pet page is more playful on web and mobile: your pet stands in a sparkly spotlight, sends up hearts when you pet it, and shows colorful status chips, chunky meters, an Egg to Legend growth path, and earning tiles.
+- The pet page is more playful on web and mobile: your pet stands in a sparkly spotlight, hops when you pet it (and dances in a shower of sparkles after five quick taps), and shows colorful status chips, chunky meters, an Egg to Legend growth path, and earning tiles.
 - Pick your pet's color when you choose its egg, on web and mobile: Pink, Mint, Sky, Lilac, Peach, or the original. Change it any time on the web pet page or in mobile Settings. If you already have a pet, the pet page asks you once to pick its color.
 - Pet your pet and it answers in its own voice, on web and mobile: every species and growth stage (Baby, Juvenile, Adult, Legend) has its own happy and sad call, evolving from tiny baby peeps and yips to full adult calls like a hippo roar or emperor penguin trumpet and resonant Legend calls. Tap five times quickly and a healthy pet dances. A sick or tired pet answers weakly, which is your cue to log something. On mobile you also feel a light buzz.
 - Share one transaction or an account balance with anyone, even people without Zoption, on web and mobile. The link shows a frozen snapshot of only what you chose, works for 24 hours, 7 days, 30 days, or until you turn it off, and can be turned off any time in web Settings. Web can also save the snapshot as an image.
@@ -62,6 +62,9 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Your pet is now a soft 3D figure, on web and mobile: every species and stage has rounded, glossy shading and a soft shadow, hops with a squash-and-stretch bounce and blinks when healthy, looks pale and sweaty when sick, and slumps and washes out when fading. Legends keep their golden outfits, and pet colors still apply.
+- Web: a healthy Baby pig is now a live 3D figure on a plain white stage, sculpted as one smooth, soft clay toy with a velvety pastel finish: a big round head with full cheeks, floppy forward-folded ears, little arms on its belly ending in split hooves, round hoof soles, and big glossy eyes. It sits still, breathes, blinks, and twitches its nose, and a tap makes it hop with its ears, legs, snout, and mouth moving. Other pets keep the 3D-styled figure for now.
+- The pet egg picker now offers the pig and the hippo only. A hedgehog, hamster, penguin, or panda you already have becomes a pig and keeps its name, color, points, and stage.
 - First-run setup runs in the same order on web and mobile: base currency, starting cash, your goal, your money habits, then Make it yours (theme and streak pet). Zoption suggests a currency from your browser or phone settings, and leaving the starting cash blank counts as zero. Mobile setup drops from up to 8 steps to 5 or 6.
 - Workspaces in a currency other than PHP no longer start with GCash and Maya accounts, and setup wording that only fits the Philippines is shown only in PHP workspaces.
 - Mobile asks for notification permission, and shows the "Help us improve Zoption" prompt, only after setup closes instead of during sign-in or setup.

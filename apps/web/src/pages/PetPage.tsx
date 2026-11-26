@@ -18,6 +18,7 @@ import {
   petStageLabels,
   petStages,
   petTapReaction,
+  tombstoneArt,
   type PetColor,
   type PetReaction,
   type PetSpecies,
@@ -29,11 +30,10 @@ import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { HatchEgg, HatchShine } from "../components/pet/HatchEgg";
 import { PetColorPicker } from "../components/pet/PetColorPicker";
+import { PetFigure } from "../components/pet/PetFigure";
 import { PetPicture } from "../components/pet/PetPicture";
 import { PetSvg } from "../components/pet/PetSvg";
-import { TintedPicture } from "../components/pet/TintedPicture";
 import { useBillingSummary } from "../hooks/useBillingSummary";
-import { petImageUrl } from "../lib/petImages";
 import { playPetReaction, warmUpPetVoices } from "../lib/petSounds";
 import { userWorkspace } from "../lib/workspace";
 import {
@@ -175,9 +175,9 @@ function GrowthPath({ stage }: { stage: PetView["stage"] }) {
 }
 
 /**
- * A hatched pet the user can pet. A click answers by mood: hearts, a hop, and the species' happy
- * voice; five quick clicks make a healthy pet dance; a sick or fading pet answers weakly with its
- * sad voice. Purely a delight on this page; nothing is sent to the Worker.
+ * A hatched pet the user can pet. A click answers by mood: a hop and the species' happy voice;
+ * five quick clicks make a healthy pet dance in a shower of sparkles; a sick or fading pet answers
+ * weakly with its sad voice. Purely a delight on this page; nothing is sent to the Worker.
  */
 function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; name: string }) {
   const history = useRef(PET_TAP_HISTORY_START);
@@ -197,12 +197,22 @@ function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; na
     setTap((last) => ({ reaction: result.reaction, id: (last?.id ?? 0) + 1 }));
   };
 
+  const burst = tap ? petReactionBurst(tap.reaction) : [];
+
   return (
-    <button className="pet-pettable" type="button" aria-label={`Pet ${name}`} onClick={petIt}>
+    <button
+      className="pet-pettable"
+      type="button"
+      aria-label={`Pet ${name}`}
+      onClick={petIt}
+      // A click does not take focus, so a mouse tap never leaves a focus ring around the pet;
+      // keyboard users still reach it with Tab and see the ring.
+      onMouseDown={(event) => event.preventDefault()}
+    >
       <PetPicture pet={pet} size={220} tap={tap} />
-      {tap ? (
+      {tap && burst.length > 0 ? (
         <span key={tap.id} className="pet-hearts" aria-hidden="true">
-          {petReactionBurst(tap.reaction).map((glyph, index) => (
+          {burst.map((glyph, index) => (
             <span
               // The burst is fixed per reaction, so its order is stable.
               key={`${index}-${glyph.glyph}`}
@@ -252,10 +262,10 @@ function PetColorCatchUp({
           pet.stage === "egg" ? (
             <PetSvg art={eggArt(pet.species, 0, 0, color)} size={72} still />
           ) : (
-            <TintedPicture
+            <PetFigure
               species={pet.species}
               stage={pet.stage}
-              look="healthy"
+              health="healthy"
               color={color}
               size={72}
             />
@@ -429,13 +439,7 @@ export function PetPage() {
           <div className="pet-panel">
             {pet.data.diedAt ? (
               <div className="pet-memorial">
-                <img
-                  src={petImageUrl(null, "egg")}
-                  alt=""
-                  width={72}
-                  height={72}
-                  aria-hidden="true"
-                />
+                <PetSvg art={tombstoneArt()} size={72} still />
                 <div>
                   <strong>{pet.data.name ?? "Your last pet"} passed away</strong>
                   <p className="pet-note">
@@ -468,12 +472,6 @@ export function PetPage() {
         ) : (
           <div className="pet-panel pet-hero">
             <div className="pet-stage">
-              <span className="pet-stage-sparkles" aria-hidden="true">
-                <span>✦</span>
-                <span>★</span>
-                <span>✧</span>
-                <span>♥</span>
-              </span>
               {pet.data.stage === "egg" && pet.data.eggStreakDays >= pet.data.eggHatchDays ? (
                 <HatchEgg
                   species={pet.data.species}
@@ -509,7 +507,6 @@ export function PetPage() {
                   </span>
                 </span>
               )}
-              <span className="pet-stage-ground" aria-hidden="true" />
             </div>
             <div className="pet-title">
               <h2>{pet.data.name ?? petSpeciesLabels[pet.data.species]}</h2>

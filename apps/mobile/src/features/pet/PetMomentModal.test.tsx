@@ -64,7 +64,7 @@ jest.mock("@/features/updates/play-store", () => {
   };
 });
 
-const seenBaby = { species: "panda", stage: "baby", unwell: false, ready: false, diedAt: null };
+const seenBaby = { species: "hippo", stage: "baby", unwell: false, ready: false, diedAt: null };
 const remember = (date: string) =>
   mockStorage.set("zoption-mobile-pet-seen-v1", JSON.stringify({ ...seenBaby, date }));
 

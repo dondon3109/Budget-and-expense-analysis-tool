@@ -32,7 +32,7 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 | `src/petMoment.ts`             | When the pet pop-up opens (ready egg, growth, sickness, death, or the day's first open)                    |
 | `src/petCopy.ts`               | Pet wording both clients render                                                                            |
 | `src/petReaction.ts`           | How a hatched pet answers a tap: the combo dance, the floating glyphs, and its voice cue                   |
-| `src/petArt/`                  | The egg SVG art, its streak and tap cracks, the hatch shine, the pet's mood, and pet color tints           |
+| `src/petArt/`                  | The egg and vinyl figure SVG art, egg cracks, the hatch shine, the tombstone, the pet's mood, color tints  |
 | `src/subscriptions.ts`         | Subscription billing dates, monthly cost, and Subscription ROI (cost per use, idle, week streak)           |
 | `src/interest.ts`              | Automatic interest credit dates and amounts in Asia/Manila time                                            |
 | `src/transactions.ts`          | Default account choice, balance adjustment, and `formatMinorAmount` for input fields                       |

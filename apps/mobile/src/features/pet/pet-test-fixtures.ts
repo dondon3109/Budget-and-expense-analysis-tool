@@ -3,7 +3,7 @@ import type { PetView } from "@zoption/shared";
 /** A healthy hatched Baby; tests override what they need. */
 export const babyPet: PetView = {
   enabled: true,
-  species: "panda",
+  species: "hippo",
   name: "Bao",
   color: "original",
   stage: "baby",

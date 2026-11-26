@@ -29,8 +29,8 @@
   text-align: center;
 }
 
-/* The pet's spotlight: a soft disc to stand on, a ground shadow, and a few sparkles drifting
-   around it. Flat fills only, so it stays within the no-gradients rule. */
+/* The pet stands on the plain card: no disc or decorations, so the figure (and its own contact
+   shadow) is the only thing in view. */
 .pet-stage {
   position: relative;
   display: grid;
@@ -40,83 +40,15 @@
   isolation: isolate;
 }
 
-.pet-stage::before {
-  content: "";
-  position: absolute;
-  inset: 6%;
-  z-index: -1;
-  border-radius: 50%;
-  background: var(--brand-soft);
-  box-shadow: inset 0 -10px 0 color-mix(in srgb, var(--brand) 10%, transparent);
-}
-
-.pet-stage-ground {
-  position: absolute;
-  bottom: 16%;
-  width: 44%;
-  height: 7%;
-  z-index: -1;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--brand-strong) 16%, transparent);
-}
-
-.pet-stage-sparkles span {
-  position: absolute;
-  color: var(--amber);
-  font-size: 22px;
-  animation: pet-sparkle 3.2s ease-in-out infinite alternate;
-}
-
-.pet-stage-sparkles span:nth-child(1) {
-  top: 8%;
-  left: 10%;
-}
-
-.pet-stage-sparkles span:nth-child(2) {
-  top: 14%;
-  right: 8%;
-  color: var(--plum);
-  font-size: 18px;
-  animation-delay: -1.1s;
-}
-
-.pet-stage-sparkles span:nth-child(3) {
-  bottom: 22%;
-  left: 4%;
-  color: var(--info);
-  animation-delay: -2s;
-}
-
-.pet-stage-sparkles span:nth-child(4) {
-  right: 6%;
-  bottom: 26%;
-  color: var(--expense);
-  font-size: 16px;
-  animation-delay: -0.6s;
-}
-
-@keyframes pet-sparkle {
-  from {
-    opacity: 0.45;
-    transform: translateY(4px) scale(0.85) rotate(-8deg);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(-6px) scale(1.1) rotate(8deg);
-  }
-}
-
 .pet-pettable {
   position: relative;
   padding: 0;
   border: 0;
+  /* Rounds the keyboard focus ring so it reads as a soft halo, not a box. */
+  border-radius: 32px;
   background: none;
   cursor: pointer;
   transition: transform 160ms ease;
-}
-
-.pet-pettable:hover {
-  transform: scale(1.03) rotate(-1.5deg);
 }
 
 .pet-pettable:active {
@@ -477,7 +409,6 @@
     inset 0 -3px 0 rgba(74, 37, 166, 0.1);
 }
 
-:root[data-reduce-motion] .pet-stage-sparkles span,
 :root[data-reduce-motion] .pet-hearts span {
   animation: none;
 }

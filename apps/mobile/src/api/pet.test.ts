@@ -6,7 +6,7 @@ import { checkInPet, choosePetEgg, getPet, setPetColor, setPetEnabled } from "./
 
 const view = {
   enabled: true,
-  species: "panda",
+  species: "hippo",
   name: "Bao",
   color: "original",
   stage: "egg",
@@ -35,7 +35,7 @@ describe("pet api", () => {
 
     await expect(getPet(api)).resolves.toEqual(view);
     await checkInPet(api);
-    await choosePetEgg(api, "panda", "Bao", "pink");
+    await choosePetEgg(api, "hippo", "Bao", "pink");
     await setPetEnabled(api, false);
     await setPetColor(api, "mint");
 
@@ -51,7 +51,7 @@ describe("pet api", () => {
       `${base}/egg`,
       expect.objectContaining({
         method: "PUT",
-        body: JSON.stringify({ species: "panda", name: "Bao", color: "pink" }),
+        body: JSON.stringify({ species: "hippo", name: "Bao", color: "pink" }),
       }),
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(

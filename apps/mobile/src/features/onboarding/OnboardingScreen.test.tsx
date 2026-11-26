@@ -91,7 +91,7 @@ describe("OnboardingScreen", () => {
   });
 
   it("goes from cash through Make it yours and egg, then closes", async () => {
-    jest.mocked(choosePetEgg).mockResolvedValue({ ...babyPet, stage: "egg", name: "Spike" });
+    jest.mocked(choosePetEgg).mockResolvedValue({ ...babyPet, stage: "egg", name: "Bubbles" });
     await saveCash("1500.50");
     expect(saveOnboardingCash).toHaveBeenCalledWith(
       { accessToken: "token" },
@@ -104,13 +104,13 @@ describe("OnboardingScreen", () => {
     await fireEvent.press(screen.getByRole("radio", { name: /Yes, give me a pet/ }));
     await fireEvent.press(screen.getByRole("button", { name: "Pick my egg" }));
 
-    await fireEvent.press(await screen.findByRole("radio", { name: "Hedgehog egg" }));
-    await fireEvent.changeText(screen.getByLabelText("Name your pet"), "Spike");
-    await fireEvent.press(screen.getByRole("button", { name: "Choose the Hedgehog egg" }));
+    await fireEvent.press(await screen.findByRole("radio", { name: "Hippo egg" }));
+    await fireEvent.changeText(screen.getByLabelText("Name your pet"), "Bubbles");
+    await fireEvent.press(screen.getByRole("button", { name: "Choose the Hippo egg" }));
     expect(choosePetEgg).toHaveBeenCalledWith(
       { accessToken: "token" },
-      "hedgehog",
-      "Spike",
+      "hippo",
+      "Bubbles",
       "original",
     );
     expect(setPetEnabled).not.toHaveBeenCalled();

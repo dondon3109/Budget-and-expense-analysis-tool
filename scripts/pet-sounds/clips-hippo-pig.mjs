@@ -1,5 +1,5 @@
-// Per-stage happy and sad vocalisations for hippo and pig (16 clips).
-import { animalCall, legendShimmer, mix, nasalSnuffle } from "./dsp.mjs";
+// Per-stage happy and sad vocalisations for hippo and pig, plus the shared sparkle (17 clips).
+import { animalCall, chimeNote, legendShimmer, mix, nasalSnuffle } from "./dsp.mjs";
 
 function pigOink({
   duration,
@@ -743,5 +743,14 @@ export function hippoAndPigClips() {
         0.65,
       ],
     ]),
+
+    // --- SPARKLE: crisp 6-note celesta arpeggio (C6 E6 G6 B6 D7 G7) for dances and hatches ---
+    sparkle: mix(
+      [1046.5, 1318.5, 1568.0, 1975.5, 2349.3, 3136.0].map((frequency, index) => [
+        index * 0.042,
+        chimeNote(frequency, 0.25 - index * 0.008),
+        0.78 + index * 0.04,
+      ]),
+    ),
   };
 }

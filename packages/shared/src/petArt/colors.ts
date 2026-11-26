@@ -1,9 +1,8 @@
 import type { PetColor } from "../pet";
 
-// A pet color recolors only the pet's body (fur, skin, feathers): the pictures through their body
-// masks (scripts/generate-pet-masks.mjs), the SVG eggs through their body fills. Inside the body,
-// each pixel's luminance picks a point between the color's dark and light ends, so shading and
-// texture survive and every species turns the same pink. Art colors live here, not in the tokens.
+// A pet color recolors only the pet's body (fur, skin, feathers): the body fills of the eggs and
+// the figures. Each body color's luminance picks a point between the color's dark and light ends,
+// so shading survives and every species turns the same pink. Art colors live here, not in the tokens.
 
 type Rgb = readonly [number, number, number];
 
@@ -15,29 +14,15 @@ const ramps: Record<Exclude<PetColor, "original">, { dark: Rgb; light: Rgb }> = 
   peach: { dark: [0.7, 0.33, 0.16], light: [1, 0.93, 0.85] },
 };
 
-// Rec. 709 luminance, the weights SVG's own luminance matrix uses.
+// Rec. 709 luminance.
 const LUMINANCE: Rgb = [0.2126, 0.7152, 0.0722];
-
-/**
- * The 4x5 `feColorMatrix type="matrix"` values (row-major, sRGB) that tint a picture to `color`,
- * or null for the original art. Apply it with color-interpolation-filters="sRGB" under the mask.
- */
-export function petColorMatrix(color: PetColor): number[] | null {
-  if (color === "original") return null;
-  const { dark, light } = ramps[color];
-  const row = (channel: 0 | 1 | 2) => {
-    const span = light[channel] - dark[channel];
-    return [...LUMINANCE.map((weight) => weight * span), 0, dark[channel]];
-  };
-  return [...row(0), ...row(1), ...row(2), 0, 0, 0, 1, 0];
-}
 
 const toHex = (value: number) =>
   Math.round(Math.min(1, Math.max(0, value)) * 255)
     .toString(16)
     .padStart(2, "0");
 
-/** `#RRGGBB` tinted the way `petColorMatrix` tints a pixel of that color. */
+/** `#RRGGBB` in a pet color, keeping its lightness. */
 export function tintPetHex(hex: string, color: PetColor): string {
   if (color === "original") return hex;
   const { dark, light } = ramps[color];

@@ -61,7 +61,7 @@ async function hatch(harness: Harness, tenantId: string) {
   await petRepository.chooseEgg(
     harness.env,
     tenantId,
-    { species: "panda", name: "Bao", color: "original" },
+    { species: "hippo", name: "Bao", color: "original" },
     new Date(T0),
   );
   for (let day = 0; day < 7; day += 1) {
@@ -171,7 +171,7 @@ describe("pet routes", () => {
     expect(
       (
         await call("/api/app/pet/egg", ALICE, "PUT", {
-          species: "panda",
+          species: "hippo",
           name: "Bao",
           color: "original",
         })
@@ -425,10 +425,10 @@ describe("pet activity", () => {
 
     await petRepository.setEnabled(env, tenantId, false, new Date(hatchedAt + HOUR));
     const off = await petRepository.get(env, tenantId, new Date(hatchedAt + 10 * DAY));
-    expect(off).toMatchObject({ enabled: false, species: "panda", healthState: "healthy" });
+    expect(off).toMatchObject({ enabled: false, species: "hippo", healthState: "healthy" });
 
     const on = await petRepository.setEnabled(env, tenantId, true, new Date(hatchedAt + 10 * DAY));
-    expect(on).toMatchObject({ enabled: true, species: "panda", health: 100 });
+    expect(on).toMatchObject({ enabled: true, species: "hippo", health: 100 });
     expect(
       await petRepository.get(env, tenantId, new Date(hatchedAt + 10 * DAY + 30 * HOUR)),
     ).toMatchObject({ healthState: "sick" });

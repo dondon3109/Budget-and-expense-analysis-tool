@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { petColors, petSpecies } from "../src/pet";
-import { petMood } from "../src/petArt";
-import { petColorMatrix, tintPetHex } from "../src/petArt/colors";
+import { petSpecies, type PetColor } from "../src/pet";
+import { petFigureHealth, petMood } from "../src/petArt";
+import { tintPetHex } from "../src/petArt/colors";
 import { eggArt, eggCracks } from "../src/petArt/eggs";
+import { petFigureArt, tombstoneArt } from "../src/petArt/figures";
+import type { PetLayer } from "../src/petArt/shapes";
 import type { PetView } from "../src/schemas/pet";
 
 describe("pet art", () => {
@@ -26,47 +28,79 @@ describe("pet art", () => {
   });
 });
 
-describe("pet colors", () => {
-  it("tints an egg's body fills the way the picture matrix tints a pixel", () => {
-    const fills = (color: (typeof petColors)[number]) =>
-      eggArt("panda", 0, 0, color)
-        .flatMap((layer) => layer.shapes)
-        .map((shape) => shape.fill);
-    const pink = fills("pink");
-    // The black patches turn pink; the white shell and green bamboo stay as drawn.
-    expect(pink).toContain(tintPetHex("#24242C", "pink"));
-    expect(pink).not.toContain("#24242C");
-    expect(pink).toContain("#FAFAF5");
-    expect(pink).toContain("#6CBF45");
-    expect(fills("original")).toContain("#24242C");
+describe("pet figures", () => {
+  const stages = ["baby", "juvenile", "adult", "legend"] as const;
+  const fills = (layers: PetLayer[]) =>
+    layers
+      .flatMap((layer) => layer.shapes)
+      .flatMap((shape) =>
+        typeof shape.fill === "object"
+          ? shape.fill.stops.map((stop) => stop.color)
+          : shape.fill
+            ? [shape.fill]
+            : [],
+      );
 
-    for (const color of petColors) {
-      const matrix = petColorMatrix(color);
-      if (!matrix) {
-        expect(color).toBe("original");
-        continue;
+  it("draws every species and stage, with a blink only when healthy", () => {
+    for (const species of petSpecies)
+      for (const stage of stages) {
+        const healthy = petFigureArt(species, stage, "healthy", null);
+        expect(healthy.body.flatMap((layer) => layer.shapes).length).toBeGreaterThan(8);
+        expect(healthy.eyes.shapes.length).toBeGreaterThan(0);
+        expect(healthy.blink?.shapes.length).toBeGreaterThan(0);
+        expect(petFigureArt(species, stage, "sick", null).blink).toBeNull();
+        expect(petFigureArt(species, stage, "fading", null).blink).toBeNull();
       }
-      const rgb = [0x24, 0x24, 0x2c].map((value) => value / 255);
-      const channel = (row: number) =>
-        Math.round(
-          Math.min(
-            1,
-            rgb.reduce(
-              (sum, value, index) => sum + value * matrix[row * 5 + index]!,
-              matrix[row * 5 + 4]!,
-            ),
-          ) * 255,
-        );
-      const hex = `#${[0, 1, 2].map((row) => channel(row).toString(16).padStart(2, "0")).join("")}`;
-      expect(hex).toBe(tintPetHex("#24242C", color));
-    }
+    expect(tombstoneArt().length).toBeGreaterThan(0);
+  });
+
+  it("scales younger stages around the feet", () => {
+    expect(petFigureArt("pig", "baby", "healthy", null).body[0]?.transform).toContain(
+      "scale(0.82)",
+    );
+    expect(petFigureArt("pig", "adult", "healthy", null).body[0]?.transform).toBeUndefined();
+  });
+
+  it("recolors the body and keeps the rest", () => {
+    const original = fills(petFigureArt("hippo", "adult", "healthy", "original").body);
+    const pink = fills(petFigureArt("hippo", "adult", "healthy", "pink").body);
+    expect(fills(petFigureArt("hippo", "adult", "healthy", null).body)).toEqual(original);
+    expect(original).toContain("#A9A1CB");
+    expect(pink).toContain(tintPetHex("#A9A1CB", "pink"));
+    expect(pink).not.toContain("#A9A1CB");
+    // The pink inner ears are drawn the same in every color.
+    expect(pink.filter((color) => color === "#EAA8C0")).toHaveLength(
+      original.filter((color) => color === "#EAA8C0").length,
+    );
+  });
+
+  it("only uses six-digit hex colors", () => {
+    const art = petFigureArt("hippo", "legend", "sick", "lilac");
+    const colors = fills([art.shadow, ...art.body, art.eyes]);
+    for (const color of colors) expect(color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+  });
+});
+
+describe("pet colors", () => {
+  it("tints only an egg's body fills", () => {
+    const fills = (color: PetColor) =>
+      eggArt("hippo", 0, 0, color)
+        .flatMap((layer) => layer.shapes)
+        .map((shape) => shape.fill)
+        .filter((fill) => typeof fill === "string");
+    const pink = fills("pink");
+    // The lilac shell turns pink; the water at its base stays as drawn.
+    expect(pink).toContain(tintPetHex("#A7A1C6", "pink"));
+    expect(pink).not.toContain("#A7A1C6");
+    expect(pink).toContain("#86CDEB");
+    expect(fills("original")).toContain("#A7A1C6");
   });
 });
 
 describe("petMood", () => {
   const baby = {
     enabled: true,
-    species: "panda",
+    species: "hippo",
     name: "Bao",
     color: "original",
     stage: "baby",
@@ -86,5 +120,8 @@ describe("petMood", () => {
     expect(petMood({ ...baby, stage: "legend", healthState: "sick" })).toBe("sick");
     expect(petMood({ ...baby, healthState: "fading" })).toBe("fading");
     expect(petMood({ ...baby, stage: "egg", healthState: null })).toBe("egg");
+    expect(petFigureHealth(baby)).toBe("healthy");
+    expect(petFigureHealth({ ...baby, healthState: "sick" })).toBe("sick");
+    expect(petFigureHealth({ ...baby, healthState: "fading" })).toBe("fading");
   });
 });

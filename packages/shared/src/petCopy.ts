@@ -16,11 +16,7 @@ import type { PetView } from "./schemas/pet";
 // Pet wording both clients render, so web and mobile describe the pet the same way.
 
 export const petSpeciesLabels: Record<PetSpecies, string> = {
-  hedgehog: "Hedgehog",
   pig: "Pig",
-  hamster: "Hamster",
-  penguin: "Penguin",
-  panda: "Panda",
   hippo: "Hippo",
 };
 

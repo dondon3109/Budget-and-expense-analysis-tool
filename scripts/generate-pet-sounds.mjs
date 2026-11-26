@@ -1,4 +1,4 @@
-// Synthesizes the 49 pet sound effects: a happy and a sad vocalisation for every species and
+// Synthesizes the 17 pet sound effects: a happy and a sad vocalisation for every species and
 // hatched stage (baby, juvenile, adult, legend), plus the shared sparkle chime played on dances
 // and hatches. Output files are committed, so run this whenever tuning the vocal models and
 // listen to the result:
@@ -13,9 +13,7 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { hamsterAndHedgehogClips } from "./pet-sounds/clips-hamster-hedgehog.mjs";
 import { hippoAndPigClips } from "./pet-sounds/clips-hippo-pig.mjs";
-import { pandaAndPenguinClips } from "./pet-sounds/clips-panda-penguin.mjs";
 import { SAMPLE_RATE, encodeWav, finalizeClip, measureLoudness } from "./pet-sounds/dsp.mjs";
 
 export { SAMPLE_RATE, encodeWav, measureLoudness };
@@ -25,11 +23,7 @@ const MOBILE_ASSET_MAP = "apps/mobile/src/features/pet/pet-sound-assets.ts";
 
 /** Every clip by file name (without `.wav`), loudness-matched and peak-limited in [-1, 1]. */
 export function petClips() {
-  const raw = {
-    ...hippoAndPigClips(),
-    ...pandaAndPenguinClips(),
-    ...hamsterAndHedgehogClips(),
-  };
+  const raw = hippoAndPigClips();
 
   return Object.fromEntries(
     Object.entries(raw)

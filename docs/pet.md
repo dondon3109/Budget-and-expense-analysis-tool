@@ -6,8 +6,10 @@ the web it has its own page (`/app/pet`) in the sidebar. The rules live in
 
 ## Rules
 
-- The user picks one of six eggs (hedgehog, pig, hamster, penguin, panda, hippo) and names it (1 to
-  20 characters, trimmed; `PET_NAME_MAX_LENGTH`). The name is kept after death for the memorial
+- The user picks one of two eggs (pig or hippo) and names it (1 to
+  20 characters, trimmed; `PET_NAME_MAX_LENGTH`). A pet stored as a retired species (hedgehog,
+  hamster, penguin, or panda; `retiredPetSpecies`) is read back as a pig with its name, color,
+  points, and stage, so no stored pet fails to load. The name is kept after death for the memorial
   and replaced by the next egg's. Pets stored before names existed go by their species label. An egg is ready
   after 7 consecutive Manila days with an app check-in; a missed day before then resets the count.
   A ready egg stays ready however many days pass, until the user taps it 10 times
@@ -65,21 +67,22 @@ pet is alive), `POST /api/app/pet/hatch` (409 `egg_not_ready` unless a ready egg
 ## Pet page
 
 Web `pages/PetPage.tsx` and mobile `features/pet/PetScreen.tsx` (playful parts in
-`PetPlayground.tsx`) show the same pieces: the pet in a spotlight (a flat disc, ground shadow, and
-drifting sparkles) with a tap-to-pet hint, status chips (egg streak, or points, health, and today's
+`PetPlayground.tsx`) show the same pieces: the pet on stage with a tap-to-pet hint (web: the plain
+card, so the figure and its own contact shadow are all that show; mobile: a spotlight of a flat
+disc, ground shadow, and drifting sparkles), status chips (egg streak, or points, health, and today's
 points), chunky meters, health and heal-cost hints (`petHealthHint`), a tombstone memorial card
 after a pet passes away (`diedAt`), the Egg to Legend growth path (`petStageEmoji`), and the
 earning rules as tiles (`petEarningRows`).
 
 Clicking or tapping a hatched pet answers by mood (`petReaction.ts` in `@zoption/shared`): a
-healthy pet hops and sends up hearts in its species' and stage's happy voice, and five taps within
-two seconds make it dance with a shower of hearts, a slight celebratory pitch lift, and a staggered
+healthy pet hops in its species' and stage's happy voice (no hearts float up), and five taps within
+two seconds make it dance with a shower of sparkles, a slight celebratory pitch lift, and a staggered
 sparkle jingle (then three seconds before the next dance). A sick pet wobbles with a 🤒 and a
 fading one barely stirs with a 💤, both in that stage's sad voice, quieter and slightly slower when
 fading. Every species and hatched stage (Baby, Juvenile, Adult, Legend) has its own happy and sad clip,
-growing from baby peeps and yips to full adult calls (like a hippo bellow-roar or emperor penguin
-trumpet) and resonant Legend calls with a subtle chime flourish.
-`scripts/generate-pet-sounds.mjs` (backed by `scripts/pet-sounds/`) synthesizes all 49 loudness-matched
+growing from baby squeaks and grunts to full adult calls (like a hippo bellow-roar or a pig's
+oink) and resonant Legend calls with a subtle chime flourish.
+`scripts/generate-pet-sounds.mjs` (backed by `scripts/pet-sounds/`) synthesizes all 17 loudness-matched
 clips into `apps/mobile/assets/sounds/pet/` and `apps/web/public/pet/sounds/` and writes the mobile
 static asset map (`apps/mobile/src/features/pet/pet-sound-assets.ts`). The phone also buzzes,
 lightly or with a success pattern on a dance; the web does not. The voice follows the Sound effects
@@ -109,61 +112,124 @@ every identity change, and only after first-run setup), the web in local storage
 ## Art
 
 Eggs are SVG shape data (`packages/shared/src/petArt/eggs.ts`, drawn by mobile `EggSprite.tsx`
-and web `components/pet/PetSvg.tsx`), so cracks can spread with the streak and with each tap on a
+and web `components/pet/PetSvg.tsx`, through the same shape renderers as the figures: mobile
+`PetArtSvg.tsx`, web `PetLayers`), so cracks can spread with the streak and with each tap on a
 ready egg. Every pair of taps adds a crack and every tap shakes it harder; once the Worker accepts the hatch, the shell bursts in a
 shared light (`hatchShineLayer`) alongside `playPetHatch` (sparkle plus baby happy chirp), and a
 failed hatch settles the egg back to zero taps.
 
-Hatched pets and the pop-up use pictures (mobile `PetPicture.tsx`, web `components/pet/PetPicture.tsx`):
+Hatched pets are soft vinyl-toy figures drawn from shape data in
+`packages/shared/src/petArt/figures.ts` (`petFigureArt`), so the web (`components/pet/PetFigure.tsx`)
+and mobile (`PetPicture.tsx`, `PetFigureView.tsx`) draw the same figure with no image files. The
+tombstone (`tombstoneArt`) is drawn the same way; the pop-up shows the egg (with its streak cracks),
+the figure, or the tombstone.
 
-- 31 base pictures made with the Grok CLI's `image_gen` tool (`grok -p`): each species' egg and
-  four stages, plus a shared tombstone. The pop-up shows the egg picture; the pet page draws the
-  SVG egg.
-- Three looks of each hatched stage (72), made by editing the base picture so the character and
-  framing carry over: `-blink` (eyes closed, mouth unchanged), `-sick` (droopy eyes, thermometer,
-  sweat drop, paler), and `-fading` (lying flat, eyes nearly closed, washed out). Hedgehog, pig, and
-  hamster used the Grok CLI's `image_edit`; penguin, panda, and hippo used Gemini's image model,
-  through the Antigravity CLI's (`agy -p`) `image-generator` subagent or, for nine hippo looks, the
-  Gemini Mac app, with the same prompts. The Legend pictures and their looks were remade in the
-  Gemini Mac app with an outfit each (below).
-- A healthy pet breathes and blinks: its `-blink` picture flashes on top for about 130ms every
-  3.4s. A blink is cut with its base picture's own mask and crop, so the two line up pixel for
-  pixel. A sick pet shows `-sick` and shivers; a fading pet shows `-fading` and barely breathes.
-- All live in `apps/mobile/assets/pet/` and `apps/web/public/pet/` as 512px WebP with the white
-  background flood-filled to transparent from the edges.
-
-Every prompt ends with the same style: "soft flat vector illustration with clean dark brown outlines
-and subtle cel shading, app mascot sticker look, centered, full body, facing the viewer, plain solid
-white background, no ground, no text, no gradient background, square 1:1". The subject names the
-species with its palette, and the stage reads as follows.
-
-- Egg: the species' egg pattern (see `petArt/eggs.ts`), standing upright with a tiny smiling face.
-- Baby: tiny and extra round, oversized head, big sparkly eyes, sitting, sweet small smile.
-- Juvenile: small and playful, standing with a cheerful open smile.
-- Adult: round heavy body, gentle closed-mouth smile, standing.
-- Legend: fully grown, mature and dignified, upright and proud with a calm smile, dressed in a
-  golden outfit of its own, with no glow, aura, or sparkles: hedgehog in silver armor with a red cape
-  and gold shield, pig in a top hat, monocle, and vest holding a gold coin, hamster in a crown and
-  ermine cloak holding a golden seed, penguin in a crown and ermine cape with a golden fish scepter,
-  panda in a bamboo hat and red jacket holding a golden bamboo staff, hippo in a lotus crown and
-  sash holding a golden lotus.
-- Tombstone: a small rounded light grey stone, blank face, a tiny pink flower and grass tuft.
+- Style: a desk-toy figure with a big round head on a tiny body, matte rather than shiny. Every
+  rounded part is a soft radial gradient lit from the upper left (a bright spot, the base tone, a
+  shaded edge, and a faint bounce light at the rim), with a faint sheen on the head and belly, soft
+  shading under the chin, light blush, a small "w" mouth, no outlines, and a soft contact shadow on
+  the ground. Eyes are large and glassy: dark at the top, warm brown low down, with a big window
+  reflection and a small glint. Shadows shade toward a warm plum rather than black. Eggs use the
+  same lighting over their pattern, with a thin warm outline so the cracks still read.
+- One template: the stage sets the proportions (Baby sits, with the biggest head and eyes; Juvenile
+  and Adult stand a little taller with slightly smaller eyes; Legend is the Adult in an outfit), and
+  younger stages are scaled around the feet. Two stubby front legs stand under the body; only a
+  Legend's prize-holding arms stick out at the sides. The species adds its parts: pig floppy ears
+  and snout, hippo wide head, small round ears, muzzle, and nostrils.
+- Legend outfits, all gold with no glow or sparkles: pig in a top hat and purple sash holding a
+  gold coin, hippo in a lotus crown and teal sash holding a golden lotus.
+- Health looks: a sick pet goes pale and slightly green, with half-closed droopy eyes, a wavy
+  mouth, a sweat drop, and a thermometer; a fading pet washes out toward grey, slumps lower and
+  wider, and its eyes are flat lines.
+- Motion (web `PetFigure.css`, mobile `PetPicture.tsx`, the same keyframes): a healthy pet hops
+  every 2.6s with squash and stretch (squash before, stretch in the air, squash on landing, then
+  settle) while its ground shadow shrinks and fades under it, and blinks (closed eyes for about
+  130ms every 3.4s). A sick pet shivers and a fading one barely breathes. A tap's reaction plays on
+  top. Reduced motion stills all of it.
+- Prototype, web only: a healthy Baby pig draws as a live 3D figure instead
+  (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is modeled on a
+  soft clay toy: a big round head with full cheeks, wider than it is tall and domed on top, on a
+  chubby round body nearly as wide as the head, widest at the hips and narrowing a little toward
+  the neck (each an egg-like form,
+  `egg` in `pigShape.ts`, so no outline has flat sides), with a round tummy swelling out of the
+  belly between the arms so the front reads as a soft mound rather than a flat panel; puffy felt ears, mirror images of each
+  other, each a short plate rising from the head's top corner to a crisp rounded fold, then a
+  thick flap turned over it that juts forward and out and narrows to a rounded point, with the
+  base showing behind it (both legs are chains of short petals along one fold line, so the fold
+  stays one clean edge and the flap never crumples); soft round arms that come out of the body's sides under the cheeks (the shoulders
+  sunk into the body, so their tops never rise toward the neck in a shrug), bow out along the
+  sides as they come down (forming the figure's outline there, so the body itself is a little
+  narrower than the head), and turn in across the belly, tapering only a little (a fat shoulder
+  over a thin hand reads as muscle) to a small pointed
+  rose-brown hoof that continues the hand down and in onto the belly well above the feet (so the
+  hoof and sole colors never touch; the whole end of the hand is brown, measured along the
+  forearm), split by a soft groove where the toes part. Each arm is one smooth tube along a curve
+  (its center line smoothed after it settles onto the body, so no joint shows as a lump), with no
+  elbow corner, and only its shoulder melts into the body: from partway down the upper arm the
+  arm rests on the belly with its center line about half its radius off the surface (`armRest`,
+  pushed mostly forward and never up, so the shoulders do not rise into a shrug), so most of its
+  round shows and it meets the body in a narrow crease,
+  standing apart as a limb. The figure also has stubby legs stretched forward showing round rose-brown
+  soles inside a pink rim (each sole is painted on the leg's own surface, so a hand resting close
+  by never bites into its color); wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
+  top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The
+  proportions (`SHAPE` in `pigShape.ts`) were fitted to a photo of the reference toy by matching
+  its outline (about 94% overlap; most of the rest is the photo's floor shadow and a pixel of edge
+  all round). The shape is one signed distance field (`pet3d/pigShape.ts`) whose parts melt into
+  each other with narrow creases (neck, arms, and legs), meshed
+  once per page into a single seamless surface (`pet3d/sdfMesh.ts`, surface nets with normals from
+  the field's gradient, about 900ms on a laptop) and colored per vertex (snout, nostrils, blush)
+  from the body color (`PIG_BODY`, tinted by the pet color). The mesh is then relaxed
+  (`relaxMesh`): its grid steps are smoothed out without shrinking it, and its normals are
+  averaged with their neighbors' twice, enough to hide the grid but not to blur the creases. The
+  snout keeps its exact normals so the nostrils stay crisp. The hooves and soles are painted by the
+  material instead: each vertex carries a smooth hoof field, and the shader cuts the hoof color
+  where it crosses 0.5, antialiased over one pixel, so their edges stay as sharp as the toy's
+  between vertices rather than fading across the triangles. The creases are shaded rather than drawn: each vertex stores how
+  much nearer one of the two nearest parts is than the other (0 on the seam, changing linearly
+  across it), and the shader dims the light reaching the fold, darkest at the seam and fading out
+  with no edge. The shadow reaches well into the part pressed on (the body under the chin, an
+  arm, or a leg; the head under an ear) and only a little up the part pressing, and it dims the
+  bounced and scattered light fully but the direct light only partly, so a fold the key light
+  shines into stays lighter, as on the toy. It deepens the pink toward rose rather than grey
+  (`CREASE` in `pigScene.ts`), fades out over the shoulder, where the arm melts in, and skips the
+  snout. The groove round each hoof cap and sole and the one down the hoof where the toes part
+  are shaded the same way. The material is matte with a
+  light velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
+  scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
+  saturation. Its lights wrap just past the side they face and fade out flat, so no light's edge
+  draws a hard line across a curve such as the ear's fold, while the forms still shade firmly
+  enough to read crisp. It is lit like a white studio
+  product shot, with a strong key low from the right
+  leaving the left side in warm shade, a glow rimming the right edge from behind (from the side it
+  would shine through the body onto the inside of the left arm), a bounce from the floor that
+  keeps the chin crease light, and a contact shadow. There is no ambient occlusion pass: the crease
+  shading darkens the folds without its screen-space noise, which showed as grainy streaks along
+  the arms and chin. The lighting and colors were fitted to the same photo. A faint light high
+  above casts the short floor shadow (from the low key it would run off the canvas); the figure
+  takes no shadow itself, because a shadow map speckles its curved surface. The mesh is
+  skinned to a rig (head, ears, snout, arms, legs; weights blended across each crease so a bend
+  stays soft) so it reads as alive: the ears, snout, and head ride damped springs that follow the body a beat late and wobble as they
+  settle, and the mouth opens. It stays put when idle
+  (breathing, a wandering head, swaying ears with an occasional flick, a nose twitch, a blink). A
+  tap's reaction plays inside the scene from the same `PET_REACTION_MOTION` keys: the body hops
+  and tilts while the legs lift and the arms flap (and paddle in a dance), the ears trail, the snout squishes on
+  landing, and a happy tap opens the mouth and squints the eyes. The canvas itself never moves. `PetModel`
+  picks the 3D or SVG figure for both the pet page and the pet pop-up, so the look never switches
+  between them; while three.js loads the space stays empty instead of flashing the SVG. three.js
+  loads lazily only for that pet, the pop-up and reduced motion render one still frame, and a
+  browser without WebGL2 keeps the SVG figure.
+- The figure is returned in parts (`shadow`, `body`, `eyes`, `blink`) so the shadow stays on the
+  ground while the body moves and the eyes can swap for a blink.
 
 ### Colors
 
-A pet color changes only the body (fur, skin, feathers), so cheeks, bellies, eyes, outlines, and
-Legend outfits stay as drawn, and Pink is the same pink on every species, black panda patches
-included. Each body pixel's luminance picks a point between the color's dark and light ends
-(`packages/shared/src/petArt/colors.ts`), so shading survives.
-
-- Pictures: `scripts/generate-pet-masks.mjs` writes a 256px body mask per picture to
-  `apps/web/public/pet/masks/` and `apps/mobile/assets/pet/masks/` (plus the mobile import map
-  `pet-masks.ts`), picking body pixels by per-species hue, lightness, and saturation bands, with
-  paler bands for sick and fading looks. Rerun it after a picture changes and look at the result.
-  The web (`TintedPicture.tsx`) and mobile (`TintedPetImage.tsx`) draw the picture, then a copy cut
-  to the mask and run through `petColorMatrix` as an sRGB `feColorMatrix`: CSS `mask-image` with
-  an SVG filter on the web, a `react-native-svg` `Mask` and `Filter` on mobile.
-- SVG eggs: `eggArt` tints the species' body fills with `tintPetHex`, the same math.
+A pet color changes only the body (skin), so cheeks, bellies, eyes, and Legend
+outfits stay as drawn, and Pink is the same pink on both species.
+`tintPetHex` (`packages/shared/src/petArt/colors.ts`) maps a body color's luminance onto the
+color's dark-to-light ramp, so shading survives: eggs tint their body fills, and figures tint the
+species' base body color before deriving its shading (pig and hippo derive their snout, muzzle,
+and belly from the tinted body too).
 
 ## Notifications
 
