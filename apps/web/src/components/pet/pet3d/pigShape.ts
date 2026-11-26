@@ -45,11 +45,11 @@ const SHAPE = {
   headRz: 0.92,
   headTaper: 0.21,
   headP: 2.2,
-  bodyY: 0.71,
-  bodyRx: 1.12,
-  bodyRy: 0.9,
+  bodyY: 0.705,
+  bodyRx: 1.135,
+  bodyRy: 1.11,
   bodyRz: 1.0,
-  bodyTaper: 0.18,
+  bodyTaper: 0.12,
   bodyP: 2,
   // A round tummy swelling out of the belly's front between the arms, melted in over a wide blend.
   tummyY: 0.66,
@@ -60,29 +60,29 @@ const SHAPE = {
   tummyBlend: 0.3,
   // Each arm follows a curve from the shoulder, bent toward the elbow point (which it does not
   // reach), to the wrist on the belly.
-  shoulderX: 0.64,
-  shoulderY: 1.06,
-  shoulderZ: 0.42,
+  shoulderX: 0.61,
+  shoulderY: 0.95,
+  shoulderZ: 0.36,
   elbowX: 0.76,
-  elbowY: 0.9,
+  elbowY: 0.78,
   elbowZ: 0.8,
   wristX: 0.38,
   wristY: 0.76,
   wristZ: 1,
-  armR: 0.32,
-  handR: 0.24,
+  armR: 0.27,
+  handR: 0.2,
   // Below the shoulder, how far each arm's center line sits off the body, as a share of its radius,
   // so the arm rests on the belly with most of its round showing instead of sinking into it.
   armRest: 0.45,
   // The hoof: a small cone `hoofR` thick reaching `hoofLen` from the wrist, out of the round hand,
   // turned down by `hoofDown` from the forearm's line. Its color starts `hoofStart` past the wrist,
   // so the hand stays pink and only the cone's tip is brown.
-  hoofR: 0.12,
-  hoofLen: 0.27,
+  hoofR: 0.105,
+  hoofLen: 0.25,
   hoofDown: 0.35,
   hoofStart: 0.12,
   footX: 0.74,
-  footR: 0.26,
+  footR: 0.28,
   // Each leg runs from its hip (`hipX` out from the middle) forward to its foot, `legR` thick.
   hipX: 0.72,
   footZ: 0.94,
@@ -93,15 +93,15 @@ const SHAPE = {
   // Each ear's curve from its base, bent toward its bend point, to its tip (before scaling), and
   // its radius: `earR` at the base, swelling by `earBulge` midway and narrowing by `earNarrow` to
   // the tip. `earThick` is how thick it is for its width.
-  earBendX: 0,
+  earBendX: 0.05,
   earBendY: 0.85,
   earBendZ: 0.05,
-  earTipX: 0.31,
+  earTipX: 0.39,
   earTipY: 0.15,
   earTipZ: 0.6,
   earR: 0.37,
   earBulge: 0.04,
-  earNarrow: 0.1,
+  earNarrow: 0.2,
   earThick: 0.3,
 };
 
