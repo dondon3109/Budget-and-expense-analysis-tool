@@ -151,15 +151,15 @@ the figure, or the tombstone.
   soft clay toy: a big round head with full cheeks, wider than it is tall and domed on top, on a
   chubby round body nearly as wide as the head, widest at the hips and narrowing a little toward
   the neck (each an egg-like form,
-  `egg` in `pigShape.ts`, so no outline has flat sides); broad, thin, soft ear flaps rising from
+  `egg` in `pigShape.ts`, so no outline has flat sides), with a round tummy swelling out of the
+  belly between the arms so the front reads as a soft mound rather than a flat panel; broad, thin, soft ear flaps rising from
   the head's top corners and folding forward so their tips point down and out (many short petals
   along one smooth curve, so the fold is a soft bend and the thin flap never crumples); short, fat arms that hang down the front of the body
   and turn slightly in, each ending in a round pink hand with a small rose-brown hoof pointing
   down and in onto the belly well above the feet (so the hoof and sole colors never touch), split by a soft groove where the toes part. Each arm is one tube along a gentle curve, with no elbow
   corner, and only its shoulder melts into the body: the shoulders sit low on the
   body's top corners, clear of the cheeks, and from partway down the upper arm the arm rests on the
-  belly with its center line about half its radius off the surface (`armRest`, pushed forward and
-  never up, so the outline keeps its width and the shoulders do not rise into a shrug), so most of its round shows and it meets the body in a narrow crease,
+  belly with its center line about half its radius off the surface (`armRest`, pushed mostly forward and never up, so the outline keeps its width and the shoulders do not rise into a shrug), so most of its round shows and it meets the body in a narrow crease,
   standing apart as a limb. The figure also has stubby legs stretched forward showing round rose-brown
   soles inside a pink rim (each sole is painted on the leg's own surface, so a hand resting close
   by never bites into its color); wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the

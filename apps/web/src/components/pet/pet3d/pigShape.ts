@@ -51,12 +51,19 @@ const SHAPE = {
   bodyRz: 1.0,
   bodyTaper: 0.18,
   bodyP: 2,
+  // A round tummy swelling out of the belly's front between the arms, melted in over a wide blend.
+  tummyY: 0.66,
+  tummyZ: 0.58,
+  tummyRx: 0.65,
+  tummyRy: 0.55,
+  tummyRz: 0.6,
+  tummyBlend: 0.3,
   // Each arm follows a curve from the shoulder, bent toward the elbow point (which it does not
   // reach), to the wrist on the belly.
-  shoulderX: 0.62,
-  shoulderY: 1.0,
+  shoulderX: 0.64,
+  shoulderY: 1.06,
   shoulderZ: 0.42,
-  elbowX: 0.69,
+  elbowX: 0.76,
   elbowY: 0.9,
   elbowZ: 0.8,
   wristX: 0.38,
@@ -66,7 +73,7 @@ const SHAPE = {
   handR: 0.24,
   // Below the shoulder, how far each arm's center line sits off the body, as a share of its radius,
   // so the arm rests on the belly with most of its round showing instead of sinking into it.
-  armRest: 0.55,
+  armRest: 0.45,
   // The hoof: a small cone `hoofR` thick reaching `hoofLen` from the wrist, out of the round hand,
   // turned down by `hoofDown` from the forearm's line. Its color starts `hoofStart` past the wrist,
   // so the hand stays pink and only the cone's tip is brown.
@@ -351,15 +358,19 @@ function egg(
 
 const torso = (x: number, y: number, z: number) =>
   smax(
-    egg(
-      x,
-      y - SHAPE.bodyY,
-      z - 0.02,
-      SHAPE.bodyRx,
-      SHAPE.bodyRy,
-      SHAPE.bodyRz,
-      SHAPE.bodyTaper,
-      SHAPE.bodyP,
+    smin(
+      egg(
+        x,
+        y - SHAPE.bodyY,
+        z - 0.02,
+        SHAPE.bodyRx,
+        SHAPE.bodyRy,
+        SHAPE.bodyRz,
+        SHAPE.bodyTaper,
+        SHAPE.bodyP,
+      ),
+      ellipsoid(x, y - SHAPE.tummyY, z - SHAPE.tummyZ, SHAPE.tummyRx, SHAPE.tummyRy, SHAPE.tummyRz),
+      SHAPE.tummyBlend,
     ),
     0.03 - y,
     0.16,
