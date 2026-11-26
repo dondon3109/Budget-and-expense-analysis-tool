@@ -43,50 +43,56 @@ const SHAPE = {
   headRx: 1.14,
   headRy: 0.92,
   headRz: 0.92,
-  headTaper: 0.25,
-  headP: 2.15,
-  bodyY: 0.68,
-  bodyRx: 1.04,
+  headTaper: 0.21,
+  headP: 2.2,
+  bodyY: 0.71,
+  bodyRx: 1.12,
   bodyRy: 0.9,
   bodyRz: 1.0,
-  bodyTaper: 0.22,
+  bodyTaper: 0.18,
   bodyP: 2,
   // Each arm follows a curve from the shoulder, bent toward the elbow point (which it does not
   // reach), to the wrist on the belly.
-  shoulderX: 0.82,
-  shoulderY: 0.98,
-  shoulderZ: 0.44,
-  elbowX: 1.16,
-  elbowY: 0.86,
-  elbowZ: 0.76,
-  wristX: 0.5,
-  wristY: 0.92,
-  wristZ: 1.04,
-  armR: 0.27,
-  handR: 0.15,
-  hoofDown: 1.3,
-  footX: 0.86,
-  footR: 0.32,
+  shoulderX: 0.66,
+  shoulderY: 1.1,
+  shoulderZ: 0.42,
+  elbowX: 0.74,
+  elbowY: 0.9,
+  elbowZ: 0.8,
+  wristX: 0.38,
+  wristY: 0.76,
+  wristZ: 1,
+  armR: 0.32,
+  handR: 0.24,
+  // The hoof: a small cone `hoofR` thick reaching `hoofLen` from the wrist, out of the round hand,
+  // turned down by `hoofDown` from the forearm's line. Its color starts `hoofStart` past the wrist,
+  // so the hand stays pink and only the cone's tip is brown.
+  hoofR: 0.12,
+  hoofLen: 0.27,
+  hoofDown: 0.35,
+  hoofStart: 0.12,
+  footX: 0.74,
+  footR: 0.26,
   // Each leg runs from its hip (`hipX` out from the middle) forward to its foot, `legR` thick.
-  hipX: 0.7,
+  hipX: 0.72,
   footZ: 0.94,
-  legR: 0.37,
-  earX: 0.72,
-  earY: 2.32,
+  legR: 0.38,
+  earX: 0.675,
+  earY: 2.29,
   earScale: 0.925,
   // Each ear's curve from its base, bent toward its bend point, to its tip (before scaling), and
   // its radius: `earR` at the base, swelling by `earBulge` midway and narrowing by `earNarrow` to
   // the tip. `earThick` is how thick it is for its width.
   earBendX: 0,
-  earBendY: 0.8,
+  earBendY: 0.85,
   earBendZ: 0.05,
-  earTipX: 0.36,
-  earTipY: 0.19,
-  earTipZ: 0.48,
-  earR: 0.28,
-  earBulge: 0.06,
-  earNarrow: 0.03,
-  earThick: 0.5,
+  earTipX: 0.31,
+  earTipY: 0.15,
+  earTipZ: 0.6,
+  earR: 0.37,
+  earBulge: 0.04,
+  earNarrow: 0.1,
+  earThick: 0.3,
 };
 
 /** The rig: each bone's pivot and parent, in the order of the skin indices. */
@@ -154,10 +160,11 @@ function bezier(a: Vec3, b: Vec3, c: Vec3, t: number): Vec3 {
 }
 
 /**
- * An arm on `side` (-1 viewer's left, 1 right): a chubby arm hanging down the side of the body and
- * curling in, so its split hoof points down onto the belly just above the legs. It is one tube
- * along a smooth curve (the elbow only bends it, so it has no corner), and only its shoulder melts
- * into the body: the rest lies against it as a limb of its own, with a crease all along.
+ * An arm on `side` (-1 viewer's left, 1 right): a short, fat arm hanging down the front of the body
+ * and turning slightly in, ending in a round hand with a small split hoof that points down and in
+ * onto the belly above the legs. It is one tube along a gentle curve (the elbow only bends it a
+ * little, so it has no corner), and only its shoulder melts into the body: the rest lies against
+ * it as a limb of its own, with a crease all along.
  */
 function arm(side: number) {
   const { armR, handR } = SHAPE;
@@ -173,11 +180,16 @@ function arm(side: number) {
   const segments = points
     .slice(1)
     .map((end, i) => roundCone(points[i]!, end, radius(i / steps), radius((i + 1) / steps)));
-  // The hoof turns down off the forearm, so its tip rests on the belly instead of facing out.
+  // The hoof turns down and in off the forearm, so its tip points onto the belly.
   const forearm = unit(sub(wrist, points[steps - 2]!));
   const dir = unit([forearm[0], forearm[1] - SHAPE.hoofDown, forearm[2]]);
-  const tip: Vec3 = [wrist[0] + dir[0] * 0.16, wrist[1] + dir[1] * 0.16, wrist[2] + dir[2] * 0.16];
-  const hoof = roundCone(wrist, tip, handR, handR * 0.6);
+  const { hoofR, hoofLen } = SHAPE;
+  const tip: Vec3 = [
+    wrist[0] + dir[0] * hoofLen,
+    wrist[1] + dir[1] * hoofLen,
+    wrist[2] + dir[2] * hoofLen,
+  ];
+  const hoof = roundCone(wrist, tip, hoofR, hoofR * 0.7);
   // The hoof's front, and the line across it where the two toes split (painted, see `pigMesh`).
   const front = unit(cross(cross(dir, [0, 0.4, 1]), dir));
   const across = unit(cross(dir, front));
@@ -475,15 +487,15 @@ export function pigMesh(): PigMesh {
       const limb = arms[side]!;
       const onArm = smooth(0.04, 0, d[ARM_L + side]! - nearest);
       const past = dot(sub([x, y, z], limb.wrist), limb.dir);
-      // The toes' split: a lighter line down the middle of the hoof's front, as on the toy.
+      // The toes' split: a darker groove down the middle of the hoof's front, as on the toy.
       const offset = sub([x, y, z], limb.wrist);
       split = Math.max(
         split,
-        smooth(0.06, 0.025, Math.abs(dot(offset, limb.across))) *
+        smooth(0.045, 0.015, Math.abs(dot(offset, limb.across))) *
           smooth(0.04, 0.08, past) *
           smooth(0.2, 0.5, dot(normal, limb.front)),
       );
-      hoof = Math.max(hoof, onArm * smooth(-0.04, 0.06, past));
+      hoof = Math.max(hoof, onArm * smooth(SHAPE.hoofStart - 0.05, SHAPE.hoofStart + 0.05, past));
       // A sole is the flat end of the leg: facing along the leg, inside a pink rim.
       const foot = legs[side]!;
       const onLeg = smooth(0.04, 0, d[LEG_L + side]! - nearest);

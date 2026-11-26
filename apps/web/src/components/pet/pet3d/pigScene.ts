@@ -76,14 +76,14 @@ function softSkin(o: Palette) {
     vertexColors: true,
     roughness: 0.45,
     metalness: 0,
-    sheen: 0.5,
+    sheen: 0.25,
     sheenRoughness: 0.5,
     sheenColor: new THREE.Color(mix(o.body, "#FFF4EE", 0.6)),
   });
   material.onBeforeCompile = (shader) => {
     // The hoof caps and soles: the hoof color cut at the hoof field's 0.5 level, antialiased over
     // one pixel, so the edge is as crisp as the eyes' however coarse the mesh is there. The toes'
-    // split line lets 35% of the body color back through.
+    // split is a darker groove down the middle of the hoof.
     shader.uniforms.hoofColor = { value: new THREE.Color(o.hoof) };
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nattribute vec2 hoof;\nvarying vec2 vHoof;")
@@ -95,11 +95,11 @@ function softSkin(o: Palette) {
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor, smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x ) * ( 1.0 - 0.35 * vHoof.y ) );",
+        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor * ( 1.0 - 0.45 * vHoof.y ), onHoof );",
       );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <emissivemap_fragment>",
-      "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.08 + diffuseColor.rgb * diffuseColor.rgb * 0.62;",
+      "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.08 + diffuseColor.rgb * diffuseColor.rgb * 0.56;",
     );
     // Wrapped light: each light reaches a little past the side facing it and fades out flat, the
     // way it scatters into soft material, so its edge never draws a hard line across a curve.
@@ -361,7 +361,7 @@ export function mountPigScene(
   // the left side in warm shade, a rim behind, a glow along the right edge, and a little bounce
   // from the floor. There is no fill: the material's scattered
   // light (softSkin) keeps the shaded side pastel instead.
-  const key = new THREE.DirectionalLight("#ffffff", 5.2);
+  const key = new THREE.DirectionalLight("#ffffff", 11.5);
   key.position.set(10, 3.5, 2.5);
   scene.add(key);
   // The floor shadow comes from a faint light high above instead, so it stays a short soft pool
@@ -378,15 +378,15 @@ export function mountPigScene(
   caster.shadow.bias = -0.0005;
   caster.shadow.normalBias = 0.05;
   scene.add(caster);
-  const rim = new THREE.DirectionalLight("#ffffff", 0.9);
+  const rim = new THREE.DirectionalLight("#ffffff", 0.6);
   rim.position.set(0, 3, -4);
   scene.add(rim);
   // The edge glow sits far enough behind that it only rims the right side: from the side it would
   // shine through the body (nothing casts shadows on the figure) onto the inside of the left arm.
-  const edge = new THREE.DirectionalLight("#fff8f4", 3);
+  const edge = new THREE.DirectionalLight("#fff8f4", 3.25);
   edge.position.set(3, 1.5, -3);
   scene.add(edge);
-  const bounce = new THREE.DirectionalLight("#ffece4", 0.8);
+  const bounce = new THREE.DirectionalLight("#ffece4", 0.5);
   bounce.position.set(0, -1, 4);
   scene.add(bounce);
 

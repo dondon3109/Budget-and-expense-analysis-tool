@@ -151,18 +151,19 @@ the figure, or the tombstone.
   soft clay toy: a big round head with full cheeks, wider than it is tall and domed on top, on a
   chubby round body nearly as wide as the head, widest at the hips and narrowing a little toward
   the neck (each an egg-like form,
-  `egg` in `pigShape.ts`, so no outline has flat sides); thick, soft, round-tipped ears rising
-  from the head's top corners and folding forward so their tips point down and out (petals along
-  one smooth curve, so the fold is a soft bend); short chubby arms that hang down the sides of the body
-  and curl in, so their rose-brown hooves point down onto the belly well above the feet (so the
-  hoof and sole colors never touch), each with
-  a lighter painted line where the toes split. Each arm is one tube along a smooth curve, with no
-  elbow corner, and only its shoulder melts into the body: the rest meets it in a narrow crease,
-  so the arms stand apart as limbs. The figure also has stubby legs stretched forward showing round rose-brown
+  `egg` in `pigShape.ts`, so no outline has flat sides); broad, thin, soft ear flaps rising from
+  the head's top corners and folding forward so their tips point down and out (petals along one
+  smooth curve, so the fold is a soft bend); short, fat arms that hang down the front of the body
+  and turn slightly in, each ending in a round pink hand with a small rose-brown hoof pointing
+  down and in onto the belly well above the feet (so the hoof and sole colors never touch), split
+  by a darker groove where the toes part. Each arm is one tube along a gentle curve, with no elbow
+  corner, and only its shoulder melts into the body: the rest meets it in a narrow crease, so the
+  arms stand apart as limbs. The figure also has stubby legs stretched forward showing round rose-brown
   soles inside a pink rim; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
   top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The
   proportions (`SHAPE` in `pigShape.ts`) were fitted to a photo of the reference toy by matching
-  its outline. The shape is one signed distance field (`pet3d/pigShape.ts`) whose parts melt into
+  its outline (about 96% overlap; most of the rest is the photo's floor shadow and a pixel of edge
+  all round). The shape is one signed distance field (`pet3d/pigShape.ts`) whose parts melt into
   each other with narrow creases (neck, arms, and legs), meshed
   once per page into a single seamless surface (`pet3d/sdfMesh.ts`, surface nets with normals from
   the field's gradient, about 700ms on a laptop) and colored per vertex (snout, nostrils, blush)
