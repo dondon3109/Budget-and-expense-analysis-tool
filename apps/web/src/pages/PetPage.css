@@ -44,6 +44,8 @@
   position: relative;
   padding: 0;
   border: 0;
+  /* Rounds the keyboard focus ring so it reads as a soft halo, not a box. */
+  border-radius: 32px;
   background: none;
   cursor: pointer;
   transition: transform 160ms ease;

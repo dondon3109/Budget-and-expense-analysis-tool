@@ -198,7 +198,15 @@ function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; na
   };
 
   return (
-    <button className="pet-pettable" type="button" aria-label={`Pet ${name}`} onClick={petIt}>
+    <button
+      className="pet-pettable"
+      type="button"
+      aria-label={`Pet ${name}`}
+      onClick={petIt}
+      // A click does not take focus, so a mouse tap never leaves a focus ring around the pet;
+      // keyboard users still reach it with Tab and see the ring.
+      onMouseDown={(event) => event.preventDefault()}
+    >
       <PetPicture pet={pet} size={220} tap={tap} />
       {tap ? (
         <span key={tap.id} className="pet-hearts" aria-hidden="true">
