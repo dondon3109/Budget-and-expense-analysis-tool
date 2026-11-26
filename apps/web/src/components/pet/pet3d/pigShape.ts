@@ -1,7 +1,7 @@
 import { ellipsoid, meshSdf, roundCone, smax, smin, type SdfMesh } from "./sdfMesh";
 
 // The Baby pig's shape as one signed distance field, modeled on a soft clay toy figure: a big
-// round head with full cheeks on a chubby barrel body, ears that rise from the top corners and
+// round head with full cheeks on a chubby round body, ears that rise from the top corners and
 // flop forward, little arms resting on the belly ending in split hooves, stubby legs stretched
 // forward showing round soles, and a short snout with deep nostrils. Every part melts into its
 // neighbor (`smin`), so the figure is one seamless piece with soft creases, like the toy.
@@ -31,8 +31,8 @@ export const PIG_BONES: ReadonlyArray<{ name: string; parent: number; at: Vec3 }
   { name: "earL", parent: 2, at: [-0.6, 2.52, 0.1] },
   { name: "earR", parent: 2, at: [0.6, 2.52, 0.1] },
   { name: "snout", parent: 2, at: [0, 1.78, 0.95] },
-  { name: "armL", parent: 0, at: [-0.94, 1.12, 0.3] },
-  { name: "armR", parent: 0, at: [0.94, 1.12, 0.3] },
+  { name: "armL", parent: 0, at: [-0.72, 1.02, 0.38] },
+  { name: "armR", parent: 0, at: [0.72, 1.02, 0.38] },
   { name: "legL", parent: 0, at: [-0.64, 0.34, 0.2] },
   { name: "legR", parent: 0, at: [0.64, 0.34, 0.2] },
 ];
@@ -79,13 +79,13 @@ function scaled(a: Vec3, s: number): Vec3 {
 
 /** An arm on `side` (-1 viewer's left, 1 right): shoulder, elbow, and a split hoof at the wrist. */
 function arm(side: number) {
-  const shoulder = mirror(side, [0.94, 1.12, 0.3]);
-  const elbow = mirror(side, [0.94, 0.8, 0.7]);
-  const wrist = mirror(side, [0.4, 0.64, 1.0]);
+  const shoulder = mirror(side, [0.72, 1.02, 0.38]);
+  const elbow = mirror(side, [0.92, 0.78, 0.62]);
+  const wrist = mirror(side, [0.4, 0.66, 1.0]);
   const dir = unit(sub(wrist, elbow));
   const tip: Vec3 = [wrist[0] + dir[0] * 0.13, wrist[1] + dir[1] * 0.13, wrist[2] + dir[2] * 0.13];
-  const upper = roundCone(shoulder, elbow, 0.21, 0.2);
-  const lower = roundCone(elbow, wrist, 0.2, 0.17);
+  const upper = roundCone(shoulder, elbow, 0.2, 0.19);
+  const lower = roundCone(elbow, wrist, 0.19, 0.17);
   const hoof = roundCone(wrist, tip, 0.17, 0.075);
   // The cleft between the two toes: a rounded groove down the middle of the hoof's front face,
   // notching its tip. Wide enough for the mesh grid to draw it smoothly.
@@ -129,9 +129,9 @@ function leg(side: number) {
 
 /** An ear on `side`: a thick soft petal rising from the head's top corner, its tip flopped forward. */
 function ear(side: number) {
-  const base = mirror(side, [0.6, 2.52, 0.1]);
-  const fold = mirror(side, [0.88, 2.8, 0.3]);
-  const tip = mirror(side, [1.27, 2.5, 0.64]);
+  const base = mirror(side, [0.56, 2.56, 0.22]);
+  const fold = mirror(side, [0.8, 2.78, 0.46]);
+  const tip = mirror(side, [1.08, 2.5, 0.82]);
   const facing = mirror(side, [0.3, 0.3, 1]);
   const width = unit(cross(sub(fold, base), facing));
   const lower = petal(base, fold, 0.3, 0.24, facing, 0.34);
@@ -139,24 +139,25 @@ function ear(side: number) {
   return (x: number, y: number, z: number) => smin(lower(x, y, z), flap(x, y, z), 0.1);
 }
 
+/**
+ * An egg: an ellipsoid (centered at the origin) whose width narrows toward the top by `taper` of
+ * its radius, so it is widest low down and domes over the top. Two ellipsoids melted together
+ * leave flat, upright sides where they overlap; one tapered form keeps every outline convex.
+ */
+function egg(x: number, y: number, z: number, rx: number, ry: number, rz: number, taper: number) {
+  const s = Math.max(1 - (taper * y) / ry, 0.3);
+  return ellipsoid(x / s, y, z / s, rx, ry, rz) * Math.min(s, 1);
+}
+
 const torso = (x: number, y: number, z: number) =>
-  smax(
-    smin(
-      ellipsoid(x, y - 0.64, z, 1.2, 0.66, 0.92),
-      // The shoulders, narrower, where the body rounds in under the head.
-      ellipsoid(x, y - 1.05, z, 0.92, 0.42, 0.74),
-      0.3,
-    ),
-    0.03 - y,
-    0.16,
-  );
+  smax(egg(x, y - 0.68, z - 0.02, 1.12, 0.78, 0.92, 0.1), 0.03 - y, 0.16);
 
 const skull = (x: number, y: number, z: number) =>
   smin(
-    ellipsoid(x, y - 1.98, z, 1.12, 0.9, 0.9),
-    // Full cheeks low on the head, wider than the crown.
-    ellipsoid(x, y - 1.66, z - 0.02, 1.2, 0.42, 0.84),
-    0.28,
+    egg(x, y - 1.9, z, 1.16, 0.96, 0.9, 0.28),
+    // Full cheeks low on the front of the face, inside the outline so they round it, not square it.
+    ellipsoid(x, y - 1.7, z - 0.12, 0.98, 0.46, 0.8),
+    0.2,
   );
 
 /** How far forward the face is at (`x`, `y`), before the snout is added. */
@@ -214,7 +215,7 @@ export function pigDistance(x: number, y: number, z: number) {
   for (let side = 0; side < 2; side += 1) {
     const s = side === 0 ? -1 : 1;
     if (nearby(x, y, z, [0.68 * s, 0.86, 0.64], 0.84) < d + 0.1)
-      d = smin(d, arms[side]!.distance(x, y, z), 0.05);
+      d = smin(d, arms[side]!.distance(x, y, z), 0.06);
     if (nearby(x, y, z, [0.73 * s, 0.33, 0.5], 0.72) < d + 0.14)
       d = smin(d, legs[side]!.distance(x, y, z), 0.1);
     if (nearby(x, y, z, [0.95 * s, 2.6, 0.33], 0.7) < d + 0.12)

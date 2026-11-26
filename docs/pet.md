@@ -148,8 +148,9 @@ the figure, or the tombstone.
   top. Reduced motion stills all of it.
 - Prototype, web only: a healthy Baby pig draws as a live 3D figure instead
   (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is modeled on a
-  soft clay toy: a big round head with full cheeks, about one and a half times as wide as it is tall,
-  on a chubby barrel body; thick ears rising from the head's top corners with their tips flopped
+  soft clay toy: a big round head with full cheeks, wider than it is tall and domed on top, on a
+  chubby round body that is widest at the hips (each an egg-like form, `egg` in `pigShape.ts`, so
+  no outline has flat sides); thick ears rising from the head's top corners with their tips flopped
   forward and out; little arms resting on the belly ending in pointed, split rose-brown hooves;
   stubby legs stretched forward showing round rose-brown soles with a small notch at the top;
   wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the top of
