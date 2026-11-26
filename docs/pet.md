@@ -152,14 +152,15 @@ the figure, or the tombstone.
   chubby round body nearly as wide as the head, widest at the hips and narrowing a little toward
   the neck (each an egg-like form,
   `egg` in `pigShape.ts`, so no outline has flat sides), with a round tummy swelling out of the
-  belly between the arms so the front reads as a soft mound rather than a flat panel; broad, thin felt ears, each a short
-  plate rising from the head's top corner to a crisp rounded fold, then a flap turned over it
-  that hangs forward and narrows to a rounded point aiming down and out (both legs are chains of
-  short petals along one fold line, so the fold stays one clean edge and the flap never
-  crumples). As on the toy, the two ears are not mirror images: the right one (the viewer's) is a
-  thicker, puffier flap that juts forward and out from a small base showing behind it; fat drumstick arms that start high on the body's sides under the cheeks, hug the
+  belly between the arms so the front reads as a soft mound rather than a flat panel; puffy felt ears, mirror images of each
+  other, each a short plate rising from the head's top corner to a crisp rounded fold, then a
+  thick flap turned over it that juts forward and out and narrows to a rounded point, with the
+  base showing behind it (both legs are chains of short petals along one fold line, so the fold
+  stays one clean edge and the flap never crumples); soft round arms that come out of the body's sides under the cheeks (the shoulders
+  sunk into the body, so their tops never rise toward the neck in a shrug), bow out along the
   sides as they come down (forming the figure's outline there, so the body itself is a little
-  narrower than the head), and turn in across the belly, tapering evenly to a small pointed
+  narrower than the head), and turn in across the belly, tapering only a little (a fat shoulder
+  over a thin hand reads as muscle) to a small pointed
   rose-brown hoof that continues the hand down and in onto the belly well above the feet (so the
   hoof and sole colors never touch; the whole end of the hand is brown, measured along the
   forearm), split by a soft groove where the toes part. Each arm is one smooth tube along a curve

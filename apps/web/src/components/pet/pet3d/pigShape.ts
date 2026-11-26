@@ -58,21 +58,22 @@ const SHAPE = {
   tummyRy: 0.55,
   tummyRz: 0.6,
   tummyBlend: 0.3,
-  // Each arm follows a curve from the shoulder, high on the body's side under the cheek, bent
-  // toward the elbow point (which it does not reach) so it hugs the side, to the wrist on the
-  // belly. It tapers evenly from `armR` to `handR`, and its last stretch drops by `handDroop` so
-  // the hand turns down into the hoof.
-  shoulderX: 0.63,
-  shoulderY: 1.13,
-  shoulderZ: 0.45,
-  elbowX: 0.97,
-  elbowY: 0.77,
+  // Each arm follows a curve from the shoulder, sunk into the body's side under the cheek (so its
+  // top never rises toward the neck in a shrug), bowed out toward the elbow point (which it does
+  // not reach) so it hugs the side, to the wrist on the belly. It tapers only gently from `armR`
+  // to `handR` (a fat shoulder over a thin hand reads as muscle), and its last stretch drops by
+  // `handDroop` so the hand turns down into the hoof.
+  shoulderX: 0.55,
+  shoulderY: 0.98,
+  shoulderZ: 0.3,
+  elbowX: 1.05,
+  elbowY: 0.72,
   elbowZ: 0.55,
   wristX: 0.36,
   wristY: 0.9,
   wristZ: 0.98,
-  armR: 0.32,
-  handR: 0.14,
+  armR: 0.26,
+  handR: 0.15,
   handDroop: 0.12,
   // Below the shoulder, how far each arm's center line sits off the body, as a share of its radius,
   // so the arm rests on the belly with most of its round showing instead of sinking into it.
@@ -81,8 +82,8 @@ const SHAPE = {
   // of that, turned down by `hoofDown` and back toward the belly by `hoofBack` from the forearm's
   // line, so it continues the hand to a point. Its color starts `hoofStart` past the wrist along
   // the forearm, so the whole end of the hand is brown.
-  hoofR: 0.13,
-  hoofLen: 0.2,
+  hoofR: 0.125,
+  hoofLen: 0.22,
   hoofDown: 0.15,
   hoofStart: -0.02,
   hoofPoint: 0.3,
@@ -95,32 +96,19 @@ const SHAPE = {
   legR: 0.38,
   earX: 0.72,
   earY: 2.26,
-  earScale: 0.86,
+  earScale: 0.92,
   // Each ear (before scaling): a base plate from the ear's root up to its fold, then a flap from
-  // the fold over and down to its tip. `earR` is half the ear's width, the flap narrowing to
+  // the fold over, forward, and out to its tip. `earR` is half the ear's width, the flap narrowing to
   // `earTipR` at its tip, and `earThick` is how thick it is for its width.
   earFoldX: 0.1,
   earFoldY: 0.45,
-  earFoldZ: 0,
-  earTipX: 0.37,
-  earTipY: 0.1,
-  earTipZ: 0.42,
-  earR: 0.34,
-  earTipR: 0.05,
-  earThick: 0.3,
-  // The toy's ears are not mirror images: its right ear (the viewer's) is a thicker, puffier
-  // flap that juts forward and out from a small base showing behind it, so that ear has its own
-  // fold, tip, and size.
-  rightEarScale: 0.92,
-  rightEarFoldX: 0.1,
-  rightEarFoldY: 0.45,
-  rightEarFoldZ: -0.1,
-  rightEarTipX: 0.27,
-  rightEarTipY: 0.3,
-  rightEarTipZ: 0.7,
-  rightEarR: 0.33,
-  rightEarTipR: 0.2,
-  rightEarThick: 0.55,
+  earFoldZ: -0.1,
+  earTipX: 0.27,
+  earTipY: 0.3,
+  earTipZ: 0.7,
+  earR: 0.33,
+  earTipR: 0.2,
+  earThick: 0.55,
 };
 
 /** The rig: each bone's pivot and parent, in the order of the skin indices. */
@@ -219,9 +207,9 @@ function settle(p: Vec3, gap: number): Vec3 {
 const MELT = 3;
 
 /**
- * An arm on `side` (-1 viewer's left, 1 right): a fat drumstick of an arm that starts high on the
- * body's side under the cheek, hugs the side as it comes down, and turns in across the belly,
- * tapering to a small split hoof that points down and in above the legs. It is one smooth tube
+ * An arm on `side` (-1 viewer's left, 1 right): a soft round arm that comes out of the body's side
+ * under the cheek, bows out along the side as it comes down, and turns in across the belly,
+ * tapering a little to a small split hoof that points down and in above the legs. It is one smooth tube
  * along a curve (no elbow corner), and only its shoulder melts into the body: the rest lies
  * against it as a limb of its own, with a crease all along.
  */
@@ -321,31 +309,18 @@ function leg(side: number) {
 }
 
 /**
- * An ear on `side`: a thin, broad felt ear folded over like the toy's. A short base plate rises
- * from the head's top corner to a fold, and a flap turns over that fold and hangs forward and
- * out, narrowing to a rounded point. Both lie along the same fold line, so the top edge is one
- * crisp rounded fold rather than a soft bend.
+ * An ear on `side`: a puffy felt ear folded over like the toy's. A short base plate rises from
+ * the head's top corner to a fold, and a thick flap turns over that fold and juts forward and
+ * out, narrowing to a rounded point, with the base showing behind it. Both lie along the same
+ * fold line, so the top edge is one crisp rounded fold rather than a soft bend.
  */
 function ear(side: number) {
-  const right = side > 0;
-  const e = {
-    scale: right ? SHAPE.rightEarScale : SHAPE.earScale,
-    fold: right
-      ? [SHAPE.rightEarFoldX, SHAPE.rightEarFoldY, SHAPE.rightEarFoldZ]
-      : [SHAPE.earFoldX, SHAPE.earFoldY, SHAPE.earFoldZ],
-    tip: right
-      ? [SHAPE.rightEarTipX, SHAPE.rightEarTipY, SHAPE.rightEarTipZ]
-      : [SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ],
-    r: right ? SHAPE.rightEarR : SHAPE.earR,
-    tipR: right ? SHAPE.rightEarTipR : SHAPE.earTipR,
-    thick: right ? SHAPE.rightEarThick : SHAPE.earThick,
-  } as const;
-  const { earX, earY } = SHAPE;
-  const place = (o: readonly number[]) =>
-    mirror(side, [earX + o[0]! * e.scale, earY + o[1]! * e.scale, o[2]! * e.scale]);
+  const { earX, earY, earScale } = SHAPE;
+  const place = (o: Vec3) =>
+    mirror(side, [earX + o[0] * earScale, earY + o[1] * earScale, o[2] * earScale]);
   const base = place([0, 0, 0]);
-  const fold = place(e.fold);
-  const tip = place(e.tip);
+  const fold = place([SHAPE.earFoldX, SHAPE.earFoldY, SHAPE.earFoldZ]);
+  const tip = place([SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ]);
   // Short petals along each straight leg, so no joint shows as a ridge.
   const up = 6;
   const steps = 16;
@@ -359,7 +334,7 @@ function ear(side: number) {
   );
   const radius = (t: number) => {
     const flap = Math.max((t * steps - up) / (steps - up), 0);
-    return (e.r + (e.tipR - e.r) * flap * flap) * e.scale;
+    return (SHAPE.earR + (SHAPE.earTipR - SHAPE.earR) * flap * flap) * earScale;
   };
   const facing = mirror(side, [0.3, 0.3, 1]);
   const width = unit(cross(sub(points[1]!, points[0]!), facing));
@@ -367,10 +342,10 @@ function ear(side: number) {
     const start = points[i]!;
     const r0 = radius(i / steps);
     const r1 = radius((i + 1) / steps);
-    return petal(start, p, r0, r1, cross(width, sub(p, start)), e.thick);
+    return petal(start, p, r0, r1, cross(width, sub(p, start)), SHAPE.earThick);
   });
   // A petal lies inside the sphere around its middle, and squashing only shrinks its distance by
-  // its thickness, so a petal that far away cannot change the blend and is skipped.
+  // `earThick`, so a petal that far away cannot change the blend and is skipped.
   const bounds = points.slice(1).map((p, i) => {
     const start = points[i]!;
     const middle = scaled([p[0] + start[0], p[1] + start[1], p[2] + start[2]], 0.5);
@@ -383,7 +358,7 @@ function ear(side: number) {
       const { middle, reach } = bounds[i]!;
       const [dx, dy, dz] = [x - middle[0], y - middle[1], z - middle[2]];
       const far = Math.sqrt(dx * dx + dy * dy + dz * dz) - reach;
-      if (far * e.thick >= d + 0.06) continue;
+      if (far * SHAPE.earThick >= d + 0.06) continue;
       d = smin(d, segments[i]!(x, y, z), 0.06);
     }
     return d;
