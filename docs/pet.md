@@ -155,8 +155,7 @@ the figure, or the tombstone.
   the head's top corners and folding forward so their tips point down and out (many short petals
   along one smooth curve, so the fold is a soft bend and the thin flap never crumples); short, fat arms that hang down the front of the body
   and turn slightly in, each ending in a round pink hand with a small rose-brown hoof pointing
-  down and in onto the belly well above the feet (so the hoof and sole colors never touch), split
-  by a thin dark line where the toes part, tapering to a point up the hoof. Each arm is one tube along a gentle curve, with no elbow
+  down and in onto the belly well above the feet (so the hoof and sole colors never touch), split by a soft groove where the toes part. Each arm is one tube along a gentle curve, with no elbow
   corner, and only its shoulder melts into the body: the rest meets it in a narrow crease, so the
   arms stand apart as limbs. The figure also has stubby legs stretched forward showing round rose-brown
   soles inside a pink rim; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
@@ -173,16 +172,16 @@ the figure, or the tombstone.
   snout keeps its exact normals so the nostrils stay crisp. The hooves and soles are painted by the
   material instead: each vertex carries a smooth hoof field, and the shader cuts the hoof color
   where it crosses 0.5, antialiased over one pixel, so their edges stay as sharp as the toy's
-  between vertices rather than fading across the triangles. The toe split and the crease lines
-  are cut the same way: each vertex stores a distance that changes linearly across the line (the
-  distance across the hoof; for a crease, how much nearer one of the two nearest parts is than the
-  other, 0 on the seam), and the shader draws a crisp line where it is near 0. Each crease also
-  casts a soft shadow that reaches well into the part pressed on (the body under the chin, an arm,
-  or a leg; the head under an ear) and only a little up the part pressing, so the arms, legs,
-  ears, and head read as separate pieces resting against each other, as on the toy. Line and
-  shadow darken toward a warm deep rose rather than grey (`CREASE` in `pigScene.ts`); the line
-  fades out over the shoulder, where the arm melts in, and the snout gets none. A thin dark groove runs round each hoof cap and sole where the color is cut, so they read
-  as set into the pink. The material is matte with a
+  between vertices rather than fading across the triangles. The creases are shaded rather than drawn: each vertex stores how
+  much nearer one of the two nearest parts is than the other (0 on the seam, changing linearly
+  across it), and the shader dims the light reaching the fold, darkest at the seam and fading out
+  with no edge. The shadow reaches well into the part pressed on (the body under the chin, an
+  arm, or a leg; the head under an ear) and only a little up the part pressing, and it dims the
+  bounced and scattered light fully but the direct light only partly, so a fold the key light
+  shines into stays lighter, as on the toy. It deepens the pink toward rose rather than grey
+  (`CREASE` in `pigScene.ts`), fades out over the shoulder, where the arm melts in, and skips the
+  snout. The groove round each hoof cap and sole and the one down the hoof where the toes part
+  are shaded the same way. The material is matte with a
   light velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
   scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
   saturation. Its lights wrap just past the side they face and fade out flat, so no light's edge

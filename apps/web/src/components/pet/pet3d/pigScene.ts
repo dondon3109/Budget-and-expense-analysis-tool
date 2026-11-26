@@ -30,19 +30,22 @@ const mix = (a: string, b: string, t: number) =>
 export const PIG_BODY = "#EEBDAE";
 
 /**
- * The creases between the parts. Each has a narrow line (`line` either side of the seam, in figure
- * units, `lineDark` of the way to `color`) and a soft shadow that reaches `under` into the part
- * pressed on (the body under an arm, the head under an ear) and only `over` up the part pressing,
- * as a clay limb shades the body it rests against. `color` is a warm shadow, so the creases darken
- * the pink to a deeper rose instead of grey.
+ * The creases between the parts, shaded as light failing to reach into a fold rather than painted
+ * on: they darken the light falling there (all the bounced and scattered light, `direct` of the
+ * direct light) instead of the color, so a crease the key light shines into stays lighter than one
+ * turned from it, as on the toy. Each fades out from the seam with no edge: a tight core
+ * (`core` wide, `coreDark` deep) where the parts meet, and a soft shadow that reaches `under` into
+ * the part pressed on (the body under an arm, the head under an ear) and only `over` up the part
+ * pressing. `color` is a warm shadow, so a fold deepens the pink toward rose instead of grey.
  */
 const CREASE = {
-  line: 0.007,
-  lineDark: 0.75,
-  under: 0.13,
-  underDark: 0.45,
-  over: 0.035,
-  overDark: 0.2,
+  core: 0.008,
+  coreDark: 0.6,
+  under: 0.05,
+  underDark: 0.6,
+  over: 0.02,
+  overDark: 0.35,
+  direct: 0.7,
   color: [0.6, 0.4, 0.38] as const,
 };
 
@@ -99,22 +102,21 @@ function softSkin(o: Palette) {
   });
   material.onBeforeCompile = (shader) => {
     // The hoof caps and soles: the hoof color cut at the hoof field's 0.5 level, antialiased over
-    // one pixel, so the edge is as crisp as the eyes' however coarse the mesh is there. The toes'
-    // split is cut the same way: a crisp dark line down the middle of the hoof's front that tapers
-    // to a point where it fades out. A thin dark groove a couple of pixels wide runs round each
-    // hoof cap and sole, so they read as set into the pink like the toy's. Where an arm or a leg
-    // meets the body, an ear meets the head, and the head sits on the body, a crisp dark crease
-    // line with a soft shadow either side sets the parts apart, as on the toy.
+    // one pixel, so the edge is as crisp as the eyes' however coarse the mesh is there. Where an
+    // arm or a leg meets the body, an ear meets the head, and the head sits on the body, round
+    // each hoof cap and sole, and down the groove where the toes part, the fold shades the light
+    // reaching it (see `CREASE`), so the parts read as separate pieces pressed together.
     shader.uniforms.hoofColor = { value: new THREE.Color(o.hoof) };
     shader.uniforms.creaseColor = { value: new THREE.Color(...CREASE.color) };
     shader.defines = {
       ...shader.defines,
-      CREASE_LINE: CREASE.line.toFixed(4),
-      CREASE_LINE_DARK: CREASE.lineDark.toFixed(3),
+      CREASE_CORE: CREASE.core.toFixed(4),
+      CREASE_CORE_DARK: CREASE.coreDark.toFixed(3),
       CREASE_UNDER: CREASE.under.toFixed(4),
       CREASE_UNDER_DARK: CREASE.underDark.toFixed(3),
       CREASE_OVER: CREASE.over.toFixed(4),
       CREASE_OVER_DARK: CREASE.overDark.toFixed(3),
+      CREASE_DIRECT: CREASE.direct.toFixed(3),
     };
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -132,11 +134,15 @@ function softSkin(o: Palette) {
       )
       .replace(
         "#include <color_fragment>",
-        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tfloat splitEdge = fwidth( vHoof.y ) * 0.75;\n\tfloat splitWidth = 0.016 * smoothstep( 0.1, 0.9, vHoof.z );\n\tfloat split = 1.0 - smoothstep( splitWidth - splitEdge, splitWidth + splitEdge, abs( vHoof.y ) );\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor * ( 1.0 - 0.6 * split ), onHoof );\n\tfloat rim = 1.0 - smoothstep( hoofEdge * 1.5, hoofEdge * 3.0, abs( vHoof.x - 0.5 ) );\n\tdiffuseColor.rgb *= 1.0 - 0.35 * rim;\n\tfloat creaseEdge = fwidth( vCrease.x ) * 0.75;\n\tfloat creaseLine = ( 1.0 - smoothstep( CREASE_LINE - creaseEdge, CREASE_LINE + creaseEdge, abs( vCrease.x ) ) ) * vCrease.y;\n\tfloat under = vCrease.x < 0.0 ? 1.0 - smoothstep( 0.0, CREASE_UNDER, -vCrease.x ) : 1.0 - smoothstep( 0.0, CREASE_OVER, vCrease.x );\n\tfloat creaseShade = under * under * vCrease.z * ( vCrease.x < 0.0 ? CREASE_UNDER_DARK : CREASE_OVER_DARK );\n\tdiffuseColor.rgb *= mix( vec3( 1.0 ), creaseColor, clamp( CREASE_LINE_DARK * creaseLine + creaseShade, 0.0, 1.0 ) );",
+        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tfloat onHoof = smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x );\n\tfloat split = exp( -abs( vHoof.y ) / 0.01 ) * smoothstep( 0.1, 0.9, vHoof.z ) * onHoof;\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor, onHoof );\n\tfloat rim = 1.0 - smoothstep( 0.0, hoofEdge * 4.0, abs( vHoof.x - 0.5 ) );\n\tfloat creaseReach = vCrease.x < 0.0 ? CREASE_UNDER : CREASE_OVER;\n\tfloat creaseDepth = vCrease.x < 0.0 ? CREASE_UNDER_DARK : CREASE_OVER_DARK;\n\tfloat creaseDark = CREASE_CORE_DARK * exp( -abs( vCrease.x ) / CREASE_CORE ) * vCrease.y + creaseDepth * exp( -abs( vCrease.x ) / creaseReach ) * vCrease.z + 0.3 * rim;\n\tvec3 creaseOcclusion = mix( vec3( 1.0 ), creaseColor, clamp( creaseDark, 0.0, 1.0 ) ) * ( 1.0 - 0.75 * split );",
       );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <emissivemap_fragment>",
       "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.08 + diffuseColor.rgb * diffuseColor.rgb * 0.56;",
+    );
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <aomap_fragment>",
+      "#include <aomap_fragment>\n\treflectedLight.indirectDiffuse *= creaseOcclusion;\n\treflectedLight.indirectSpecular *= creaseOcclusion;\n\treflectedLight.directDiffuse *= mix( vec3( 1.0 ), creaseOcclusion, CREASE_DIRECT );\n\treflectedLight.directSpecular *= creaseOcclusion;\n\ttotalEmissiveRadiance *= creaseOcclusion;",
     );
     // Wrapped light: each light reaches a little past the side facing it and fades out flat, the
     // way it scatters into soft material, so its edge never draws a hard line across a curve.

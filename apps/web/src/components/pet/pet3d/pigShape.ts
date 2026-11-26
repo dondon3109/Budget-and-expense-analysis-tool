@@ -479,6 +479,16 @@ export function pigMesh(): PigMesh {
     }
     for (let i = 0; i < 4; i += 1) skinWeight[v * 4 + i]! /= total;
 
+    // The crease between the two nearest parts (an arm or a leg and the body, an ear and the head,
+    // the head and the body). The pair is ordered by part, so the difference keeps its sign across
+    // the seam and changes about linearly through 0 on it. In a blend of width k both distances
+    // are k / 4 on the seam, so the narrow creases (0.04 to 0.07) are told from the wide shoulder
+    // blend (0.12). The snout stands proud of the face with no crease, so it gets none.
+    const a = Math.min(order[0]!, order[1]!);
+    const b = Math.max(order[0]!, order[1]!);
+    creases[v * 3] = d[a]! - d[b]!;
+    creases[v * 3 + 1] = b === SNOUT ? 0 : smooth(0.028, 0.02, (d[a]! + d[b]!) / 2);
+
     // Colors: the snout where it stands proud of the face, the hoof caps at the arm tips and the
     // soles, the inside of the nostrils, and a soft blush on each cheek.
     const snoutAmount = smooth(-0.015, 0.015, Math.min(d[HEAD]!, d[BODY]!) - d[SNOUT]!);
@@ -525,16 +535,6 @@ export function pigMesh(): PigMesh {
     field[v] = hoof;
     hoofs[v * 3 + 1] = across;
     hoofs[v * 3 + 2] = split;
-
-    // The crease between the two nearest parts (an arm or a leg and the body, an ear and the head,
-    // the head and the body). The pair is ordered by part, so the difference keeps its sign across
-    // the seam and changes about linearly through 0 on it. In a blend of width k both distances
-    // are k / 4 on the seam, so the narrow creases (0.04 to 0.07) are told from the wide shoulder
-    // blend (0.12). The snout stands proud of the face with no crease, so it gets no line.
-    const a = Math.min(order[0]!, order[1]!);
-    const b = Math.max(order[0]!, order[1]!);
-    creases[v * 3] = d[a]! - d[b]!;
-    creases[v * 3 + 1] = b === SNOUT ? 0 : smooth(0.028, 0.02, (d[a]! + d[b]!) / 2);
   }
   // Two light passes smooth out the grid's small steps without moving the 0.5 level.
   for (let pass = 0; pass < 2; pass += 1) blurAttribute(field, 1, neighbors, 0.5);
