@@ -56,7 +56,7 @@ const SHAPE = {
   shoulderX: 0.66,
   shoulderY: 1.1,
   shoulderZ: 0.42,
-  elbowX: 0.74,
+  elbowX: 0.69,
   elbowY: 0.9,
   elbowZ: 0.8,
   wristX: 0.38,
@@ -64,6 +64,9 @@ const SHAPE = {
   wristZ: 1,
   armR: 0.32,
   handR: 0.24,
+  // Below the shoulder, how far each arm's center line sits off the body, as a share of its radius,
+  // so the arm rests on the belly with most of its round showing instead of sinking into it.
+  armRest: 0.55,
   // The hoof: a small cone `hoofR` thick reaching `hoofLen` from the wrist, out of the round hand,
   // turned down by `hoofDown` from the forearm's line. Its color starts `hoofStart` past the wrist,
   // so the hand stays pink and only the cone's tip is brown.
@@ -160,6 +163,34 @@ function bezier(a: Vec3, b: Vec3, c: Vec3, t: number): Vec3 {
 }
 
 /**
+ * `p` pushed out from the body until it is at least `gap` off its surface: along the body's normal
+ * but mostly forward (its sideways part damped), so the arm comes off the belly without widening
+ * the figure's outline. A few Newton steps on the body's distance, close to exact near the surface.
+ */
+function settle(p: Vec3, gap: number): Vec3 {
+  let q: [number, number, number] = [p[0], p[1], p[2]];
+  const h = 0.001;
+  for (let i = 0; i < 6; i += 1) {
+    const d = torso(q[0], q[1], q[2]);
+    if (d >= gap - 0.001) break;
+    const g = unit([
+      torso(q[0] + h, q[1], q[2]) - torso(q[0] - h, q[1], q[2]),
+      torso(q[0], q[1] + h, q[2]) - torso(q[0], q[1] - h, q[2]),
+      torso(q[0], q[1], q[2] + h) - torso(q[0], q[1], q[2] - h),
+    ]);
+    const n = unit([g[0] * 0.25, g[1], g[2]]);
+    // How far a step along `n` moves the point off the surface, so the step lands on `gap`.
+    const rate = Math.max(dot(n, g), 0.3);
+    q = [
+      q[0] + (n[0] * (gap - d)) / rate,
+      q[1] + (n[1] * (gap - d)) / rate,
+      q[2] + (n[2] * (gap - d)) / rate,
+    ];
+  }
+  return q;
+}
+
+/**
  * An arm on `side` (-1 viewer's left, 1 right): a short, fat arm hanging down the front of the body
  * and turning slightly in, ending in a round hand with a small split hoof that points down and in
  * onto the belly above the legs. It is one tube along a gentle curve (the elbow only bends it a
@@ -170,13 +201,18 @@ function arm(side: number) {
   const { armR, handR } = SHAPE;
   const shoulder = mirror(side, [SHAPE.shoulderX, SHAPE.shoulderY, SHAPE.shoulderZ]);
   const elbow = mirror(side, [SHAPE.elbowX, SHAPE.elbowY, SHAPE.elbowZ]);
-  const wrist = mirror(side, [SHAPE.wristX, SHAPE.wristY, SHAPE.wristZ]);
+  const guide = mirror(side, [SHAPE.wristX, SHAPE.wristY, SHAPE.wristZ]);
   const steps = 6;
-  const points = Array.from({ length: steps + 1 }, (_, i) =>
-    bezier(shoulder, elbow, wrist, i / steps),
-  );
   // Full along the upper arm, narrowing toward the hand.
   const radius = (t: number) => armR + (handR - armR) * t * t;
+  // The shoulder stays where it is, melting into the body; the rest settles onto it.
+  const points = Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps;
+    const rise = Math.min(t / 0.5, 1);
+    const gap = radius(t) * SHAPE.armRest * rise * rise * (3 - 2 * rise);
+    return settle(bezier(shoulder, elbow, guide, t), gap);
+  });
+  const wrist = points[steps]!;
   const segments = points
     .slice(1)
     .map((end, i) => roundCone(points[i]!, end, radius(i / steps), radius((i + 1) / steps)));
