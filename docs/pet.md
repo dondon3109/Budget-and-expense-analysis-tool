@@ -156,7 +156,8 @@ the figure, or the tombstone.
   plate rising from the head's top corner to a crisp rounded fold, then a flap turned over it
   that hangs forward and narrows to a rounded point aiming down and out (both legs are chains of
   short petals along one fold line, so the fold stays one clean edge and the flap never
-  crumples); fat drumstick arms that start high on the body's sides under the cheeks, hug the
+  crumples). As on the toy, the two ears are not mirror images: the right one (the viewer's) is a
+  thicker, puffier flap that juts forward and out from a small base showing behind it; fat drumstick arms that start high on the body's sides under the cheeks, hug the
   sides as they come down (forming the figure's outline there, so the body itself is a little
   narrower than the head), and turn in across the belly, tapering evenly to a small pointed
   rose-brown hoof that continues the hand down and in onto the belly well above the feet (so the

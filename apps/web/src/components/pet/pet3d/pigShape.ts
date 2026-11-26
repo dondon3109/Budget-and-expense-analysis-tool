@@ -108,6 +108,19 @@ const SHAPE = {
   earR: 0.34,
   earTipR: 0.05,
   earThick: 0.3,
+  // The toy's ears are not mirror images: its right ear (the viewer's) is a thicker, puffier
+  // flap that juts forward and out from a small base showing behind it, so that ear has its own
+  // fold, tip, and size.
+  rightEarScale: 0.92,
+  rightEarFoldX: 0.1,
+  rightEarFoldY: 0.45,
+  rightEarFoldZ: -0.1,
+  rightEarTipX: 0.27,
+  rightEarTipY: 0.3,
+  rightEarTipZ: 0.7,
+  rightEarR: 0.33,
+  rightEarTipR: 0.2,
+  rightEarThick: 0.55,
 };
 
 /** The rig: each bone's pivot and parent, in the order of the skin indices. */
@@ -314,12 +327,25 @@ function leg(side: number) {
  * crisp rounded fold rather than a soft bend.
  */
 function ear(side: number) {
-  const { earX, earY, earScale } = SHAPE;
-  const place = (o: Vec3) =>
-    mirror(side, [earX + o[0] * earScale, earY + o[1] * earScale, o[2] * earScale]);
+  const right = side > 0;
+  const e = {
+    scale: right ? SHAPE.rightEarScale : SHAPE.earScale,
+    fold: right
+      ? [SHAPE.rightEarFoldX, SHAPE.rightEarFoldY, SHAPE.rightEarFoldZ]
+      : [SHAPE.earFoldX, SHAPE.earFoldY, SHAPE.earFoldZ],
+    tip: right
+      ? [SHAPE.rightEarTipX, SHAPE.rightEarTipY, SHAPE.rightEarTipZ]
+      : [SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ],
+    r: right ? SHAPE.rightEarR : SHAPE.earR,
+    tipR: right ? SHAPE.rightEarTipR : SHAPE.earTipR,
+    thick: right ? SHAPE.rightEarThick : SHAPE.earThick,
+  } as const;
+  const { earX, earY } = SHAPE;
+  const place = (o: readonly number[]) =>
+    mirror(side, [earX + o[0]! * e.scale, earY + o[1]! * e.scale, o[2]! * e.scale]);
   const base = place([0, 0, 0]);
-  const fold = place([SHAPE.earFoldX, SHAPE.earFoldY, SHAPE.earFoldZ]);
-  const tip = place([SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ]);
+  const fold = place(e.fold);
+  const tip = place(e.tip);
   // Short petals along each straight leg, so no joint shows as a ridge.
   const up = 6;
   const steps = 16;
@@ -333,7 +359,7 @@ function ear(side: number) {
   );
   const radius = (t: number) => {
     const flap = Math.max((t * steps - up) / (steps - up), 0);
-    return (SHAPE.earR + (SHAPE.earTipR - SHAPE.earR) * flap * flap) * earScale;
+    return (e.r + (e.tipR - e.r) * flap * flap) * e.scale;
   };
   const facing = mirror(side, [0.3, 0.3, 1]);
   const width = unit(cross(sub(points[1]!, points[0]!), facing));
@@ -341,10 +367,10 @@ function ear(side: number) {
     const start = points[i]!;
     const r0 = radius(i / steps);
     const r1 = radius((i + 1) / steps);
-    return petal(start, p, r0, r1, cross(width, sub(p, start)), SHAPE.earThick);
+    return petal(start, p, r0, r1, cross(width, sub(p, start)), e.thick);
   });
   // A petal lies inside the sphere around its middle, and squashing only shrinks its distance by
-  // `earThick`, so a petal that far away cannot change the blend and is skipped.
+  // its thickness, so a petal that far away cannot change the blend and is skipped.
   const bounds = points.slice(1).map((p, i) => {
     const start = points[i]!;
     const middle = scaled([p[0] + start[0], p[1] + start[1], p[2] + start[2]], 0.5);
@@ -357,7 +383,7 @@ function ear(side: number) {
       const { middle, reach } = bounds[i]!;
       const [dx, dy, dz] = [x - middle[0], y - middle[1], z - middle[2]];
       const far = Math.sqrt(dx * dx + dy * dy + dz * dz) - reach;
-      if (far * SHAPE.earThick >= d + 0.06) continue;
+      if (far * e.thick >= d + 0.06) continue;
       d = smin(d, segments[i]!(x, y, z), 0.06);
     }
     return d;
