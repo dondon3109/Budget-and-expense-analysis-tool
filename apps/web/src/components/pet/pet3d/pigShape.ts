@@ -45,28 +45,32 @@ const SHAPE = {
   headRz: 0.92,
   headTaper: 0.25,
   headP: 2.15,
-  bodyY: 0.66,
-  bodyRx: 0.9,
-  bodyRy: 0.85,
-  bodyRz: 0.9,
-  bodyTaper: 0.3,
+  bodyY: 0.68,
+  bodyRx: 1.04,
+  bodyRy: 0.9,
+  bodyRz: 1.0,
+  bodyTaper: 0.22,
   bodyP: 2,
   // Each arm follows a curve from the shoulder, bent toward the elbow point (which it does not
   // reach), to the wrist on the belly.
-  shoulderX: 0.7,
+  shoulderX: 0.82,
   shoulderY: 0.98,
-  shoulderZ: 0.38,
-  elbowX: 1.02,
-  elbowY: 0.74,
-  elbowZ: 0.66,
+  shoulderZ: 0.44,
+  elbowX: 1.16,
+  elbowY: 0.86,
+  elbowZ: 0.76,
   wristX: 0.5,
-  wristY: 0.76,
-  wristZ: 0.92,
+  wristY: 0.92,
+  wristZ: 1.04,
   armR: 0.27,
   handR: 0.15,
   hoofDown: 1.3,
-  footX: 0.76,
-  footR: 0.3,
+  footX: 0.86,
+  footR: 0.32,
+  // Each leg runs from its hip (`hipX` out from the middle) forward to its foot, `legR` thick.
+  hipX: 0.7,
+  footZ: 0.94,
+  legR: 0.37,
   earX: 0.72,
   earY: 2.32,
   earScale: 0.925,
@@ -95,8 +99,8 @@ export const PIG_BONES: ReadonlyArray<{ name: string; parent: number; at: Vec3 }
   { name: "snout", parent: 2, at: [0, 1.84, 0.95] },
   { name: "armL", parent: 0, at: [-SHAPE.shoulderX, SHAPE.shoulderY, SHAPE.shoulderZ] },
   { name: "armR", parent: 0, at: [SHAPE.shoulderX, SHAPE.shoulderY, SHAPE.shoulderZ] },
-  { name: "legL", parent: 0, at: [-0.64, 0.34, 0.2] },
-  { name: "legR", parent: 0, at: [0.64, 0.34, 0.2] },
+  { name: "legL", parent: 0, at: [-SHAPE.hipX, 0.34, 0.2] },
+  { name: "legR", parent: 0, at: [SHAPE.hipX, 0.34, 0.2] },
 ];
 
 /** Where the face details sit on the head, in the head's rest position. */
@@ -204,10 +208,10 @@ function arm(side: number) {
 
 /** A leg on `side`: a short thick stump stretched forward, ending in a flat round sole. */
 function leg(side: number) {
-  const hip = mirror(side, [0.64, 0.34, 0.2]);
-  const foot = mirror(side, [SHAPE.footX, 0.33, 0.82]);
+  const hip = mirror(side, [SHAPE.hipX, 0.34, 0.2]);
+  const foot = mirror(side, [SHAPE.footX, 0.33, SHAPE.footZ]);
   const dir = unit(sub(foot, hip));
-  const stump = roundCone(hip, foot, 0.34, SHAPE.footR);
+  const stump = roundCone(hip, foot, SHAPE.legR, SHAPE.footR);
   const [fx, fy, fz] = foot;
   return {
     foot,
@@ -379,8 +383,8 @@ export function pigDistance(x: number, y: number, z: number) {
   let d = smin(torso(x, y, z), skull(x, y, z), 0.12);
   for (let side = 0; side < 2; side += 1) {
     const s = side === 0 ? -1 : 1;
-    if (nearby(x, y, z, [0.62 * s, 0.82, 0.65], 0.82) < d + 0.1) d = arms[side]!.joined(d, x, y, z);
-    if (nearby(x, y, z, [0.73 * s, 0.33, 0.5], 0.72) < d + 0.14)
+    if (nearby(x, y, z, [0.72 * s, 0.86, 0.74], 0.92) < d + 0.1) d = arms[side]!.joined(d, x, y, z);
+    if (nearby(x, y, z, [0.8 * s, 0.33, 0.62], 0.82) < d + 0.14)
       d = smin(d, legs[side]!.distance(x, y, z), 0.1);
     if (nearby(x, y, z, [0.9 * s, 2.6, 0.45], 0.85) < d + 0.12)
       d = smin(d, ears[side]!(x, y, z), 0.06);
@@ -419,7 +423,7 @@ let cached: PigMesh | null = null;
  */
 export function pigMesh(): PigMesh {
   if (cached) return cached;
-  const mesh = meshSdf(pigDistance, [-1.5, -0.1, -1.05], [1.5, 3.15, 1.35], 0.024);
+  const mesh = meshSdf(pigDistance, [-1.6, -0.1, -1.1], [1.6, 3.15, 1.45], 0.024);
   const count = mesh.positions.length / 3;
   // Soften the shading everywhere but the snout, whose exact normals keep the nostrils crisp.
   const neighbors = meshNeighbors(mesh.indices, count);
