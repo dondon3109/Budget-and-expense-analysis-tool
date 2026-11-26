@@ -4,7 +4,8 @@ import { ellipsoid, meshSdf, roundCone, smax, smin, type SdfMesh } from "./sdfMe
 // round head with full cheeks on a chubby round body, ears that rise from the top corners and
 // flop forward, little arms resting on the belly ending in split hooves, stubby legs stretched
 // forward showing round soles, and a short snout with deep nostrils. Every part melts into its
-// neighbor (`smin`), so the figure is one seamless piece with soft creases, like the toy.
+// neighbor (`smin`), so the figure is one seamless piece with soft creases, like the toy; the arms
+// melt in only at the shoulder, so they stand apart as limbs.
 //
 // Units: the floor is y = 0, the figure faces +z, and it stands about 3 units tall.
 
@@ -33,32 +34,45 @@ const SHAPE = {
   headRy: 0.92,
   headRz: 0.92,
   headTaper: 0.25,
-  headP: 2.25,
+  headP: 2.15,
   bodyY: 0.66,
-  bodyRx: 1,
+  bodyRx: 0.9,
   bodyRy: 0.85,
   bodyRz: 0.9,
-  bodyTaper: 0.12,
+  bodyTaper: 0.3,
   bodyP: 2,
-  // The arms hang down the sides of the body (their upper arms make its shoulders) and bend in
-  // front of the belly.
-  shoulderX: 0.74,
-  shoulderY: 1.04,
-  shoulderZ: 0.3,
-  elbowX: 0.78,
-  elbowY: 0.76,
-  elbowZ: 0.55,
+  // Each arm follows a curve from the shoulder, bent toward the elbow point (which it does not
+  // reach), to the wrist on the belly.
+  shoulderX: 0.7,
+  shoulderY: 1.08,
+  shoulderZ: 0.38,
+  elbowX: 1.15,
+  elbowY: 0.68,
+  elbowZ: 0.7,
   wristX: 0.32,
   wristY: 0.72,
-  wristZ: 0.9,
-  armR: 0.28,
+  wristZ: 0.95,
+  armR: 0.27,
   handR: 0.15,
   hoofDown: 1.3,
   footX: 0.76,
   footR: 0.3,
-  earX: 0.64,
-  earY: 2.31,
+  earX: 0.72,
+  earY: 2.32,
   earScale: 0.925,
+  // Each ear's curve from its base, bent toward its bend point, to its tip (before scaling), and
+  // its radius: `earR` at the base, swelling by `earBulge` midway and narrowing by `earNarrow` to
+  // the tip. `earThick` is how thick it is for its width.
+  earBendX: 0,
+  earBendY: 0.8,
+  earBendZ: 0.05,
+  earTipX: 0.36,
+  earTipY: 0.19,
+  earTipZ: 0.48,
+  earR: 0.28,
+  earBulge: 0.06,
+  earNarrow: 0.03,
+  earThick: 0.5,
 };
 
 /** The rig: each bone's pivot and parent, in the order of the skin indices. */
@@ -115,22 +129,41 @@ function scaled(a: Vec3, s: number): Vec3 {
   return [a[0] * s, a[1] * s, a[2] * s];
 }
 
+/** A point on the quadratic Bézier curve from `a` to `c` bent toward `b`, at `t` from 0 to 1. */
+function bezier(a: Vec3, b: Vec3, c: Vec3, t: number): Vec3 {
+  const u = 1 - t;
+  return [
+    u * u * a[0] + 2 * u * t * b[0] + t * t * c[0],
+    u * u * a[1] + 2 * u * t * b[1] + t * t * c[1],
+    u * u * a[2] + 2 * u * t * b[2] + t * t * c[2],
+  ];
+}
+
 /**
- * An arm on `side` (-1 viewer's left, 1 right): a short chubby arm from the side of the body,
- * bending at the elbow so its split hoof points down onto the belly, just above the legs.
+ * An arm on `side` (-1 viewer's left, 1 right): a chubby arm hanging down the side of the body and
+ * curling in, so its split hoof points down onto the belly just above the legs. It is one tube
+ * along a smooth curve (the elbow only bends it, so it has no corner), and only its shoulder melts
+ * into the body: the rest lies against it as a limb of its own, with a crease all along.
  */
 function arm(side: number) {
   const { armR, handR } = SHAPE;
   const shoulder = mirror(side, [SHAPE.shoulderX, SHAPE.shoulderY, SHAPE.shoulderZ]);
   const elbow = mirror(side, [SHAPE.elbowX, SHAPE.elbowY, SHAPE.elbowZ]);
   const wrist = mirror(side, [SHAPE.wristX, SHAPE.wristY, SHAPE.wristZ]);
+  const steps = 6;
+  const points = Array.from({ length: steps + 1 }, (_, i) =>
+    bezier(shoulder, elbow, wrist, i / steps),
+  );
+  // Full along the upper arm, narrowing toward the hand.
+  const radius = (t: number) => armR + (handR - armR) * t * t;
+  const segments = points
+    .slice(1)
+    .map((end, i) => roundCone(points[i]!, end, radius(i / steps), radius((i + 1) / steps)));
   // The hoof turns down off the forearm, so its tip rests on the belly instead of facing out.
-  const forearm = unit(sub(wrist, elbow));
+  const forearm = unit(sub(wrist, points[steps - 2]!));
   const dir = unit([forearm[0], forearm[1] - SHAPE.hoofDown, forearm[2]]);
   const tip: Vec3 = [wrist[0] + dir[0] * 0.16, wrist[1] + dir[1] * 0.16, wrist[2] + dir[2] * 0.16];
-  const upper = roundCone(shoulder, elbow, armR, armR);
-  const lower = roundCone(elbow, wrist, armR, handR);
-  const hoof = roundCone(wrist, tip, handR, handR * 0.4);
+  const hoof = roundCone(wrist, tip, handR, handR * 0.6);
   // The hoof's front, and the line across it where the two toes split (painted, see `pigMesh`).
   const front = unit(cross(cross(dir, [0, 0.4, 1]), dir));
   const across = unit(cross(dir, front));
@@ -140,7 +173,21 @@ function arm(side: number) {
     front,
     across,
     distance(x: number, y: number, z: number) {
-      return smin(smin(upper(x, y, z), lower(x, y, z), 0.08), hoof(x, y, z), 0.06);
+      let d = Infinity;
+      for (const segment of segments) d = Math.min(d, segment(x, y, z));
+      return smin(d, hoof(x, y, z), 0.06);
+    },
+    /**
+     * The arm joined to `rest` (the distance to the rest of the figure). Only the top of the upper
+     * arm melts in; the rest meets the body in a narrow crease, so it reads as a limb of its own
+     * (any narrower and the mesh grid draws the crease jagged).
+     */
+    joined(rest: number, x: number, y: number, z: number) {
+      const top = segments[0]!(x, y, z);
+      let d = top;
+      for (let i = 1; i < steps; i += 1) d = Math.min(d, segments[i]!(x, y, z));
+      d = smin(d, hoof(x, y, z), 0.06);
+      return smin(smin(rest, top, 0.12), d, 0.08);
     },
   };
 }
@@ -163,32 +210,32 @@ function leg(side: number) {
 }
 
 /**
- * An ear on `side`: a thick, soft petal rising from the head's top corner and curling over so its
- * round tip droops forward, like a floppy felt ear. It is a chain of petals along a gentle curve,
- * melted together so the bend reads as one soft fold rather than a hinge.
+ * An ear on `side`: a thick, soft, round-tipped petal rising from the head's top corner and
+ * folding forward so its tip points down and out, like a floppy felt ear. It follows one smooth
+ * curve (so the fold is a soft bend, not a crease) and is widest past its base, rounding off to
+ * a full tip.
  */
 function ear(side: number) {
-  // The petal chain's centers, from the base, and their radii, before scaling.
-  const path: Vec3[] = [
-    [0, 0, 0],
-    [0.06, 0.3, 0.08],
-    [0.22, 0.46, 0.22],
-    [0.42, 0.34, 0.42],
-    [0.52, 0.12, 0.5],
-  ];
   const { earX, earY, earScale } = SHAPE;
-  const points = path.map((o) =>
-    mirror(side, [earX + o[0] * earScale, earY + o[1] * earScale, o[2] * earScale]),
-  );
-  const radii = [0.3, 0.3, 0.28, 0.19, 0.09].map((r) => r * earScale);
+  const place = (o: Vec3) =>
+    mirror(side, [earX + o[0] * earScale, earY + o[1] * earScale, o[2] * earScale]);
+  const base = place([0, 0, 0]);
+  const bend = place([SHAPE.earBendX, SHAPE.earBendY, SHAPE.earBendZ]);
+  const end = place([SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ]);
+  const steps = 6;
+  const points = Array.from({ length: steps + 1 }, (_, i) => bezier(base, bend, end, i / steps));
+  const radius = (t: number) =>
+    (SHAPE.earR + SHAPE.earBulge * Math.sin(Math.PI * t) - SHAPE.earNarrow * t) * earScale;
   const facing = mirror(side, [0.3, 0.3, 1]);
   const width = unit(cross(sub(points[1]!, points[0]!), facing));
-  const segments = points.slice(1).map((end, i) => {
+  const segments = points.slice(1).map((p, i) => {
     const start = points[i]!;
-    return petal(start, end, radii[i]!, radii[i + 1]!, cross(width, sub(end, start)), 0.42);
+    const r0 = radius(i / steps);
+    const r1 = radius((i + 1) / steps);
+    return petal(start, p, r0, r1, cross(width, sub(p, start)), SHAPE.earThick);
   });
   return (x: number, y: number, z: number) =>
-    segments.reduce((d, segment) => smin(d, segment(x, y, z), 0.12), Infinity);
+    segments.reduce((d, segment) => smin(d, segment(x, y, z), 0.05), Infinity);
 }
 
 /**
@@ -304,8 +351,7 @@ export function pigDistance(x: number, y: number, z: number) {
   let d = smin(torso(x, y, z), skull(x, y, z), 0.12);
   for (let side = 0; side < 2; side += 1) {
     const s = side === 0 ? -1 : 1;
-    if (nearby(x, y, z, [0.66 * s, 0.9, 0.6], 0.85) < d + 0.1)
-      d = smin(d, arms[side]!.distance(x, y, z), 0.06);
+    if (nearby(x, y, z, [0.62 * s, 0.82, 0.65], 0.82) < d + 0.1) d = arms[side]!.joined(d, x, y, z);
     if (nearby(x, y, z, [0.73 * s, 0.33, 0.5], 0.72) < d + 0.14)
       d = smin(d, legs[side]!.distance(x, y, z), 0.1);
     if (nearby(x, y, z, [0.9 * s, 2.6, 0.45], 0.85) < d + 0.12)
@@ -377,10 +423,10 @@ export function pigMesh(): PigMesh {
       // The toes' split: a lighter line down the middle of the hoof's front, as on the toy.
       const offset = sub([x, y, z], limb.wrist);
       const split =
-        smooth(0.03, 0.012, Math.abs(dot(offset, limb.across))) *
+        smooth(0.06, 0.025, Math.abs(dot(offset, limb.across))) *
         smooth(0.04, 0.08, past) *
         smooth(0.2, 0.5, dot(normal, limb.front));
-      hoof = Math.max(hoof, onArm * smooth(0, 0.04, past) * (1 - 0.45 * split));
+      hoof = Math.max(hoof, onArm * smooth(-0.02, 0.05, past) * (1 - 0.35 * split));
       // A sole is the flat end of the leg: facing along the leg, past the rounded rim.
       const foot = legs[side]!;
       const onLeg = smooth(0.04, 0, d[LEG_L + side]! - nearest);

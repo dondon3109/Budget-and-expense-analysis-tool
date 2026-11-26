@@ -149,12 +149,14 @@ the figure, or the tombstone.
 - Prototype, web only: a healthy Baby pig draws as a live 3D figure instead
   (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is modeled on a
   soft clay toy: a big round head with full cheeks, wider than it is tall and domed on top, on a
-  chubby round body that is widest at the hips (each an egg-like form, `egg` in `pigShape.ts`, so
-  no outline has flat sides); thick, soft ears rising from the head's top corners and folding
-  forward so their round tips point down and out (a chain of melted petals, so the bend reads as
-  one soft fold); short chubby arms that hang down the sides of the body below a slight neck and
-  curl in, so their rose-brown hooves point down onto the belly just above the legs, each with a
-  lighter painted line where the toes split; stubby legs stretched forward showing round rose-brown
+  chubby round body that is widest at the hips and narrows toward the neck (each an egg-like form,
+  `egg` in `pigShape.ts`, so no outline has flat sides); thick, soft, round-tipped ears rising
+  from the head's top corners and folding forward so their tips point down and out (petals along
+  one smooth curve, so the fold is a soft bend); chubby arms that hang down the sides of the body
+  and curl in, so their rose-brown hooves point down onto the belly just above the legs, each with
+  a lighter painted line where the toes split. Each arm is one tube along a smooth curve, with no
+  elbow corner, and only its shoulder melts into the body: the rest meets it in a narrow crease,
+  so the arms stand apart as limbs. The figure also has stubby legs stretched forward showing round rose-brown
   soles; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
   top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The
   proportions (`SHAPE` in `pigShape.ts`) were fitted to a photo of the reference toy by matching
@@ -166,7 +168,8 @@ the figure, or the tombstone.
   soft velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
   scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
   saturation. It is lit like a white studio product shot, with a strong key low from the right
-  leaving the left side in warm shade, a glow along the right edge, a bounce from the floor that
+  leaving the left side in warm shade, a glow rimming the right edge from behind (from the side it
+  would shine through the body onto the inside of the left arm), a bounce from the floor that
   keeps the chin crease light, ambient occlusion (`GTAOPass`, blend at most 1, or the deepest
   creases turn grey-blue) darkening the creases under the chin and around the ears, arms, and legs,
   and a contact shadow. The lighting and colors were fitted to the same photo. A faint light high

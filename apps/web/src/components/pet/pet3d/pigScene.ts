@@ -354,8 +354,10 @@ export function mountPigScene(
   const rim = new THREE.DirectionalLight("#ffffff", 0.9);
   rim.position.set(0, 3, -4);
   scene.add(rim);
+  // The edge glow sits far enough behind that it only rims the right side: from the side it would
+  // shine through the body (nothing casts shadows on the figure) onto the inside of the left arm.
   const edge = new THREE.DirectionalLight("#fff8f4", 3);
-  edge.position.set(4.5, 1.5, -0.5);
+  edge.position.set(3, 1.5, -3);
   scene.add(edge);
   const bounce = new THREE.DirectionalLight("#ffece4", 0.8);
   bounce.position.set(0, -1, 4);
