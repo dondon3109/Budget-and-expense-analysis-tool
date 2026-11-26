@@ -162,6 +162,79 @@ export function meshSdf(
   return { positions, normals, indices: new Uint32Array(indices) };
 }
 
+/** Each vertex's neighbors in one flat array: those of vertex `v` are `list[start[v]..start[v + 1]]`. */
+export interface MeshNeighbors {
+  start: Uint32Array;
+  list: Uint32Array;
+}
+
+export function meshNeighbors(indices: Uint32Array, count: number): MeshNeighbors {
+  // An edge shared by two triangles is listed twice, which weights every neighbor the same.
+  const start = new Uint32Array(count + 1);
+  for (const v of indices) start[v + 1]! += 2;
+  for (let v = 0; v < count; v += 1) start[v + 1]! += start[v]!;
+  const list = new Uint32Array(start[count]!);
+  const fill = start.slice(0, count);
+  for (let t = 0; t < indices.length; t += 3)
+    for (let e = 0; e < 3; e += 1) {
+      const a = indices[t + e]!;
+      const b = indices[t + ((e + 1) % 3)]!;
+      list[fill[a]!++] = b;
+      list[fill[b]!++] = a;
+    }
+  return { start, list };
+}
+
+/** Moves each vertex's `size` values `weight` of the way toward its neighbors' average, in place. */
+export function blurAttribute(
+  values: Float32Array,
+  size: number,
+  { start, list }: MeshNeighbors,
+  weight: number,
+) {
+  const average = new Float32Array(values.length);
+  for (let v = 0; v < start.length - 1; v += 1) {
+    const first = start[v]!;
+    const last = start[v + 1]!;
+    const share = 1 / (last - first || 1);
+    for (let c = 0; c < size; c += 1) {
+      let sum = 0;
+      for (let n = first; n < last; n += 1) sum += values[list[n]! * size + c]!;
+      average[v * size + c] = sum * share;
+    }
+  }
+  for (let p = 0; p < values.length; p += 1)
+    values[p] = values[p]! + weight * (average[p]! - values[p]!);
+}
+
+/**
+ * Evens out a mesh in place. `passes` rounds of Taubin smoothing (a shrinking step, then a slightly
+ * larger inflating one, so the shape keeps its size) take out the grid's small stair steps. Each
+ * normal is then averaged with its neighbors' `normalPasses` times, so the creases where blended
+ * parts meet (limb segments, ear petals, hoof rims) shade as one soft curve instead of a facet line.
+ */
+export function relaxMesh(
+  mesh: SdfMesh,
+  neighbors: MeshNeighbors,
+  passes: number,
+  normalPasses: number,
+) {
+  const { positions, normals } = mesh;
+  for (let pass = 0; pass < passes; pass += 1) {
+    blurAttribute(positions, 3, neighbors, 0.5);
+    blurAttribute(positions, 3, neighbors, -0.53);
+  }
+  for (let pass = 0; pass < normalPasses; pass += 1) {
+    blurAttribute(normals, 3, neighbors, 0.5);
+    for (let p = 0; p < normals.length; p += 3) {
+      const length = Math.sqrt(normals[p]! ** 2 + normals[p + 1]! ** 2 + normals[p + 2]! ** 2) || 1;
+      normals[p] = normals[p]! / length;
+      normals[p + 1] = normals[p + 1]! / length;
+      normals[p + 2] = normals[p + 2]! / length;
+    }
+  }
+}
+
 // A cell's corners are numbered by their x, y, z offsets as bits 0, 1, 2; these are its 12 edges.
 const EDGES: ReadonlyArray<readonly [number, number]> = [
   [0, 1],

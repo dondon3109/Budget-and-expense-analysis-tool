@@ -84,6 +84,15 @@ function softSkin(o: Palette) {
       "#include <emissivemap_fragment>",
       "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.08 + diffuseColor.rgb * diffuseColor.rgb * 0.62;",
     );
+    // Wrapped light: each light reaches a little past the side facing it and fades out flat, the
+    // way it scatters into soft material, so its edge never draws a hard line across a curve.
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <lights_physical_pars_fragment>",
+      THREE.ShaderChunk.lights_physical_pars_fragment.replace(
+        "float dotNL = saturate( dot( geometryNormal, directLight.direction ) );",
+        "float lit = saturate( ( dot( geometryNormal, directLight.direction ) + 0.3 ) / 1.3 );\n\tfloat dotNL = lit * lit;",
+      ),
+    );
   };
   return material;
 }

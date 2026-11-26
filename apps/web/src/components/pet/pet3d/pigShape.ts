@@ -1,4 +1,14 @@
-import { ellipsoid, meshSdf, roundCone, smax, smin, type SdfMesh } from "./sdfMesh";
+import {
+  blurAttribute,
+  ellipsoid,
+  meshNeighbors,
+  meshSdf,
+  relaxMesh,
+  roundCone,
+  smax,
+  smin,
+  type SdfMesh,
+} from "./sdfMesh";
 
 // The Baby pig's shape as one signed distance field, modeled on a soft clay toy figure: a big
 // round head with full cheeks on a chubby round body, ears that rise from the top corners and
@@ -222,7 +232,8 @@ function ear(side: number) {
   const base = place([0, 0, 0]);
   const bend = place([SHAPE.earBendX, SHAPE.earBendY, SHAPE.earBendZ]);
   const end = place([SHAPE.earTipX, SHAPE.earTipY, SHAPE.earTipZ]);
-  const steps = 6;
+  // Short petals, so the small turn from one to the next never shows as a ridge.
+  const steps = 9;
   const points = Array.from({ length: steps + 1 }, (_, i) => bezier(base, bend, end, i / steps));
   const radius = (t: number) =>
     (SHAPE.earR + SHAPE.earBulge * Math.sin(Math.PI * t) - SHAPE.earNarrow * t) * earScale;
@@ -234,8 +245,25 @@ function ear(side: number) {
     const r1 = radius((i + 1) / steps);
     return petal(start, p, r0, r1, cross(width, sub(p, start)), SHAPE.earThick);
   });
-  return (x: number, y: number, z: number) =>
-    segments.reduce((d, segment) => smin(d, segment(x, y, z), 0.05), Infinity);
+  // A petal lies inside the sphere around its middle, and squashing only shrinks its distance by
+  // `earThick`, so a petal that far away cannot change the blend and is skipped.
+  const bounds = points.slice(1).map((p, i) => {
+    const start = points[i]!;
+    const middle = scaled([p[0] + start[0], p[1] + start[1], p[2] + start[2]], 0.5);
+    const half = Math.hypot(...sub(p, start)) / 2;
+    return { middle, reach: half + Math.max(radius(i / steps), radius((i + 1) / steps)) };
+  });
+  return (x: number, y: number, z: number) => {
+    let d = Infinity;
+    for (let i = 0; i < steps; i += 1) {
+      const { middle, reach } = bounds[i]!;
+      const [dx, dy, dz] = [x - middle[0], y - middle[1], z - middle[2]];
+      const far = Math.sqrt(dx * dx + dy * dy + dz * dz) - reach;
+      if (far * SHAPE.earThick >= d + 0.05) continue;
+      d = smin(d, segments[i]!(x, y, z), 0.05);
+    }
+    return d;
+  };
 }
 
 /**
@@ -387,9 +415,14 @@ export function pigMesh(): PigMesh {
   if (cached) return cached;
   const mesh = meshSdf(pigDistance, [-1.5, -0.1, -1.05], [1.5, 3.15, 1.35], 0.024);
   const count = mesh.positions.length / 3;
+  // Soften the shading everywhere but the snout, whose exact normals keep the nostrils crisp.
+  const neighbors = meshNeighbors(mesh.indices, count);
+  const exactNormals = mesh.normals.slice();
+  relaxMesh(mesh, neighbors, 3, 8);
   const skinIndex = new Uint16Array(count * 4);
   const skinWeight = new Float32Array(count * 4);
   const regions = new Float32Array(count * 4);
+  const hoofs = new Float32Array(count);
   const d = new Float64Array(PARTS);
   const order = Array.from({ length: PARTS }, (_, i) => i);
   for (let v = 0; v < count; v += 1) {
@@ -413,6 +446,15 @@ export function pigMesh(): PigMesh {
     // Colors: the snout where it stands proud of the face, the hoof caps at the arm tips and the
     // soles, the inside of the nostrils, and a soft blush on each cheek.
     const snoutAmount = smooth(-0.015, 0.015, Math.min(d[HEAD]!, d[BODY]!) - d[SNOUT]!);
+    if (snoutAmount > 0) {
+      const n = [0, 1, 2].map(
+        (c) =>
+          mesh.normals[v * 3 + c]! +
+          (exactNormals[v * 3 + c]! - mesh.normals[v * 3 + c]!) * snoutAmount,
+      );
+      const length = Math.hypot(n[0]!, n[1]!, n[2]!) || 1;
+      for (let c = 0; c < 3; c += 1) mesh.normals[v * 3 + c] = n[c]! / length;
+    }
     // Each fades out smoothly where its limb meets the body, so the edge never follows the grid.
     const normal: Vec3 = [mesh.normals[v * 3]!, mesh.normals[v * 3 + 1]!, mesh.normals[v * 3 + 2]!];
     let hoof = 0;
@@ -438,7 +480,11 @@ export function pigMesh(): PigMesh {
     const cheek = Math.min(Math.hypot(Math.abs(x) - bx, y - by) / radius, 1);
     const blush = z > 0.2 ? (1 - cheek * cheek) ** 2 * (1 - snoutAmount) : 0;
     regions.set([snoutAmount, hoof, inNostril, blush], v * 4);
+    hoofs[v] = hoof;
   }
+  // The hoof caps' edges cross the grid at a slant; blurring them a little hides the steps.
+  for (let pass = 0; pass < 5; pass += 1) blurAttribute(hoofs, 1, neighbors, 0.5);
+  for (let v = 0; v < count; v += 1) regions[v * 4 + 1] = hoofs[v]!;
   cached = { ...mesh, skinIndex, skinWeight, regions };
   return cached;
 }
