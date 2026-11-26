@@ -150,22 +150,28 @@ the figure, or the tombstone.
   (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is modeled on a
   soft clay toy: a big round head with full cheeks, wider than it is tall and domed on top, on a
   chubby round body that is widest at the hips (each an egg-like form, `egg` in `pigShape.ts`, so
-  no outline has flat sides); thick, soft ears rising from the head's top corners and curling over
-  so their round tips droop forward and out (a chain of melted petals, so the bend reads as one
-  soft fold); short chubby arms from the sides of the body whose split rose-brown hoof tips turn
-  down to rest on the belly, clear of the legs;
-  stubby legs stretched forward showing round rose-brown soles with a small notch at the top;
-  wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the top of
-  a short coral snout with deep nostrils; a thin smile; and soft blush. The shape is one signed
-  distance field (`pet3d/pigShape.ts`) whose parts melt into each other with soft creases, meshed
+  no outline has flat sides); thick, soft ears rising from the head's top corners and folding
+  forward so their round tips point down and out (a chain of melted petals, so the bend reads as
+  one soft fold); short chubby arms that hang down the sides of the body below a slight neck and
+  curl in, so their rose-brown hooves point down onto the belly just above the legs, each with a
+  lighter painted line where the toes split; stubby legs stretched forward showing round rose-brown
+  soles; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
+  top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The
+  proportions (`SHAPE` in `pigShape.ts`) were fitted to a photo of the reference toy by matching
+  its outline. The shape is one signed distance field (`pet3d/pigShape.ts`) whose parts melt into
+  each other with soft creases, meshed
   once per page into a single seamless surface (`pet3d/sdfMesh.ts`, surface nets with normals from
   the field's gradient, about 300ms on a laptop) and colored per vertex (snout, hooves, nostrils,
   blush) from the body color (`PIG_BODY`, tinted by the pet color). The material is matte with a
-  soft velvet sheen and warm shadows, and neutral tone mapping keeps its pastel saturation. It is lit like a
-  white studio product shot, with the key light from the upper right leaving the left side in warm
-  shade, a glow along the right edge, ambient occlusion (`GTAOPass`) darkening the creases under
-  the chin and around the ears, arms, and legs, and a contact shadow. The figure casts the floor
-  shadow but takes none itself, because a shadow map speckles its curved surface. The mesh is
+  soft velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
+  scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
+  saturation. It is lit like a white studio product shot, with a strong key low from the right
+  leaving the left side in warm shade, a glow along the right edge, a bounce from the floor that
+  keeps the chin crease light, ambient occlusion (`GTAOPass`, blend at most 1, or the deepest
+  creases turn grey-blue) darkening the creases under the chin and around the ears, arms, and legs,
+  and a contact shadow. The lighting and colors were fitted to the same photo. A faint light high
+  above casts the short floor shadow (from the low key it would run off the canvas); the figure
+  takes no shadow itself, because a shadow map speckles its curved surface. The mesh is
   skinned to a rig (head, ears, snout, arms, legs; weights blended across each crease so a bend
   stays soft) so it reads as alive: the ears, snout, and head ride damped springs that follow the body a beat late and wobble as they
   settle, and the mouth opens. It stays put when idle

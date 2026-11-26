@@ -27,7 +27,7 @@ const mix = (a: string, b: string, t: number) =>
   `#${new THREE.Color(a).lerp(new THREE.Color(b), t).getHexString()}`;
 
 /** The pig's original pastel peach, before a pet color tints it. */
-export const PIG_BODY = "#F6ADA3";
+export const PIG_BODY = "#EEBDAE";
 
 /**
  * The pig's palette from its (tinted) body color. Each part keeps the same relation to the body as
@@ -39,7 +39,7 @@ export function pigPalette(body: string): Palette {
     body,
     snout: mix(body, "#EE7C68", 0.7),
     nostril: mix(body, "#A3302A", 0.85),
-    hoof: mix(body, "#78281C", 0.95),
+    hoof: mix(body, "#8A3326", 0.9),
     blush: mix(body, "#E8685A", 0.75),
   };
 }
@@ -66,13 +66,14 @@ function pigColors(regions: Float32Array, o: Palette) {
 
 /**
  * Soft matte clay with a velvet sheen, like a flocked vinyl toy: light rolls off its edges in a
- * pale glow instead of a shine, and a little of the surface color is added back everywhere, as
- * light scattering inside soft material would, so the shadows stay warm and never go grey.
+ * pale glow instead of a shine, and some of the surface color is added back everywhere, as light
+ * scattering inside soft material would. The squared term adds back more of the color's own hue
+ * than of its lightness, so the shadows stay a warm, saturated pink and never go grey.
  */
 function softSkin(o: Palette) {
   const material = new THREE.MeshPhysicalMaterial({
     vertexColors: true,
-    roughness: 0.7,
+    roughness: 0.6,
     metalness: 0,
     sheen: 0.9,
     sheenRoughness: 0.5,
@@ -81,7 +82,7 @@ function softSkin(o: Palette) {
   material.onBeforeCompile = (shader) => {
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <emissivemap_fragment>",
-      "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.08;",
+      "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.08 + diffuseColor.rgb * diffuseColor.rgb * 0.62;",
     );
   };
   return material;
@@ -152,16 +153,16 @@ function eye(side: number, head: THREE.Object3D, headAt: THREE.Vector3) {
       clearcoatRoughness: 0.08,
     });
   const iris = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), glossy("#4B2418"));
-  iris.scale.set(0.188, 0.198, 0.075);
+  iris.scale.set(0.2, 0.21, 0.075);
   const pupil = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 24), glossy("#140907"));
-  pupil.scale.set(0.152, 0.162, 0.073);
+  pupil.scale.set(0.176, 0.186, 0.073);
   pupil.position.z = 0.008;
   const spark = new THREE.Mesh(
     new THREE.SphereGeometry(1, 20, 10),
     new THREE.MeshBasicMaterial({ color: "#ffffff" }),
   );
-  spark.scale.set(0.036, 0.04, 0.02);
-  spark.position.set(0.058, 0.07, 0.075);
+  spark.scale.set(0.05, 0.054, 0.02);
+  spark.position.set(0.06, 0.068, 0.075);
   group.add(iris, pupil, spark);
   head.add(group);
   return group;
@@ -322,39 +323,41 @@ export function mountPigScene(
   const scene = new THREE.Scene();
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environmentIntensity = 0.35;
+  scene.environmentIntensity = 0.15;
 
   // Framed with headroom above the ears for the hop and the dance.
   const camera = new THREE.PerspectiveCamera(25, canvas.clientWidth / canvas.clientHeight, 0.1, 50);
   camera.position.set(0, 2.0, 9.4);
   camera.lookAt(0, 1.66, 0.2);
 
-  // Bright white studio lighting like a product shot: a key from the upper right that leaves the
-  // left side in warm shade, a little fill and sky light so the clay stays pastel, a rim behind,
-  // and a glow along the right edge.
-  const key = new THREE.DirectionalLight("#fff6ee", 2.6);
-  key.position.set(2.6, 4.4, 3.6);
-  key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
-  key.shadow.radius = 10;
-  key.shadow.camera.left = -3;
-  key.shadow.camera.right = 2;
-  key.shadow.camera.top = 3.4;
-  key.shadow.camera.bottom = -1;
-  key.shadow.bias = -0.0005;
-  key.shadow.normalBias = 0.05;
+  // Bright white studio lighting like a product shot: a strong key low from the right that leaves
+  // the left side in warm shade, a rim behind, a glow along the right edge, and a little bounce
+  // from the floor. There is no fill: the material's scattered
+  // light (softSkin) keeps the shaded side pastel instead.
+  const key = new THREE.DirectionalLight("#ffffff", 5.2);
+  key.position.set(10, 3.5, 2.5);
   scene.add(key);
-  const fill = new THREE.DirectionalLight("#fff4f0", 0.2);
-  fill.position.set(-3, 1.5, 3);
-  scene.add(fill);
+  // The floor shadow comes from a faint light high above instead, so it stays a short soft pool
+  // inside the frame: from the low key it would stretch past the canvas edge and end in a line.
+  const caster = new THREE.DirectionalLight("#ffffff", 0.01);
+  caster.position.set(1.6, 6, 2.4);
+  caster.castShadow = true;
+  caster.shadow.mapSize.set(1024, 1024);
+  caster.shadow.radius = 10;
+  caster.shadow.camera.left = -3;
+  caster.shadow.camera.right = 2;
+  caster.shadow.camera.top = 3.4;
+  caster.shadow.camera.bottom = -1;
+  caster.shadow.bias = -0.0005;
+  caster.shadow.normalBias = 0.05;
+  scene.add(caster);
   const rim = new THREE.DirectionalLight("#ffffff", 0.9);
   rim.position.set(0, 3, -4);
   scene.add(rim);
-  const edge = new THREE.DirectionalLight("#fff8f4", 1.2);
+  const edge = new THREE.DirectionalLight("#fff8f4", 3);
   edge.position.set(4.5, 1.5, -0.5);
   scene.add(edge);
-  scene.add(new THREE.HemisphereLight("#fff6f2", "#e39a8a", 0.35));
-  const bounce = new THREE.DirectionalLight("#ffece4", 0.35);
+  const bounce = new THREE.DirectionalLight("#ffece4", 0.8);
   bounce.position.set(0, -1, 4);
   scene.add(bounce);
 
@@ -384,7 +387,9 @@ export function mountPigScene(
   composer.addPass(new ColorPass(scene, camera));
   const occlusion = new GTAOPass(scene, camera, width, height);
   occlusion.updateGtaoMaterial({ radius: 0.5, distanceExponent: 1, thickness: 1, scale: 2 });
-  occlusion.blendIntensity = 1;
+  // Above 1 the blend pushes the deepest creases (under the ears) negative, which tone mapping
+  // turns grey-blue.
+  occlusion.blendIntensity = 0.75;
   composer.addPass(occlusion);
   composer.addPass(new OutputPass());
 
