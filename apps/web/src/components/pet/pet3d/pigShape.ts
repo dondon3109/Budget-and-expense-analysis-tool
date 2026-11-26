@@ -557,9 +557,11 @@ export function pigMesh(): PigMesh {
           smooth(0.1, 0.4, dot(normal, limb.front)),
       );
       hoof = Math.max(hoof, onArm * smooth(SHAPE.hoofStart - 0.05, SHAPE.hoofStart + 0.05, past));
-      // A sole is the flat end of the leg: facing along the leg, inside a pink rim.
+      // A sole is the flat end of the leg: facing along the leg, inside a pink rim. It is measured
+      // on the leg's own surface, not by which part is nearest, so a hand resting close by cannot
+      // bite into its color.
       const foot = legs[side]!;
-      const onLeg = smooth(0.04, 0, d[LEG_L + side]! - nearest);
+      const onLeg = smooth(0.04, 0.015, d[LEG_L + side]!);
       const end = smooth(0.07, 0.1, dot(sub([x, y, z], foot.foot), foot.dir));
       hoof = Math.max(hoof, onLeg * end * smooth(0.7, 0.9, dot(normal, foot.dir)));
     }

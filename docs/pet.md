@@ -161,7 +161,8 @@ the figure, or the tombstone.
   belly with its center line about half its radius off the surface (`armRest`, pushed forward and
   never up, so the outline keeps its width and the shoulders do not rise into a shrug), so most of its round shows and it meets the body in a narrow crease,
   standing apart as a limb. The figure also has stubby legs stretched forward showing round rose-brown
-  soles inside a pink rim; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
+  soles inside a pink rim (each sole is painted on the leg's own surface, so a hand resting close
+  by never bites into its color); wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
   top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The
   proportions (`SHAPE` in `pigShape.ts`) were fitted to a photo of the reference toy by matching
   its outline (about 95% overlap; most of the rest is the photo's floor shadow and a pixel of edge
