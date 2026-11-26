@@ -51,10 +51,6 @@
   transition: transform 160ms ease;
 }
 
-.pet-pettable:hover {
-  transform: scale(1.03) rotate(-1.5deg);
-}
-
 .pet-pettable:active {
   transform: scale(0.96);
 }
