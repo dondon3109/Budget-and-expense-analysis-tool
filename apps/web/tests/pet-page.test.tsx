@@ -176,16 +176,15 @@ describe("pet on the web", () => {
     expect(screen.getByRole("button", { name: /Click 10 more times/ })).toBeInTheDocument();
   });
 
-  it("marks the current stage on the growth path and hearts a petted pet", async () => {
+  it("marks the current stage on the growth path and hops a petted pet without hearts", async () => {
     vi.mocked(checkInPet).mockResolvedValue(babyPet);
     renderWithProviders(<PetPage />);
 
     const path = await screen.findByRole("list", { name: "Growth path" });
     expect(path.querySelector('[aria-current="step"]')).toHaveTextContent("Baby");
     const pet = screen.getByRole("button", { name: "Pet Bao" });
-    expect(pet.querySelector(".pet-hearts")).toBeNull();
     fireEvent.click(pet);
-    expect(pet.querySelector(".pet-hearts")).toHaveTextContent("💖");
+    expect(pet.querySelector(".pet-hearts")).toBeNull();
     expect(playPetReaction).toHaveBeenLastCalledWith("hippo", "baby", "happy");
   });
 
@@ -197,7 +196,6 @@ describe("pet on the web", () => {
     fireEvent.click(pet);
 
     expect(pet.querySelector(".pet-hearts")).toHaveTextContent("🤒");
-    expect(pet.querySelector(".pet-hearts")).not.toHaveTextContent("💖");
     expect(playPetReaction).toHaveBeenLastCalledWith("hippo", "baby", "sick");
   });
 

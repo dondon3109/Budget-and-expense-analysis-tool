@@ -50,18 +50,13 @@ export interface PetBurstGlyph {
 }
 
 /**
- * What floats up from the pet: a fan of hearts when it is happy, a wider shower with sparkles when
- * it dances, or one 🤒 or 💤 that only drifts up a little.
+ * What floats up from the pet: nothing when it is happy (the hop and its voice answer the tap), a
+ * shower of sparkles when it dances, or one 🤒 or 💤 that only drifts up a little.
  */
 export function petReactionBurst(reaction: PetReaction): PetBurstGlyph[] {
+  if (reaction === "happy") return [];
   const glyphs =
-    reaction === "combo"
-      ? ["💜", "✨", "💖", "💜", "✨", "💖", "💜", "💖"]
-      : reaction === "sick"
-        ? ["🤒"]
-        : reaction === "fading"
-          ? ["💤"]
-          : ["💜", "💖", "💜", "💖"];
+    reaction === "combo" ? ["✨", "✨", "✨", "✨", "✨"] : reaction === "sick" ? ["🤒"] : ["💤"];
   if (glyphs.length === 1) return [{ glyph: glyphs[0] ?? "", drift: 0, rise: 60, delay: 0 }];
   const spread = glyphs.length > 4 ? 70 : 40;
   return glyphs.map((glyph, index) => ({

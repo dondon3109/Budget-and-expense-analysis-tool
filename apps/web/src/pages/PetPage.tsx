@@ -175,9 +175,9 @@ function GrowthPath({ stage }: { stage: PetView["stage"] }) {
 }
 
 /**
- * A hatched pet the user can pet. A click answers by mood: hearts, a hop, and the species' happy
- * voice; five quick clicks make a healthy pet dance; a sick or fading pet answers weakly with its
- * sad voice. Purely a delight on this page; nothing is sent to the Worker.
+ * A hatched pet the user can pet. A click answers by mood: a hop and the species' happy voice;
+ * five quick clicks make a healthy pet dance in a shower of sparkles; a sick or fading pet answers
+ * weakly with its sad voice. Purely a delight on this page; nothing is sent to the Worker.
  */
 function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; name: string }) {
   const history = useRef(PET_TAP_HISTORY_START);
@@ -197,6 +197,8 @@ function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; na
     setTap((last) => ({ reaction: result.reaction, id: (last?.id ?? 0) + 1 }));
   };
 
+  const burst = tap ? petReactionBurst(tap.reaction) : [];
+
   return (
     <button
       className="pet-pettable"
@@ -208,9 +210,9 @@ function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; na
       onMouseDown={(event) => event.preventDefault()}
     >
       <PetPicture pet={pet} size={220} tap={tap} />
-      {tap ? (
+      {tap && burst.length > 0 ? (
         <span key={tap.id} className="pet-hearts" aria-hidden="true">
-          {petReactionBurst(tap.reaction).map((glyph, index) => (
+          {burst.map((glyph, index) => (
             <span
               // The burst is fixed per reaction, so its order is stable.
               key={`${index}-${glyph.glyph}`}

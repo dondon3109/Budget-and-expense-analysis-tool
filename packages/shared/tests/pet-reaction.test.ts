@@ -4,6 +4,7 @@ import {
   PET_COMBO_COOLDOWN_MS,
   PET_TAP_HISTORY_START,
   petHatchSoundCue,
+  petReactionBurst,
   petSoundCue,
   petTapReaction,
   type PetReaction,
@@ -44,6 +45,20 @@ describe("petTapReaction", () => {
       history = result.history;
     }
     expect(petTapReaction("fading", history, 500).reaction).toBe("fading");
+  });
+});
+
+describe("petReactionBurst", () => {
+  it("sends up no hearts for a tap or a dance", () => {
+    expect(petReactionBurst("happy")).toEqual([]);
+    const dance = petReactionBurst("combo").map((glyph) => glyph.glyph);
+    expect(dance.length).toBeGreaterThan(0);
+    expect(dance.join("")).not.toMatch(/💜|💖/u);
+  });
+
+  it("floats one 🤒 or 💤 from an unwell pet", () => {
+    expect(petReactionBurst("sick").map((glyph) => glyph.glyph)).toEqual(["🤒"]);
+    expect(petReactionBurst("fading").map((glyph) => glyph.glyph)).toEqual(["💤"]);
   });
 });
 

@@ -75,8 +75,8 @@ after a pet passes away (`diedAt`), the Egg to Legend growth path (`petStageEmoj
 earning rules as tiles (`petEarningRows`).
 
 Clicking or tapping a hatched pet answers by mood (`petReaction.ts` in `@zoption/shared`): a
-healthy pet hops and sends up hearts in its species' and stage's happy voice, and five taps within
-two seconds make it dance with a shower of hearts, a slight celebratory pitch lift, and a staggered
+healthy pet hops in its species' and stage's happy voice (no hearts float up), and five taps within
+two seconds make it dance with a shower of sparkles, a slight celebratory pitch lift, and a staggered
 sparkle jingle (then three seconds before the next dance). A sick pet wobbles with a 🤒 and a
 fading one barely stirs with a 💤, both in that stage's sad voice, quieter and slightly slower when
 fading. Every species and hatched stage (Baby, Juvenile, Adult, Legend) has its own happy and sad clip,

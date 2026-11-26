@@ -172,8 +172,8 @@ function Heart({
 }
 
 /**
- * What floats up from a tapped pet: hearts, a wider shower for a dance, or one 🤒 or 💤 that only
- * drifts a little. Mount it with a new key per tap so the burst restarts.
+ * What floats up from a tapped pet: nothing for a happy tap, a shower of sparkles for a dance, or
+ * one 🤒 or 💤 that only drifts a little. Mount it with a new key per tap so the burst restarts.
  */
 export function ReactionBurst({ reaction }: { reaction: PetReaction }) {
   return (
