@@ -152,7 +152,7 @@ the figure, or the tombstone.
   chubby round body that is widest at the hips and narrows toward the neck (each an egg-like form,
   `egg` in `pigShape.ts`, so no outline has flat sides); thick, soft, round-tipped ears rising
   from the head's top corners and folding forward so their tips point down and out (petals along
-  one smooth curve, so the fold is a soft bend); chubby arms that hang down the sides of the body
+  one smooth curve, so the fold is a soft bend); short chubby arms that hang down the sides of the body
   and curl in, so their rose-brown hooves point down onto the belly just above the legs, each with
   a lighter painted line where the toes split. Each arm is one tube along a smooth curve, with no
   elbow corner, and only its shoulder melts into the body: the rest meets it in a narrow crease,
