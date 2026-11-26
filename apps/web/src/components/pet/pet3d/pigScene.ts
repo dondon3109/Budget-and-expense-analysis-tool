@@ -44,21 +44,22 @@ export function pigPalette(body: string): Palette {
   };
 }
 
-/** Per-vertex colors from the mesh's regions (snout, hoof, nostril, blush) in this palette. */
+/**
+ * Per-vertex colors from the mesh's regions (snout, nostril, blush) in this palette. The hooves
+ * are painted by the material (softSkin), which keeps their edges sharp.
+ */
 function pigColors(regions: Float32Array, o: Palette) {
   const body = new THREE.Color(o.body);
   const snout = new THREE.Color(o.snout);
   const nostril = new THREE.Color(o.nostril);
-  const hoof = new THREE.Color(o.hoof);
   const blush = new THREE.Color(o.blush);
-  const colors = new Float32Array((regions.length / 4) * 3);
+  const colors = new Float32Array(regions.length);
   const c = new THREE.Color();
-  for (let v = 0; v < regions.length / 4; v += 1) {
+  for (let v = 0; v < regions.length / 3; v += 1) {
     c.copy(body)
-      .lerp(blush, regions[v * 4 + 3]! * 0.85)
-      .lerp(snout, regions[v * 4]!)
-      .lerp(nostril, regions[v * 4 + 2]!)
-      .lerp(hoof, regions[v * 4 + 1]!);
+      .lerp(blush, regions[v * 3 + 2]! * 0.85)
+      .lerp(snout, regions[v * 3]!)
+      .lerp(nostril, regions[v * 3 + 1]!);
     colors.set([c.r, c.g, c.b], v * 3);
   }
   return colors;
@@ -80,6 +81,22 @@ function softSkin(o: Palette) {
     sheenColor: new THREE.Color(mix(o.body, "#FFF4EE", 0.6)),
   });
   material.onBeforeCompile = (shader) => {
+    // The hoof caps and soles: the hoof color cut at the hoof field's 0.5 level, antialiased over
+    // one pixel, so the edge is as crisp as the eyes' however coarse the mesh is there. The toes'
+    // split line lets 35% of the body color back through.
+    shader.uniforms.hoofColor = { value: new THREE.Color(o.hoof) };
+    shader.vertexShader = shader.vertexShader
+      .replace("#include <common>", "#include <common>\nattribute vec2 hoof;\nvarying vec2 vHoof;")
+      .replace("#include <color_vertex>", "#include <color_vertex>\n\tvHoof = hoof;");
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        "#include <common>",
+        "#include <common>\nuniform vec3 hoofColor;\nvarying vec2 vHoof;",
+      )
+      .replace(
+        "#include <color_fragment>",
+        "#include <color_fragment>\n\tfloat hoofEdge = fwidth( vHoof.x ) * 0.75;\n\tdiffuseColor.rgb = mix( diffuseColor.rgb, hoofColor, smoothstep( 0.5 - hoofEdge, 0.5 + hoofEdge, vHoof.x ) * ( 1.0 - 0.35 * vHoof.y ) );",
+      );
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <emissivemap_fragment>",
       "#include <emissivemap_fragment>\n\ttotalEmissiveRadiance += diffuseColor.rgb * 0.08 + diffuseColor.rgb * diffuseColor.rgb * 0.62;",
@@ -227,6 +244,7 @@ function buildPig(o: Palette) {
   geometry.setAttribute("position", new THREE.BufferAttribute(shape.positions, 3));
   geometry.setAttribute("normal", new THREE.BufferAttribute(shape.normals, 3));
   geometry.setAttribute("color", new THREE.BufferAttribute(pigColors(shape.regions, o), 3));
+  geometry.setAttribute("hoof", new THREE.BufferAttribute(shape.hoofs, 2));
   geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(shape.skinIndex, 4));
   geometry.setAttribute("skinWeight", new THREE.BufferAttribute(shape.skinWeight, 4));
   geometry.setIndex(new THREE.BufferAttribute(shape.indices, 1));

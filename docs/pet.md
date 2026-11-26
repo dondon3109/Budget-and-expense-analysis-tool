@@ -157,18 +157,20 @@ the figure, or the tombstone.
   a lighter painted line where the toes split. Each arm is one tube along a smooth curve, with no
   elbow corner, and only its shoulder melts into the body: the rest meets it in a narrow crease,
   so the arms stand apart as limbs. The figure also has stubby legs stretched forward showing round rose-brown
-  soles; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
+  soles inside a pink rim; wide-set glossy dark-brown eyes with a lighter brown rim and one highlight, level with the
   top of a short, round coral snout with deep nostrils; a thin smile; and soft blush. The
   proportions (`SHAPE` in `pigShape.ts`) were fitted to a photo of the reference toy by matching
   its outline. The shape is one signed distance field (`pet3d/pigShape.ts`) whose parts melt into
   each other with soft creases, meshed
   once per page into a single seamless surface (`pet3d/sdfMesh.ts`, surface nets with normals from
-  the field's gradient, about 700ms on a laptop) and colored per vertex (snout, hooves, nostrils,
-  blush) from the body color (`PIG_BODY`, tinted by the pet color). The mesh is then relaxed
+  the field's gradient, about 700ms on a laptop) and colored per vertex (snout, nostrils, blush)
+  from the body color (`PIG_BODY`, tinted by the pet color). The mesh is then relaxed
   (`relaxMesh`): its grid steps are smoothed out without shrinking it, and its normals are
   averaged with their neighbors' so the creases where parts blend shade as soft curves. The snout
-  keeps its exact normals so the nostrils stay crisp, and the hoof color's edge is blurred a
-  little. The material is matte with a
+  keeps its exact normals so the nostrils stay crisp. The hooves and soles are painted by the
+  material instead: each vertex carries a smooth hoof field, and the shader cuts the hoof color
+  where it crosses 0.5, antialiased over one pixel, so their edges stay as sharp as the toy's
+  between vertices rather than fading across the triangles. The material is matte with a
   soft velvet sheen, and adds back some of its own color (more of its hue than its lightness) as
   scattered light, so the shadows stay a warm saturated pink; neutral tone mapping keeps its pastel
   saturation. Its lights wrap a little past the side they face and fade out flat, so no light's

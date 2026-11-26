@@ -396,8 +396,14 @@ export function pigDistance(x: number, y: number, z: number) {
 export interface PigMesh extends SdfMesh {
   skinIndex: Uint16Array;
   skinWeight: Float32Array;
-  /** Per vertex: snout, hoof, nostril, and blush amounts, each 0 to 1. */
+  /** Per vertex: snout, nostril, and blush amounts, each 0 to 1. */
   regions: Float32Array;
+  /**
+   * Per vertex: the hoof field, which crosses 0.5 at the edge of each hoof cap and sole, and the
+   * toes' split line (0 to 1). The material cuts the hoof color sharply at the field's 0.5 level,
+   * so the edge stays crisp between vertices instead of fading across the triangles.
+   */
+  hoofs: Float32Array;
 }
 
 const smooth = (edge0: number, edge1: number, x: number) => {
@@ -421,8 +427,9 @@ export function pigMesh(): PigMesh {
   relaxMesh(mesh, neighbors, 3, 8);
   const skinIndex = new Uint16Array(count * 4);
   const skinWeight = new Float32Array(count * 4);
-  const regions = new Float32Array(count * 4);
-  const hoofs = new Float32Array(count);
+  const regions = new Float32Array(count * 3);
+  const field = new Float32Array(count);
+  const hoofs = new Float32Array(count * 2);
   const d = new Float64Array(PARTS);
   const order = Array.from({ length: PARTS }, (_, i) => i);
   for (let v = 0; v < count; v += 1) {
@@ -455,37 +462,42 @@ export function pigMesh(): PigMesh {
       const length = Math.hypot(n[0]!, n[1]!, n[2]!) || 1;
       for (let c = 0; c < 3; c += 1) mesh.normals[v * 3 + c] = n[c]! / length;
     }
-    // Each fades out smoothly where its limb meets the body, so the edge never follows the grid.
+    // Each ramps up over a few vertices across its edge, so the field is smooth enough to cut
+    // cleanly at 0.5, and fades out where its limb meets the body.
     const normal: Vec3 = [mesh.normals[v * 3]!, mesh.normals[v * 3 + 1]!, mesh.normals[v * 3 + 2]!];
     let hoof = 0;
+    let split = 0;
     for (let side = 0; side < 2; side += 1) {
       const limb = arms[side]!;
       const onArm = smooth(0.04, 0, d[ARM_L + side]! - nearest);
       const past = dot(sub([x, y, z], limb.wrist), limb.dir);
       // The toes' split: a lighter line down the middle of the hoof's front, as on the toy.
       const offset = sub([x, y, z], limb.wrist);
-      const split =
+      split = Math.max(
+        split,
         smooth(0.06, 0.025, Math.abs(dot(offset, limb.across))) *
-        smooth(0.04, 0.08, past) *
-        smooth(0.2, 0.5, dot(normal, limb.front));
-      hoof = Math.max(hoof, onArm * smooth(-0.02, 0.05, past) * (1 - 0.35 * split));
-      // A sole is the flat end of the leg: facing along the leg, past the rounded rim.
+          smooth(0.04, 0.08, past) *
+          smooth(0.2, 0.5, dot(normal, limb.front)),
+      );
+      hoof = Math.max(hoof, onArm * smooth(-0.04, 0.06, past));
+      // A sole is the flat end of the leg: facing along the leg, inside a pink rim.
       const foot = legs[side]!;
       const onLeg = smooth(0.04, 0, d[LEG_L + side]! - nearest);
       const end = smooth(0.07, 0.1, dot(sub([x, y, z], foot.foot), foot.dir));
-      hoof = Math.max(hoof, onLeg * end * smooth(0.55, 0.8, dot(normal, foot.dir)));
+      hoof = Math.max(hoof, onLeg * end * smooth(0.7, 0.9, dot(normal, foot.dir)));
     }
     const inNostril = smooth(0.03, 0, Math.abs(nostril(x, y, z))) * snoutAmount;
     const { x: bx, y: by, radius } = PIG_FACE.blush;
     const cheek = Math.min(Math.hypot(Math.abs(x) - bx, y - by) / radius, 1);
     const blush = z > 0.2 ? (1 - cheek * cheek) ** 2 * (1 - snoutAmount) : 0;
-    regions.set([snoutAmount, hoof, inNostril, blush], v * 4);
-    hoofs[v] = hoof;
+    regions.set([snoutAmount, inNostril, blush], v * 3);
+    field[v] = hoof;
+    hoofs[v * 2 + 1] = split;
   }
-  // The hoof caps' edges cross the grid at a slant; blurring them a little hides the steps.
-  for (let pass = 0; pass < 5; pass += 1) blurAttribute(hoofs, 1, neighbors, 0.5);
-  for (let v = 0; v < count; v += 1) regions[v * 4 + 1] = hoofs[v]!;
-  cached = { ...mesh, skinIndex, skinWeight, regions };
+  // Two light passes smooth out the grid's small steps without moving the 0.5 level.
+  for (let pass = 0; pass < 2; pass += 1) blurAttribute(field, 1, neighbors, 0.5);
+  for (let v = 0; v < count; v += 1) hoofs[v * 2] = field[v]!;
+  cached = { ...mesh, skinIndex, skinWeight, regions, hoofs };
   return cached;
 }
 
